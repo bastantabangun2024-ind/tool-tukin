@@ -129,7 +129,10 @@ Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.ht
    pangkat/golongan/ruang, jabatan, kelas jabatan, bidang, status kepegawaian, tukin,
    tarif uang makan, PPh, satker). Tersimpan di tabel **`pegawai`** Supabase — bukan di Drive.
    `nama_key` dihitung otomatis dengan `namaKey()` mesin offline agar pencocokan nama file
-   Drive tetap sama; NIP ganda ditolak (409).
+   Drive tetap sama; NIP ganda ditolak (409). Tiap baris punya tombol **Ubah**,
+   **Nonaktifkan/Aktifkan** (baris nonaktif ditampilkan redup; riwayat pengajuan tetap utuh),
+   dan **Hapus** — hapus permanen ditolak (409) bila pegawai sudah punya pengajuan, karena
+   foreign key akan ikut menghapus riwayat presensi & rekapnya.
 4. **Ambil dari Drive** — tempel link folder Drive publik + bulan/tahun, **Baca Folder**
    (menampilkan file yang ketemu & yang dilewati), lalu **Proses Semua File**: presensi diunduh,
    nama file/folder dicocokkan dengan daftar pegawai, dihitung, dan disimpan `menunggu_verifikasi`.
@@ -137,6 +140,9 @@ Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.ht
    aturan pencocokan nama sama dengan `index.html` offline.
    Tiap file dikirim sebagai **satu permintaan** (`berkas: { id, nama, jalur, folder }`) supaya
    tidak kena batas waktu fungsi Vercel; folder tidak ditelusuri ulang per file.
+   Bila nama file cocok dengan **lebih dari satu pegawai** (mis. dua "DAVID"), file tidak lagi
+   hanya dilaporkan gagal: muncul baris **“Perlu dipilih”** berisi daftar kandidat; admin memilih
+   orangnya lalu menekan **Proses**, dan file itu diproses ulang dengan `pegawai_id` pilihan.
 5. Pengaturan Potongan — 16 aturan versi 1, nilai bisa diubah lalu disimpan.
 
 **Endpoint baru (`server.mjs`)**
@@ -153,8 +159,10 @@ Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.ht
   tiap file diproses terpisah.
 - `GET /api/pegawai/daftar` — **[admin]** daftar pegawai untuk tab Data Pegawai.
 - `POST /api/pegawai/simpan` — **[admin]** tambah (`id` kosong) atau ubah (`id` diisi) pegawai.
-  Keduanya memverifikasi token Supabase ke `/auth/v1/user` lalu mencocokkan peran `admin`
-  di tabel `users`; tanpa itu → 401.
+- `POST /api/pegawai/aktif` — **[admin]** `{ id, aktif }` menonaktifkan/mengaktifkan pegawai.
+- `POST /api/pegawai/hapus` — **[admin]** hapus permanen; 409 bila sudah punya pengajuan.
+  Semua endpoint admin memverifikasi token Supabase ke `/auth/v1/user` lalu mencocokkan
+  peran `admin` di tabel `users`; tanpa itu → 401.
 - `GET /lib/app.js`, `/lib/xlsx.full.min.js`, `/lib/pegawai.js` — mesin hitung. Lokal dilayani
   dari `aplikasi-offline/APLIKASI/`; di Vercel dari salinan `public/lib/`.
 
@@ -167,9 +175,8 @@ Data uji dihapus setelah pengujian.
 (hadir/tukin sama dengan `app.js`), file rekap manual + PDF/JPG dilewati, nama ambigu (DAVID,
 NELLY) dilaporkan, link ngawur → HTTP 400. Data uji dihapus setelah pengujian.
 
-**Belum:** unggah berkas **ke** Google Drive, pilihan pegawai untuk nama ambigu, isi HUKDIS/TB
-oleh admin saat verifikasi, ekspor 3 file Excel, pembuatan akun otomatis saat pendaftaran
-disetujui, dan hapus/nonaktifkan pegawai dari tab Data Pegawai.
+**Belum:** unggah berkas **ke** Google Drive, isi HUKDIS/TB oleh admin saat verifikasi,
+ekspor 3 file Excel, dan pembuatan akun otomatis saat pendaftaran disetujui.
 
 ## Struktur kode (siap Vercel)
 

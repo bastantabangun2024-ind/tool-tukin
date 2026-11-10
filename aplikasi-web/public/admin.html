@@ -314,17 +314,56 @@
         '<table><thead><tr><th>Pegawai</th><th>Jabatan / Bidang</th><th>Gol</th>' +
         '<th class="num">Tukin</th><th class="num">Uang makan</th><th></th></tr></thead><tbody>' +
         d.map(function (p, i) {
-          return '<tr><td>' + esc(p.nama) + '<br><span class="catatan">' + esc(p.nip) + ' · ' +
-            esc(p.status_kepegawaian) + '</span></td>' +
+          return '<tr' + (p.aktif ? '' : ' style="opacity:.55"') + '><td>' + esc(p.nama) +
+            (p.aktif ? '' : ' <span class="catatan">(nonaktif)</span>') +
+            '<br><span class="catatan">' + esc(p.nip) + ' · ' + esc(p.status_kepegawaian) + '</span></td>' +
             '<td>' + esc(p.jabatan) + '<br><span class="catatan">' + esc(p.bidang && p.bidang.nama) + '</span></td>' +
             '<td>' + esc(p.golongan || '') + (p.ruang ? '/' + esc(p.ruang) : '') + '</td>' +
             '<td class="num">' + rupiah(p.tukin) + '</td>' +
             '<td class="num">' + rupiah(p.tarif_uang_makan) + '</td>' +
-            '<td><button class="kecil" data-ubah="' + i + '">Ubah</button></td></tr>';
+            '<td><button class="kecil" data-ubah="' + i + '">Ubah</button> ' +
+            '<button class="kecil" data-aktif="' + i + '">' + (p.aktif ? 'Nonaktifkan' : 'Aktifkan') + '</button> ' +
+            '<button class="kecil" data-hapus="' + i + '">Hapus</button></td></tr>';
         }).join('') + '</tbody></table>';
 
-      document.getElementById('tabelPegawai').querySelectorAll('button[data-ubah]').forEach(function (b) {
+      var tabel = document.getElementById('tabelPegawai');
+      tabel.querySelectorAll('button[data-ubah]').forEach(function (b) {
         b.addEventListener('click', function () { isiForm(d[Number(b.dataset.ubah)]); });
+      });
+
+      tabel.querySelectorAll('button[data-aktif]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var p = d[Number(b.dataset.aktif)];
+          b.disabled = true;
+          catatPegawai('Menyimpan…', '#475569');
+          adminApi('/api/pegawai/aktif', { method: 'POST', body: { id: p.id, aktif: !p.aktif } }).then(function (h) {
+            if (!h.ok) { catatPegawai('Gagal: ' + esc(h.j.pesan || ('HTTP ' + h.status)), '#b42318'); b.disabled = false; return; }
+            catatPegawai('✔ ' + esc(h.j.pesan), '#0b6b3a');
+            muatPegawai();
+          }).catch(function (e) {
+            catatPegawai('Gagal: ' + esc(e.message), '#b42318');
+            b.disabled = false;
+          });
+        });
+      });
+
+      tabel.querySelectorAll('button[data-hapus]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var p = d[Number(b.dataset.hapus)];
+          if (!confirm('Hapus ' + p.nama + ' dari daftar pegawai?\n\n' +
+            'Kalau pegawai ini sudah punya data pengajuan, penghapusan akan ditolak — pakai Nonaktifkan.')) return;
+          b.disabled = true;
+          catatPegawai('Menghapus…', '#475569');
+          adminApi('/api/pegawai/hapus', { method: 'POST', body: { id: p.id } }).then(function (h) {
+            if (!h.ok) { catatPegawai('Gagal: ' + esc(h.j.pesan || ('HTTP ' + h.status)), '#b42318'); b.disabled = false; return; }
+            catatPegawai('✔ ' + esc(h.j.pesan), '#0b6b3a');
+            if (nilai('pId') === p.id) kosongkanForm();
+            muatPegawai();
+          }).catch(function (e) {
+            catatPegawai('Gagal: ' + esc(e.message), '#b42318');
+            b.disabled = false;
+          });
+        });
       });
     }).catch(function (e) {
       document.getElementById('tabelPegawai').innerHTML = '<p class="catatan">Gagal memuat: ' + esc(e.message) + '</p>';
@@ -451,6 +490,7 @@
     var antre = daftarDrive.file.slice();
     var hasil = [];
     var lewat = [];
+    var ambigu = [];
     var i = 0;
     btn.disabled = true;
     document.getElementById('btnBacaDrive').disabled = true;
@@ -475,12 +515,64 @@
               '</td><td>' + esc(x.alasan) + '</td></tr>';
           }).join('') + '</tbody></table>';
       }
+      if (ambigu.length) {
+        html += '<p class="catatan"><b>Perlu dipilih (' + ambigu.length + ')</b> — nama file cocok dengan '
+          + 'lebih dari satu pegawai. Pilih orangnya lalu tekan Proses:</p>' +
+          '<table><thead><tr><th>File</th><th>Pilih pegawai</th><th></th></tr></thead><tbody>' +
+          ambigu.map(function (a, i) {
+            return '<tr><td>' + esc(a.berkas.nama) +
+              (a.berkas.jalur ? '<br><span class="catatan">' + esc(a.berkas.jalur) + '</span>' : '') +
+              '</td><td><select data-pilih="' + i + '">' +
+              a.kandidat.map(function (k) {
+                return '<option value="' + esc(k.id) + '">' + esc(k.nama) + ' — ' + esc(k.nip) + '</option>';
+              }).join('') + '</select></td>' +
+              '<td><button class="kecil" data-ambigu="' + i + '">Proses</button></td></tr>';
+          }).join('') + '</tbody></table>';
+      }
       document.getElementById('tabelDrive').innerHTML = html;
+
+      document.getElementById('tabelDrive').querySelectorAll('button[data-ambigu]').forEach(function (b) {
+        b.addEventListener('click', function () { prosesAmbigu(Number(b.dataset.ambigu), b); });
+      });
+    }
+
+    // File yang namanya cocok dengan beberapa pegawai: proses ulang dengan pegawai pilihan admin.
+    function prosesAmbigu(i, b) {
+      var a = ambigu[i];
+      if (!a) return;
+      var sel = document.querySelector('select[data-pilih="' + i + '"]');
+      var id = sel ? sel.value : '';
+      if (!id) return;
+      b.disabled = true;
+      catatDrive('Memproses <b>' + esc(a.berkas.nama) + '</b> untuk pegawai yang dipilih…');
+      fetch('/api/drive/proses', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          link: link, bulan: p.bulan, tahun: p.tahun, berkas: a.berkas, pegawai_id: id
+        })
+      }).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      }).then(function (h) {
+        if (!h.ok) throw new Error(h.j.pesan || 'Gagal memproses');
+        var d = h.j;
+        (d.hasil || []).forEach(function (x) { hasil.push(x); });
+        (d.diganti || []).forEach(function (x) { lewat.push(x); });
+        (d.dilewati || []).forEach(function (x) { lewat.push(x); });
+        ambigu.splice(i, 1);
+        catatDrive('✔ ' + esc(a.berkas.nama) + ' sudah diproses untuk pegawai pilihan Kakak.');
+        gambar();
+        muatUnggah();
+      }).catch(function (e) {
+        catatDrive('<b style="color:#b42318">Gagal: ' + esc(e.message) + '</b>');
+        b.disabled = false;
+      });
     }
 
     function selesai() {
       catatDrive('<b>' + hasil.length + ' pegawai tersimpan</b> dari ' + antre.length +
-        ' file untuk ' + NAMA_BULAN[p.bulan - 1] + ' ' + p.tahun + ', status menunggu verifikasi.');
+        ' file untuk ' + NAMA_BULAN[p.bulan - 1] + ' ' + p.tahun + ', status menunggu verifikasi.' +
+        (ambigu.length ? '<br><b style="color:#b42318">' + ambigu.length +
+          ' file masih perlu dipilih pegawainya (lihat tabel di bawah).</b>' : ''));
       gambar();
       muatUnggah();
       btn.disabled = false;
@@ -507,7 +599,16 @@
         var d = h.j;
         (d.hasil || []).forEach(function (x) { hasil.push(x); });
         (d.diganti || []).forEach(function (x) { lewat.push(x); });
-        (d.dilewati || []).forEach(function (x) { lewat.push(x); });
+        (d.dilewati || []).forEach(function (x) {
+          if (x.kandidat) {
+            ambigu.push({
+              berkas: { id: f.id, nama: f.nama, jalur: f.jalur, folder: f.folder },
+              kandidat: x.kandidat, alasan: x.alasan
+            });
+          } else {
+            lewat.push(x);
+          }
+        });
         gambar();
       }).catch(function (e) {
         lewat.push({ nama: f.nama, jalur: f.jalur, alasan: String(e.message || e) });

@@ -430,8 +430,9 @@ async function sumberLama(p, tahun, bulan) {
 }
 
 // Proses SATU file Drive: cocokkan nama -> hitung -> simpan.
-// Hasil: { status: 'tersimpan', baris, ganti } atau { status: 'dilewati', lewat }.
-async function prosesSatuFile(f, { pegawaiSemua, bulan, tahun }) {
+// `pegawai` diisi bila admin sudah memilih pegawai untuk nama yang ambigu.
+// Hasil: { status: 'tersimpan', baris, ganti } | { status: 'ambigu', lewat } | { status: 'dilewati', lewat }.
+async function prosesSatuFile(f, { pegawaiSemua, bulan, tahun, pegawai }) {
   let buf;
   try {
     buf = await Drive.ambilIsi(f);
@@ -443,22 +444,27 @@ async function prosesSatuFile(f, { pegawaiSemua, bulan, tahun }) {
   const namaFile = Tukin.namaFileDrive(f, `${bulan}-${tahun}`);
   const ident = Tukin.parseNamaFile(namaFile);
   const jelasAsli = !!Tukin.parseNamaFile(f.nama); // nama file asli sudah berpola NAMA_Presensi B-T
-  const cari = cocokPegawai(pegawaiSemua, ident ? ident.namaKey : Tukin.namaDariFolder(f.folder), namaFile);
 
-  if (cari.tidakAda) {
-    return { status: 'dilewati', lewat: { nama: f.nama, jalur: f.jalur, status: 'gagal', alasan: 'nama tidak ada di daftar pegawai' } };
-  }
-  if (cari.ambigu) {
-    return {
-      status: 'dilewati',
-      lewat: {
-        nama: f.nama, jalur: f.jalur, status: 'gagal',
-        alasan: 'nama cocok dengan ' + cari.ambigu.length + ' pegawai: ' + cari.ambigu.map((x) => x.nama).join('; '),
-      },
-    };
-  }
+  let p = pegawai || null;
+  if (!p) {
+    const cari = cocokPegawai(pegawaiSemua, ident ? ident.namaKey : Tukin.namaDariFolder(f.folder), namaFile);
 
-  const p = cari.pegawai;
+    if (cari.tidakAda) {
+      return { status: 'dilewati', lewat: { nama: f.nama, jalur: f.jalur, status: 'gagal', alasan: 'nama tidak ada di daftar pegawai' } };
+    }
+    if (cari.ambigu) {
+      // Bukan kegagalan: admin bisa memilih pegawai yang benar lalu file ini diproses ulang.
+      return {
+        status: 'ambigu',
+        lewat: {
+          nama: f.nama, jalur: f.jalur, status: 'ambigu',
+          alasan: 'nama cocok dengan ' + cari.ambigu.length + ' pegawai, pilih salah satu',
+          kandidat: cari.ambigu.map((x) => ({ id: x.id, nama: x.nama, nip: x.nip })),
+        },
+      };
+    }
+    p = cari.pegawai;
+  }
 
   const periodeIsi = new Set(barisPeriode(hari));
   if (periodeIsi.size > 1) {
@@ -535,7 +541,7 @@ export async function handler(req, res) {
       await wajibAdmin(req);
       const baris = await db(
         'pegawai?select=id,nip,nama,pangkat,golongan,ruang,jabatan,kelas_jabatan,status_kepegawaian,' +
-          'tukin,tarif_uang_makan,pph_pct,satker_2,aktif,bidang_id,bidang:bidang_id(nama,kode)&order=nama',
+          'tukin,tarif_uang_makan,pph_pct,satker_2,aktif,bidang_id,bidang:bidang_id(nama,kode)&order=aktif.desc,nama',
       );
       return kirimJson(res, 200, { pegawai: Array.isArray(baris) ? baris : [] });
     }
@@ -607,6 +613,45 @@ export async function handler(req, res) {
         }
         throw e;
       }
+    }
+
+    // Nonaktifkan / aktifkan pegawai. Riwayat pengajuan tidak disentuh.
+    if (jalur === '/api/pegawai/aktif' && req.method === 'POST') {
+      await wajibAdmin(req);
+      const b = await bacaBody(req);
+      if (!b.id) return kirimJson(res, 400, { pesan: 'Pegawai belum dipilih' });
+      const hasil = await db(`pegawai?id=eq.${encodeURIComponent(String(b.id))}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ aktif: !!b.aktif }),
+      });
+      if (!hasil || !hasil.length) return kirimJson(res, 404, { pesan: 'Pegawai tidak ditemukan' });
+      return kirimJson(res, 200, {
+        pesan: `${hasil[0].nama} ${hasil[0].aktif ? 'diaktifkan' : 'dinonaktifkan'}`,
+        aktif: hasil[0].aktif,
+      });
+    }
+
+    // Hapus permanen. Ditolak bila pegawai sudah punya pengajuan, karena
+    // foreign key akan mengikut menghapus riwayat presensi & rekapnya.
+    if (jalur === '/api/pegawai/hapus' && req.method === 'POST') {
+      await wajibAdmin(req);
+      const b = await bacaBody(req);
+      const id = b.id ? String(b.id) : '';
+      if (!id) return kirimJson(res, 400, { pesan: 'Pegawai belum dipilih' });
+
+      const ada = await db(`pegawai?select=id,nama&id=eq.${encodeURIComponent(id)}`);
+      if (!ada || !ada.length) return kirimJson(res, 404, { pesan: 'Pegawai tidak ditemukan' });
+
+      const pengajuan = await db(`pengajuan_tukin?select=id&pegawai_id=eq.${encodeURIComponent(id)}&limit=1`);
+      if (pengajuan && pengajuan.length) {
+        return kirimJson(res, 409, {
+          pesan: `${ada[0].nama} sudah punya data pengajuan; pakai Nonaktifkan saja agar riwayatnya tidak hilang`,
+        });
+      }
+
+      await db(`pegawai?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
+      return kirimJson(res, 200, { pesan: `${ada[0].nama} dihapus dari daftar pegawai` });
     }
 
     if (jalur === '/api/daftar' && req.method === 'POST') {
@@ -692,7 +737,13 @@ export async function handler(req, res) {
           folder: String(b.berkas.folder || ''),
           jenis: 'file',
         };
-        const r = await prosesSatuFile(f, { pegawaiSemua, bulan, tahun });
+        // Admin memilih pegawai untuk nama yang ambigu.
+        let paksa = null;
+        if (b.pegawai_id) {
+          paksa = pegawaiSemua.find((x) => x.id === String(b.pegawai_id)) || null;
+          if (!paksa) return kirimJson(res, 400, { pesan: 'Pegawai yang dipilih tidak ditemukan' });
+        }
+        const r = await prosesSatuFile(f, { pegawaiSemua, bulan, tahun, pegawai: paksa });
         return kirimJson(res, 200, {
           folderAkar: '',
           fileDitemukan: 1,

@@ -88,13 +88,12 @@ terbuka selama aplikasi dipakai. Halaman ini masih lokal (belum di Vercel).
 ### Belum dikerjakan
 
 - Unggah berkas **ke** Google Drive (OAuth admin). Pembacaan folder Drive sudah jalan.
-- Pilihan pegawai untuk file yang namanya ambigu (mis. dua "DAVID") — sekarang hanya dilaporkan.
 - Pilihan HUKDIS/TB oleh admin untuk hasil yang masuk lewat Drive (tidak ada input per file).
 - Mesin hitung di web (port `app.js` + uji paritas angka terhadap golden test).
 - Halaman verifikasi admin (isi HUKDIS/TB, setujui/tolak) dan ekspor 3 file rekap.
 - Isi `hari_libur` (libur nasional 2026) agar tidak dihitung sebagai hari kerja.
 - Deploy Vercel (kode sudah disiapkan: `app.mjs`, `api/[...jalur].mjs`, `vercel.json`) dan domain.
-- Ganti password admin, dan tombol hapus/nonaktifkan pegawai.
+- Ganti password admin.
 
 ---
 
