@@ -117,6 +117,41 @@ terbuka selama aplikasi dipakai. Halaman ini masih lokal (belum di Vercel).
 
 ---
 
+## Catatan Evaluasi & Kekurangan Ide Website (Perspektif Pegawai / PPPK)
+
+*Simulasi pengalaman pengguna saat bertindak sebagai salah satu pegawai (misal: PPPK Penyuluh Agama Kristen) yang menggunakan website ini secara mandiri:*
+
+### 1. Ketiadaan Dasbor Akun Pegawai (Tidak Ada Riwayat / Self-Service)
+* **Kondisi Saat Ini:** Pegawai hanya bisa memasukkan NIP, unggah file, dan melihat ringkasan satu kali di layar. Begitu halaman ditutup atau refresh, pegawai tidak bisa lagi memantau status pengajuannya.
+* **Keluhan Pegawai:** *"Apakah berkas saya sudah disetujui atau ditolak admin? Berapa uang makan saya bulan lalu? Saya tetap harus chat WA manual ke admin kepegawaian untuk tanya status."*
+* **Rekomendasi:** Aktifkan login mandiri pegawai (berbasis email/password dari menu Daftar) sehingga pegawai punya dasbor arsip bulanan (bisa melihat riwayat slip tukin & uang makan dari bulan-bulan sebelumnya).
+
+### 2. Isu Privasi & Keamanan (Form NIP Terbuka Bebas)
+* **Kondisi Saat Ini:** Siapa pun di internet bisa mengetik 18 digit NIP pegawai lain di halaman depan tanpa login. Nama, jabatan, golongan, dan bidang langsung muncul terbuka.
+* **Keluhan Pegawai:** *"Data kepegawaian dan estimasi tukin saya bisa dilihat atau bahkan diisengi orang lain yang tahu NIP saya."*
+* **Rekomendasi:** Batasi pencarian data/unggah file hanya untuk pengguna yang sudah login, atau tambahkan verifikasi tanggal lahir / PIN sederhana jika tetap tanpa login.
+
+### 3. Tidak Ada Bukti Tanda Terima / Unduh Slip Pengajuan
+* **Kondisi Saat Ini:** Setelah klik Proses, hanya muncul pesan *"Selamat Data Anda Sudah Terupload"*.
+* **Keluhan Pegawai:** *"Jika sewaktu-waktu admin bilang saya belum mengumpulkan presensi, saya tidak memegang bukti digital bahwa saya sudah kirim tepat waktu sebelum deadline."*
+* **Rekomendasi:** Tambahkan tombol **"Unduh Bukti Pengajuan (PDF / Struk)"** yang mencantumkan nama, NIP, tanggal & jam submit, serta ringkasan kehadiran.
+
+### 4. Beban Alur Manual Pengambilan File dari Portal Resmi
+* **Kondisi Saat Ini:** Pegawai harus membuka `absensi.kemenag.go.id`, login, unduh file Excel bulanan ke perangkat, lalu buka web Tool Tukin ini untuk unggah ulang.
+* **Keluhan Pegawai:** *"Bagi penyuluh yang tugas di lapangan dan hanya bawa ponsel pintar, proses unduh xlsx dari web kemenag lalu upload ke web ini di browser HP lumayan merepotkan dan rawan salah unduh bulan."*
+* **Rekomendasi:** Berikan validasi ekstra di frontend jika file Excel yang diunggah pegawai ternyata bukan periode bulan/tahun yang dipilih di dropdown agar pegawai tidak keliru.
+
+### 5. Ketidakpastian Potongan Tambahan (HUKDIS / TB) & Ketiadaan Kolom Catatan
+* **Kondisi Saat Ini:** Pegawai melihat angka tukin bersih di web, namun ada keterangan *"Potongan HUKDIS/TB diisi admin saat verifikasi"*.
+* **Keluhan Pegawai:** *"Angka bersih yang saya lihat di web belum tentu sama persis dengan yang saya terima di rekening bank karena admin bisa menambah potongan di belakang tanpa saya ketahui alasannya."*
+* **Rekomendasi:** Sediakan kolom **"Catatan / Keterangan Pegawai"** (misal: keterangan surat tugas dinas luar atau dispensasi) saat mengunggah, dan transparansi rincian potongan jika admin menerapkan HUKDIS/TB saat verifikasi.
+
+### 6. Ketiadaan Notifikasi Real-Time (WhatsApp / Email)
+* **Kondisi Saat Ini:** Pegawai tidak mendapat notifikasi otomatis saat pengajuannya disetujui atau ditolak dengan catatan perbaikan.
+* **Rekomendasi:** Integrasikan notifikasi email otomatis (atau pesan WhatsApp via bot gateway sederhana) begitu admin mengklik **Setujui** atau **Tolak** di dasbor admin.
+
+---
+
 ## Menyimpan perubahan ke GitHub (aman)
 
 Repo: `https://github.com/bastantabangun2024-ind/tool-tukin` (private).
