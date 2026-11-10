@@ -36,8 +36,15 @@ CARA PAKAI (tiap bulan)
    di bawah tabel dengan dropdown; pilih pegawai yang benar.
    Pilihan TERSIMPAN otomatis di Chrome "localStorage", jadi bulan
    depan tidak ditanya lagi.
-5. HUKDIS / TB (%) hanya diisi kalau ada (kolom abu di kanan tabel);
-   normalnya dibiarkan 0.
+5. HUKDIS / TB (%) diisi hanya kalau ada pegawai terkena sanksi/tugas belajar
+   (kolom abu di kanan tabel; normalnya 0).
+   Rujukan resmi (PMA 11/2019, PP 94/2021, PMK 72/PMK.05/2016):
+   - Tugas Belajar <= 6 Bulan : TB diisi 0% (Tukin 100%), Uang Makan dihentikan.
+   - Tugas Belajar > 6 Bulan  : TB diisi 50% (mulai bln ke-7), Uang Makan dihentikan.
+   - Hukdis Ringan            : HUKDIS diisi 0% (hanya kena pot. presensi harian).
+   - Hukdis Sedang            : HUKDIS diisi 25% (selama 6, 9, atau 12 bulan).
+   - Hukdis Berat             : Kelas jabatan disesuaikan / 100% jika diberhentikan.
+   (Tabel panduan lengkap juga bisa diklik pada panel hasil di index.html).
 6. Klik "Unduh KRISTEN PPPK" / "Unduh KRISTEN PNS" / dst., atau
    "Unduh SEMUA". Tombolnya mengikuti isi tabel: PPPK dan PNS selalu
    keluar jadi file TERPISAH (tukin & PPH-nya berbeda).

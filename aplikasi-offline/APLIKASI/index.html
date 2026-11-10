@@ -49,7 +49,20 @@
 
   <div class="panel" id="panelTabel" style="display:none">
     <b>2. Cek hasil</b> — baris kuning perlu dicek manual (anomali / potongan kena batas 100%).
-    Isi HUKDIS / TB (%) hanya kalau ada.<div class="kecil">&nbsp;</div>
+    Isi HUKDIS / TB (%) hanya kalau ada.
+    <details style="margin:8px 0;font-size:12px;background:#f8fafc;padding:9px 12px;border:1px solid #cbd5e1;border-radius:6px">
+      <summary style="cursor:pointer;font-weight:bold;color:#1e40af">ℹ️ Panduan Resmi Nilai Potongan HUKDIS &amp; TB (PMA 11/2019, PP 94/2021, PMK 72/2016)</summary>
+      <table style="width:100%;margin-top:8px;font-size:11.5px;border-collapse:collapse" border="1" cellpadding="5">
+        <tr style="background:#e2e8f0;text-align:left">
+          <th>Kondisi Pegawai</th><th>Dasar Hukum</th><th>Isi Kolom TB/HUKDIS (%)</th><th>Uang Makan</th><th>Keterangan</th>
+        </tr>
+        <tr><td><b>Tugas Belajar (&le; 6 Bulan)</b></td><td>PMA 11/2019 Ps. 23</td><td><b>0%</b> (Tukin utuh 100%)</td><td>Dihentikan (100%)</td><td>Diklat/kursus jangka pendek yang dibebaskan dari jabatan.</td></tr>
+        <tr><td><b>Tugas Belajar (&gt; 6 Bulan)</b></td><td>PMA 11/2019 Ps. 23</td><td><b>50%</b> (Tukin dibayar 50%)</td><td>Dihentikan (100%)</td><td>Berlaku mulai bulan ke-7 sejak tanggal surat tugas studi.</td></tr>
+        <tr><td><b>Hukuman Disiplin Ringan</b></td><td>PP 94/2021 &amp; PMA 11/2019</td><td><b>0%</b></td><td>Dibayar sesuai fisik hadir</td><td>Hanya dipotong harian (0,5% - 3%) jika dipicu ketidakhadiran jam kerja.</td></tr>
+        <tr><td><b>Hukuman Disiplin Sedang</b></td><td>PP 94/2021 &amp; PMA 11/2019</td><td><b>25%</b></td><td>Dibayar sesuai fisik hadir</td><td>Berlaku selama masa sanksi (6, 9, atau 12 bulan).</td></tr>
+        <tr><td><b>Hukuman Disiplin Berat</b></td><td>PP 94/2021 &amp; PMA 11/2019</td><td>Sesuaikan kelas jabatan baru / <b>100%</b> bila diberhentikan</td><td>0% fisik hadir / 100% jika diberhentikan</td><td>Penurunan jabatan 1 tingkat / pembebasan pelaksana 12 bulan.</td></tr>
+      </table>
+    </details>
     <div style="max-height:520px; overflow:auto; margin-top:8px;">
       <table id="tabel"></table>
     </div>
