@@ -238,7 +238,7 @@ Salinan di `public/lib/` **dibuat otomatis** — jangan diedit manual; sumbernya
 dengan kredensial hanya dari variabel lingkungan → `/api/konfigurasi` 200 dan query database jalan.
 
 **Status Deploy Production (10 November 2026):**
-- Domain / URL Live: `https://aplikasi-web-seven.vercel.app`
+- Domain / URL Live: `https://tool-tukin.vercel.app` (alias: `https://aplikasi-web-seven.vercel.app`)
 - Direct Deployment: `https://aplikasi-lx09m8dw1-bastantabangun2024-1024.vercel.app`
 - Environment variables (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`) terpasang di Vercel Production & Preview.
 - Seluruh endpoint diuji langsung: `/` 200, `/masuk.html` 200, `/admin.html` 200, `/lib/app.js` 200, `/api/konfigurasi` 200, `/api/pegawai` 200.

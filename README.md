@@ -57,9 +57,9 @@ versi web harus menghasilkan angka yang sama (uji paritas).
 
 | Keperluan | Alamat |
 |---|---|
-| Website Live (Vercel) | https://aplikasi-web-seven.vercel.app |
-| Halaman masuk / login | https://aplikasi-web-seven.vercel.app/masuk.html |
-| Halaman Admin | https://aplikasi-web-seven.vercel.app/admin.html |
+| Website Live (Vercel) | https://tool-tukin.vercel.app |
+| Halaman masuk / login | https://tool-tukin.vercel.app/masuk.html |
+| Halaman Admin | https://tool-tukin.vercel.app/admin.html |
 | Halaman masuk (lokal) | http://localhost:3000/masuk.html |
 | Dasbor (lokal) | http://localhost:3000/dasbor.html |
 | Dashboard Supabase | https://supabase.com/dashboard/project/nbgwulqufumtqnmlghef |
@@ -96,7 +96,7 @@ terbuka selama aplikasi dipakai. Halaman ini masih lokal (belum di Vercel).
   14–15 pegawai tersimpan otomatis, tukin/uang makan sama dengan hitungan `app.js`, file rekap
   manual & 50+ berkas PDF/JPG dilewati, nama ambigu (DAVID, NELLY) dilaporkan. Data uji dihapus.
 - **Deploy Vercel Production**:
-  - Aliased: `https://aplikasi-web-seven.vercel.app`
+  - Domain Utama: `https://tool-tukin.vercel.app` (alias lama: `https://aplikasi-web-seven.vercel.app`)
   - URL pengujian endpoint:
     - `/` (200 OK)
     - `/masuk.html` (200 OK)
