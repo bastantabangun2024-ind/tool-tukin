@@ -1,0 +1,192 @@
+=====================================================================
+ TOOL TUKIN & UANG MAKAN BIMAS PPPK & PNS (KRISTEN / KATOLIK / BUDDHA)
+ Petunjuk pemakaian — 100% offline
+=====================================================================
+
+CATATAN LOKASI (10 November 2026)
+---------------------------------
+Sejak aplikasi web disiapkan, folder APLIKASI, AMBIL-DARI-DRIVE, dan
+CADANGAN dipindahkan ke dalam folder  aplikasi-offline  (tetap
+berdampingan seperti dulu). Aplikasi web ada di folder  aplikasi-web
+(tahap audit/rancangan, belum dipakai). Petunjuk di bawah ini tetap
+berlaku; cukup buka APLIKASI/index.html dari dalam aplikasi-offline.
+
+CARA PAKAI (tiap bulan)
+-----------------------
+1. Dobel-klik  index.html  di folder  APLIKASI  -> terbuka di Chrome
+   (tidak butuh internet).
+2. Klik "Pilih file presensi", blok dan pilih SEMUA file unduhan
+   absensi.kemenag.go.id (contoh nama: "ARDI_Presensi 9-2026.xlsx").
+   Bisa sekaligus banyak file (ctrl+klik).
+   ATAU tarik file presensi langsung dari Google Drive penyuluh ->
+   lihat bagian "AMBIL DARI GOOGLE DRIVE" di bawah (panel 1b).
+3. Tabel hasil muncul. Perhatikan:
+   - Kolom "hadir"   : hari kerja dengan presensi masuk DAN pulang lengkap.
+   - Kolom "hari UM" : dasar uang makan = hari kerja dengan minimal satu
+     presensi (masuk saja atau pulang saja sudah dihitung hadir).
+   - Kolom "libur"   : cuti / dinas luar (tidak dihitung, tukin 0%).
+   - Kolom "TK (3%)" : tidak masuk tanpa keterangan.
+   - Kolom "telat/psw" : daftar tanggal + menit.
+   - "tidak presensi": masuk/pulang tidak terekam (1,5%/kejadian),
+     ditandai tanda "?" bila perlu dicek manual.
+   - Baris KUNING = ada anomali -> CEK tanggal yang tertulis sebelum
+     unduh. Alasan yang benar (mis. dinas luar) dapat dikoreksi di
+     file Excel setelah diunduh, atau laporkan ke tool.
+4. Nama yang sama muncul 2x (contoh: 2 DAVID) -> file masuk daftar
+   di bawah tabel dengan dropdown; pilih pegawai yang benar.
+   Pilihan TERSIMPAN otomatis di Chrome "localStorage", jadi bulan
+   depan tidak ditanya lagi.
+5. HUKDIS / TB (%) hanya diisi kalau ada (kolom abu di kanan tabel);
+   normalnya dibiarkan 0.
+6. Klik "Unduh KRISTEN PPPK" / "Unduh KRISTEN PNS" / dst., atau
+   "Unduh SEMUA". Tombolnya mengikuti isi tabel: PPPK dan PNS selalu
+   keluar jadi file TERPISAH (tukin & PPH-nya berbeda).
+   Tiap bidang + status keluar 3 file (nama persis meniru file manual):
+   - Rekapitulasi Kehadiran Bimas <BIDANG> <BULAN>.xlsx          (PPPK)
+   - Rekapitulasi Tukin Bimas <BIDANG> <BULAN>.xlsx              (PPPK)
+   - Rekapitulasi Uang Makan Bimas <BIDANG> <BULAN>.xlsx         (PPPK)
+   - Rekapitulasi Kehadiran Bimas <BIDANG> PNS <BULAN>.xlsx      (PNS)
+   - Rekapitulasi Tukin Bimas <BIDANG> PNS <BULAN>.xlsx          (PNS)
+   - Rekapitulasi Uang Makan Bimas <BIDANG> PNS <BULAN>.xlsx     (PNS)
+   Semuanya ke folder "Unduhan" default Chrome.
+7. Buka file Excel, cek beberapa baris, lalu kirim seperti biasa.
+
+AMBIL DARI GOOGLE DRIVE (panel 1b — tanpa kunci API, tanpa login)
+---------------------------------------------------------------
+Sekali setel: pastikan Node.js terpasang di komputer (cek: buka cmd,
+ketik "node -v"). Kalau belum ada, unduh gratis di https://nodejs.org.
+
+Tiap bulan:
+1. Dobel-klik  AMBIL-DARI-DRIVE.cmd  (ada di folder AMBIL-DARI-DRIVE,
+   sebelah folder APLIKASI). Jendela hitam terbuka -> BIARKAN TERBUKA
+   selama memakai fitur Drive. Jendela ini yang mengambil file dari
+   Drive, karena Chrome melarang index.html (file://) mengambil langsung
+   dari Google. (Folder APLIKASI dan AMBIL-DARI-DRIVE harus tetap
+   berdampingan, jangan dipisah.)
+2. Buka APLIKASI/index.html seperti biasa. Di panel "1b. Ambil dari Google Drive":
+   - Tempel link folder Drive, contoh link folder BULAN:
+       .../drive/folders/1yWLYkZmzKkyYiv4dkfB6tvimzRUtD04b   (9. SEPTEMBER 2026)
+     Boleh beberapa link sekaligus (satu link per baris): link folder
+     KRISTEN, KATOLIK, BUDDHA.
+   - Kolom bulan-tahun diisi  9-2026  (format BULAN-TAHUN, tanpa angka nol di depan).
+     Fungsinya: kalau link-nya folder arsip (berisi semua tahun/bulan),
+     hanya bulan itu yang diambil; sekaligus jadi cadangan kalau nama
+     file tidak memuat nama pegawai. Kosongkan = semua bulan diambil.
+     Sejak 2 Nov 2026 bulan-tahun juga dibaca otomatis dari nama folder
+     Drive ("... / 1. 2026 / 9. SEPTEMBER / ELIYANI..."), jadi file yang
+     dinamai bebas ("Presensi Septemeber 2026 Eliyani.xlsx", "Absensi Mei
+     2026.xlsx") tetap terbaca. Kalau folder berisi banyak bulan, tool
+     akan menyarankan isi kolom ini supaya hanya satu bulan diambil.
+   - Klik "Ambil dari Drive". Tunggu sampai muncul "N dari N file presensi
+     diambil dari Drive".
+3. Tabel hasil langsung terisi; lanjut seperti biasa (cek baris kuning,
+   isi HUKDIS/TB kalau ada, lalu unduh 3 file Excel per bidang).
+
+Yang otomatis dilakukan:
+- Folder dibaca rekursif (tahun / bulan / folder nama penyuluh / file).
+- File rekap manual ("Rekapitulasi ...", "Rekap ...") dan file PDF/JPG/PNG
+  otomatis DILEWATI, tidak ikut dihitung.
+- File yang namanya tanpa nama pegawai ("Presensi 9-2026.xlsx") diberi nama
+  dari folder penyuluhnya -> MAYANI_Presensi 9-2026.xlsx.
+- Kalau satu orang punya 2 file (mis. "ARDI_Presensi 9-2026.xlsx" dan
+  "Presensi 9-2026.xlsx" di folder yang sama), dipakai yang namanya paling
+  jelas dan yang satu dilewati (muncul catatan kuning).
+- Nama yang sama (mis. 2 DAVID) tetap muncul dropdown pilih pegawai.
+
+Kalau ada masalah:
+- "Pengambil Drive belum jalan" -> AMBIL-DARI-DRIVE.cmd belum dibuka
+  (atau jendelanya sudah ditutup). Dobel-klik lagi, lalu klik ulang.
+- "Tidak ada file .xlsx yang ketemu" -> link salah folder, atau folder
+  belum dibagikan "Siapa saja yang punya link".
+- Tabel kosong + pesan "nama file tidak sesuai pola" padahal file masuk ->
+  isi kolom bulan-tahun di panel 1b (dulu gejala ini muncul untuk folder
+  Katolik yang nama filenya bebas; sekarang sudah otomatis terbaca).
+- Folder Drive penyuluh sebaiknya satu bulan satu folder (seperti sekarang)
+  supaya link-nya mudah dipakai tiap bulan.
+
+ATURAN POTONGAN YANG DIPAKAI (PMA 11/2019)
+-----------------------------------------
+- TK (tidak masuk, tanpa alasan sah) ....... 3%  / hari
+- Tidak presensi masuk ATAU pulang ......... 1,5% / kejadian
+- Telat & Pulang lebih awal (per kejadian):
+    1-29 menit 0,5% | 30-60 menit 1% | 61-89 menit 1,25% | >=90 menit 1,5%
+- Potongan kumulatif maksimal 100% / bulan.
+- Cuti sah / Dinas Luar / Sakit ............ 0% (tidak dihitung hari masuk)
+- Uang makan = tarif x hari kerja yang punya minimal satu presensi
+  (masuk atau pulang); presensi yang hanya terekam sebelah tetap dihitung.
+  PPH 5%
+  (pegawai tarif khusus Rp35.000 tidak kena PPH).
+- HUKDIS dan TB dihitung manual (kolom % di UI).
+
+PEGAWAI PNS (ditambahkan 3 Nov 2026)
+------------------------------------
+Rumus potongan PNS SAMA dengan PPPK. Yang berbeda hanya besaran tukin
+(menurut pangkat/golongan) dan tarif uang makan + PPH-nya:
+  - PPPK (golongan IX / VII)          : tukin sesuai roster, UM Rp37.000,
+                                        PPH 5% (Marliana Katolik: 35.000, 0%)
+  - PNS golongan III (mis. III/b)     : tukin Rp2.928.000, UM Rp37.000, PPH 5%
+  - PNS golongan IV (mis. IV/a, IV/b) : tukin Rp4.551.000, UM Rp41.000, PPH 15%
+Daftar PNS yang sudah masuk roster (30 pegawai = 26 PPPK + 4 PNS):
+  KRISTEN : Dr. SAMAREL TELAUM BANUA (IV/b), BASTANTA (III/b)
+  KATOLIK : BARON FERRY SON PANDIANGAN (IV/a)
+  BUDDHA : SUWARNO (IV/a)
+File presensi PNS dipilih/diambil sama seperti PPPK, cukup namanya berpola
+"SAMAREL_Presensi 9-2026.xlsx" (nama lengkap dengan gelar juga dikenali:
+"Dr. SAMAREL TELAUM BANUA_Presensi 9-2026.xlsx" -> SAMAREL).
+Di tabel hasil, status (PPPK / PNS) tertulis kecil di bawah nama bidang.
+Kalau nanti ada PNS baru / naik pangkat, ganti angka tukin & PPH di
+pegawai.js atau segarkan roster (lihat bagian MASALAH UMUM).
+
+MASALAH UMUM
+------------
+- "nama ... tidak ada di roster":
+  nama file tidak cocok kata pertama nama pegawai di pegawai.js.
+- File dari NIP yang salah / pegawai pindah bidang / ada PNS baru:
+  daftar pegawai bisa disegarkan dengan:  node CADANGAN/build-roster.js
+  (membaca file Rekapitulasi Tukin/Uang Makan bulan terakhir di folder
+  CADANGAN/BIMAS ... PPPK dan CADANGAN/ABSEN SEPTEMBER 2026 PNS/PEMBIMAS ...).
+- Uji otomatis (opsi):  node CADANGAN/uji-app.js
+  membandingkan hasil dengan angka file manual September (ARDI &
+  CHRISTIN) dan tulis contoh output di folder CADANGAN/hasil-uji/.
+- Uji fitur Drive (opsi, butuh internet + Chrome):  node CADANGAN/uji-drive.js
+  membaca folder Drive yang asli, mengunduh file presensi, membandingkan
+  angkanya, lalu menekan tombol "Ambil dari Drive" di Chrome.
+
+STRUKTUR FOLDER (3 folder di dalam aplikasi-offline/)
+-----------------------------------------------------
+APLIKASI/          <- yang dipakai tiap bulan
+  index.html          UI utama (dobel-klik)
+  app.js              logika hitung & export (dipakai UI & uji Node)
+  pegawai.js          daftar 30 pegawai 3 bidang (26 PPPK + 4 PNS)
+  lib/xlsx.full.min.js  library SheetJS untuk baca/tulis Excel
+  CARA-PAKAI.txt      petunjuk ini
+
+AMBIL-DARI-DRIVE/  <- fitur Drive (panel 1b)
+  AMBIL-DARI-DRIVE.cmd  dobel-klik untuk fitur Drive
+  alat-drive.js         pengambil file dari Google Drive (dipakai .cmd di atas)
+
+CADANGAN/          <- arsip & alat bantu, TIDAK perlu dibuka tiap bulan
+  BIMAS .../          file manual September PPPK (contoh pembanding)
+  ABSEN SEPTEMBER 2026 PNS/  file manual September PNS (sumber roster PNS)
+  uji-app.js          uji otomatis logika hitung
+  uji-drive.js        uji otomatis fitur Drive
+  build-roster.js     penyegar daftar pegawai
+  alat-lama/          skrip sekali-pakai OCR/ekstrak
+  halaman-ocr/        gambar halaman PDF PMA 11/2019
+  hasil-uji/          contoh hasil uji
+  hasil-hari-ini.md   diary progress
+  PMA/PDF/JPG/txt     bahan OCR aturan PMA 11/2019
+  node_modules/       library Node untuk skrip OCR (boleh tidak diunggah)
+
+SIMPAN / CADANGAN DI GOOGLE DRIVE
+---------------------------------
+Yang perlu diunggah ke Drive (cukup 2 folder, taruh berdampingan):
+  1. APLIKASI/            (index.html, app.js, pegawai.js, lib/, CARA-PAKAI.txt)
+  2. AMBIL-DARI-DRIVE/    (AMBIL-DARI-DRIVE.cmd, alat-drive.js)
+Tidak perlu diunggah: node_modules/, halaman-ocr/, hasil-uji/,
+BIMAS .../ (data pegawai), PDF/JPG hasil OCR.
+Kalau ingin arsip lengkap, unggah juga folder CADANGAN/ (boleh dipisah
+ke folder Drive lain, mis. "CADANGAN TOOL TUKIN").
+Catatan: setelah diunduh dari Drive, kadang Windows menambahkan tanda
+"(1)" pada nama file/folder — pastikan tetap APLIKASI dan
+AMBIL-DARI-DRIVE agar path antar-folder tidak putus.

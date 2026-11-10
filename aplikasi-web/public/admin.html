@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin — Tool Tukin</title>
+<link rel="stylesheet" href="/gaya.css">
+</head>
+<body>
+<header>
+  <strong>Tool Tukin — Admin</strong>
+  <nav>
+    <button data-tab="unggah" class="aktif">Sudah Unggah</button>
+    <button data-tab="pendaftar">Pendaftar</button>
+    <button data-tab="drive">Ambil dari Drive</button>
+    <button data-tab="pengaturan">Pengaturan Potongan</button>
+    <span id="siapa" style="color:#64748b;margin-left:10px"></span>
+    <button id="keluar">Keluar</button>
+  </nav>
+</header>
+
+<main>
+  <section class="kartu" id="tab-unggah">
+    <h1>Pegawai Sudah Mengunggah</h1>
+    <p class="sub">Presensi yang masuk lewat halaman depan, beserta hasil hitung mesin Tukin.</p>
+    <div id="tabelUnggah"><p class="catatan">Memuat…</p></div>
+  </section>
+
+  <section class="kartu tersembunyi" id="tab-pendaftar">
+    <h1>Pendaftar Baru</h1>
+    <p class="sub">Pendaftaran yang menunggu keputusan admin.</p>
+    <div id="tabelPendaftar"><p class="catatan">Memuat…</p></div>
+  </section>
+
+  <section class="kartu tersembunyi" id="tab-drive">
+    <h1>Ambil dari Google Drive</h1>
+    <p class="sub">Sama seperti aplikasi offline: tempel link folder Drive, file presensi <b>.xlsx</b> dibaca
+      otomatis (rekursif), nama file dicocokkan dengan daftar pegawai, lalu dihitung dan disimpan
+      menunggu verifikasi. Folder harus dibagikan <b>“Siapa saja yang punya link”</b>.</p>
+    <textarea id="linkDrive" rows="3" spellcheck="false"
+      placeholder="https://drive.google.com/drive/folders/XXXXXXXX  <- link folder BULAN&#10;boleh beberapa baris"></textarea>
+    <div class="baris" style="margin-top:12px;align-items:flex-end">
+      <div><label>Bulan</label><br><select id="bulanDrive"></select></div>
+      <div><label>Tahun</label><br><input type="number" id="tahunDrive" min="2020" max="2100" style="width:100px"></div>
+      <div><button id="btnBacaDrive">1. Baca Folder</button></div>
+      <div><button id="btnProsesDrive" disabled>2. Proses Semua File</button></div>
+    </div>
+    <p class="catatan" id="catatanDrive">Bulan &amp; tahun dipakai untuk menyaring file (folder arsip) dan menyimpan hasil.</p>
+    <div id="tabelDrive"></div>
+  </section>
+
+  <section class="kartu tersembunyi" id="tab-pengaturan">
+    <h1>Pengaturan Potongan</h1>
+    <p class="sub">Nilai versi 1 dipakai mesin hitung. Mengubah angka di sini mengubah hasil
+      periode <b>berikutnya</b>; pengajuan yang sudah tersimpan menyimpan snapshot sendiri.</p>
+    <div id="tabelAturan"><p class="catatan">Memuat…</p></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var sesi = null;
+  try { sesi = JSON.parse(sessionStorage.getItem('sesi') || 'null'); } catch (e) { sesi = null; }
+  if (!sesi || !sesi.access_token) { location.replace('/masuk.html'); return; }
+
+  document.getElementById('siapa').textContent = sesi.email || '';
+  document.getElementById('keluar').addEventListener('click', function () {
+    sessionStorage.removeItem('sesi');
+    location.href = '/masuk.html';
+  });
+
+  var k = null;
+  var kepala = function () { return { apikey: k.kunci, Authorization: 'Bearer ' + sesi.access_token }; };
+
+  function rupiah(n) { return 'Rp' + Math.round(Number(n) || 0).toLocaleString('id-ID'); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function api(jalur, opsi) {
+    return fetch(k.url + '/rest/v1/' + jalur, {
+      method: (opsi && opsi.method) || 'GET',
+      headers: Object.assign({ 'Content-Type': 'application/json' }, kepala(), (opsi && opsi.headers) || {}),
+      body: opsi && opsi.body ? JSON.stringify(opsi.body) : undefined
+    });
+  }
+  function labelBulan(b) {
+    return ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][b] || b;
+  }
+
+  // --- tab -----------------------------------------------------------------
+  var tombolTab = document.querySelectorAll('nav button[data-tab]');
+  Array.prototype.forEach.call(tombolTab, function (b) {
+    b.addEventListener('click', function () {
+      Array.prototype.forEach.call(tombolTab, function (x) { x.classList.remove('aktif'); });
+      b.classList.add('aktif');
+      ['unggah', 'pendaftar', 'drive', 'pengaturan'].forEach(function (t) {
+        document.getElementById('tab-' + t).classList.toggle('tersembunyi', t !== b.dataset.tab);
+      });
+      if (b.dataset.tab === 'pendaftar') muatPendaftar();
+      if (b.dataset.tab === 'drive' && !document.getElementById('bulanDrive').options.length) siapkanDrive();
+      if (b.dataset.tab === 'pengaturan') muatAturan();
+    });
+  });
+
+  // --- 1. sudah unggah ------------------------------------------------------
+  function muatUnggah() {
+    api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,pegawai(nama,nip),rekap_tukin(tukin_bersih,total_persen)&order=dikirim_pada.desc&limit=50')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!Array.isArray(d) || !d.length) {
+          document.getElementById('tabelUnggah').innerHTML = '<p class="catatan">Belum ada unggahan.</p>';
+          return;
+        }
+        var baris = d.map(function (x) {
+          var rk = x.rekap_tukin && x.rekap_tukin[0];
+          var aksi = x.status === 'menunggu_verifikasi'
+            ? '<button class="kecil" data-setujui="' + x.id + '">Setujui</button> ' +
+              '<button class="kecil" data-tolak="' + x.id + '">Tolak</button>'
+            : '';
+          return '<tr><td>' + esc(x.pegawai && x.pegawai.nama) + '<br><span class="catatan">' +
+            esc(x.pegawai && x.pegawai.nip) + '</span></td>' +
+            '<td>' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
+            '<td><span class="status ' + x.status + '">' + esc(x.status.replace(/_/g, ' ')) + '</span></td>' +
+            '<td class="num">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
+            '<td class="num">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
+            '<td>' + aksi + '</td></tr>';
+        }).join('');
+        document.getElementById('tabelUnggah').innerHTML =
+          '<table><thead><tr><th>Pegawai</th><th>Periode</th><th>Status</th>' +
+          '<th class="num">Tukin bersih</th><th class="num">Potongan</th><th></th></tr></thead><tbody>' +
+          baris + '</tbody></table>';
+
+        document.getElementById('tabelUnggah').querySelectorAll('button').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var id = b.dataset.setujui || b.dataset.tolak;
+            var status = b.dataset.setujui ? 'disetujui' : 'ditolak';
+            b.disabled = true;
+            api('pengajuan_tukin?id=eq.' + id, {
+              method: 'PATCH',
+              body: { status: status, diverifikasi_oleh: sesi.id, diverifikasi_pada: new Date().toISOString() }
+            }).then(function (r) {
+              if (!r.ok) { alert('Gagal menyimpan'); b.disabled = false; return; }
+              muatUnggah();
+            });
+          });
+        });
+      })
+      .catch(function () {
+        document.getElementById('tabelUnggah').innerHTML = '<p class="catatan">Gagal memuat data.</p>';
+      });
+  }
+
+  // --- 2. pendaftar ---------------------------------------------------------
+  function muatPendaftar() {
+    api('pendaftaran?select=id,nama,nip,golongan,jabatan,email,created_at,bidang:bidang_id(nama)&status=eq.menunggu&order=created_at.desc')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!Array.isArray(d) || !d.length) {
+          document.getElementById('tabelPendaftar').innerHTML = '<p class="catatan">Tidak ada pendaftaran menunggu.</p>';
+          return;
+        }
+        var baris = d.map(function (x) {
+          return '<tr><td>' + esc(x.nama) + '<br><span class="catatan">' + esc(x.email) + '</span></td>' +
+            '<td>' + esc(x.nip) + '</td><td>' + esc(x.golongan) + '</td>' +
+            '<td>' + esc(x.jabatan) + '<br><span class="catatan">' + esc(x.bidang && x.bidang.nama) + '</span></td>' +
+            '<td><button class="kecil" data-terima="' + x.id + '">Setujui</button> ' +
+            '<button class="kecil" data-tolakd="' + x.id + '">Tolak</button></td></tr>';
+        }).join('');
+        document.getElementById('tabelPendaftar').innerHTML =
+          '<table><thead><tr><th>Nama / Email</th><th>NIP</th><th>Gol</th><th>Jabatan / Bidang</th><th></th></tr></thead><tbody>' +
+          baris + '</tbody></table>';
+
+        document.getElementById('tabelPendaftar').querySelectorAll('button').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var id = b.dataset.terima || b.dataset.tolakd;
+            var status = b.dataset.terima ? 'disetujui' : 'ditolak';
+            b.disabled = true;
+            api('pendaftaran?id=eq.' + id, {
+              method: 'PATCH',
+              body: { status: status, diputuskan_oleh: sesi.id, diputuskan_pada: new Date().toISOString() }
+            }).then(function (r) {
+              if (!r.ok) { alert('Gagal menyimpan'); b.disabled = false; return; }
+              muatPendaftar();
+            });
+          });
+        });
+      })
+      .catch(function () {
+        document.getElementById('tabelPendaftar').innerHTML = '<p class="catatan">Gagal memuat data.</p>';
+      });
+  }
+
+  // --- 3. ambil dari drive --------------------------------------------------
+  var NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+    'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  var daftarDrive = null;
+
+  function siapkanDrive() {
+    var sel = document.getElementById('bulanDrive');
+    NAMA_BULAN.forEach(function (nama, i) {
+      var o = document.createElement('option');
+      o.value = i + 1; o.textContent = nama;
+      sel.appendChild(o);
+    });
+    var kini = new Date();
+    sel.value = kini.getMonth() + 1;
+    document.getElementById('tahunDrive').value = kini.getFullYear();
+  }
+
+  function catatDrive(html) { document.getElementById('catatanDrive').innerHTML = html; }
+  function periodeDrive() {
+    return {
+      bulan: Number(document.getElementById('bulanDrive').value),
+      tahun: Number(document.getElementById('tahunDrive').value)
+    };
+  }
+
+  document.getElementById('btnBacaDrive').addEventListener('click', function () {
+    var btn = this;
+    var link = document.getElementById('linkDrive').value.trim();
+    if (!link) { catatDrive('<b style="color:#b42318">Tempel dulu link folder Drive-nya.</b>'); return; }
+    var p = periodeDrive();
+    btn.disabled = true;
+    document.getElementById('btnProsesDrive').disabled = true;
+    daftarDrive = null;
+    document.getElementById('tabelDrive').innerHTML = '';
+    catatDrive('Membaca folder Drive… (folder besar bisa perlu 10–60 detik)');
+
+    fetch('/api/drive/daftar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ link: link, bulan: p.bulan, tahun: p.tahun })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (h) {
+      if (!h.ok) throw new Error(h.j.pesan || 'Gagal membaca folder');
+      var d = h.j;
+      daftarDrive = d;
+      var file = d.file || [];
+      var ringkas = [];
+      if (d.folderAkar) ringkas.push('Folder: <b>' + esc(d.folderAkar) + '</b>');
+      ringkas.push('<b>' + file.length + '</b> file presensi ditemukan untuk ' +
+        NAMA_BULAN[p.bulan - 1] + ' ' + p.tahun + '.');
+      (d.pesan || []).forEach(function (m) { ringkas.push(esc(m)); });
+      catatDrive(ringkas.join('<br>'));
+
+      if (file.length) {
+        document.getElementById('tabelDrive').innerHTML =
+          '<table><thead><tr><th>File presensi</th><th>Folder</th></tr></thead><tbody>' +
+          file.map(function (f) {
+            return '<tr><td>' + esc(f.nama) + '</td><td class="catatan">' + esc(f.jalur || '—') + '</td></tr>';
+          }).join('') + '</tbody></table>' +
+          (d.dilewati && d.dilewati.length
+            ? '<p class="catatan"><b>Dilewati (' + d.dilewati.length + '):</b> ' +
+              esc(d.dilewati.slice(0, 15).map(function (x) { return x.nama + ' (' + x.alasan + ')'; }).join('; ')) +
+              (d.dilewati.length > 15 ? ' …' : '') + '</p>'
+            : '');
+        document.getElementById('btnProsesDrive').disabled = false;
+      } else {
+        document.getElementById('tabelDrive').innerHTML = '<p class="catatan">Tidak ada file .xlsx yang cocok. ' +
+          'Pastikan link-nya link folder BULAN, folder dibagikan “siapa saja yang punya link”, dan bulan/tahun sesuai.</p>';
+      }
+    }).catch(function (e) {
+      catatDrive('<b style="color:#b42318">Gagal: ' + esc(e.message) + '</b>');
+    }).then(function () { btn.disabled = false; });
+  });
+
+  document.getElementById('btnProsesDrive').addEventListener('click', function () {
+    if (!daftarDrive || !(daftarDrive.file || []).length) return;
+    var btn = this;
+    var p = periodeDrive();
+    var jumlah = daftarDrive.file.length;
+    btn.disabled = true;
+    document.getElementById('btnBacaDrive').disabled = true;
+    catatDrive('Mengambil & menghitung ' + jumlah + ' file dari Drive… jangan tutup halaman ini (bisa 1–2 menit).');
+
+    fetch('/api/drive/proses', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ link: document.getElementById('linkDrive').value.trim(), bulan: p.bulan, tahun: p.tahun })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (h) {
+      if (!h.ok) throw new Error(h.j.pesan || 'Gagal memproses');
+      var d = h.j;
+      var hasil = d.hasil || [];
+      var lewat = d.dilewati || [];
+      catatDrive('<b>' + hasil.length + ' pegawai tersimpan</b> dari ' + d.fileDitemukan +
+        ' file untuk ' + NAMA_BULAN[p.bulan - 1] + ' ' + p.tahun + ', status menunggu verifikasi.');
+
+      if (hasil.length) {
+        document.getElementById('tabelDrive').innerHTML =
+          '<table><thead><tr><th>Pegawai</th><th>File</th><th class="num">Hadir</th>' +
+          '<th class="num">Tukin bersih</th><th>Status</th></tr></thead><tbody>' +
+          hasil.map(function (x) {
+            return '<tr><td>' + esc(x.nama) + '<br><span class="catatan">' + esc(x.nip) + '</span></td>' +
+              '<td>' + esc(x.file) + '</td><td class="num">' + x.hadir + '</td>' +
+              '<td class="num">' + rupiah(x.tukinBersih) + '</td>' +
+              '<td><span class="status menunggu_verifikasi">tersimpan</span></td></tr>';
+          }).join('') + '</tbody></table>';
+      }
+      if (lewat.length) {
+        document.getElementById('tabelDrive').innerHTML +=
+          '<p class="catatan"><b>Perlu dicek (' + lewat.length + '):</b></p>' +
+          '<table><thead><tr><th>File</th><th>Alasan</th></tr></thead><tbody>' +
+          lewat.map(function (x) {
+            return '<tr><td>' + esc(x.nama) + (x.jalur ? '<br><span class="catatan">' + esc(x.jalur) + '</span>' : '') +
+              '</td><td>' + esc(x.alasan) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      }
+      muatUnggah();
+    }).catch(function (e) {
+      catatDrive('<b style="color:#b42318">Gagal: ' + esc(e.message) + '</b>');
+    }).then(function () {
+      btn.disabled = false;
+      document.getElementById('btnBacaDrive').disabled = false;
+    });
+  });
+
+  // --- 4. pengaturan --------------------------------------------------------
+  function muatAturan() {
+    api('aturan_potongan?select=id,kode,nama,satuan,nilai&versi=eq.1&order=kode')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!Array.isArray(d) || !d.length) {
+          document.getElementById('tabelAturan').innerHTML = '<p class="catatan">Belum ada aturan.</p>';
+          return;
+        }
+        var baris = d.map(function (x) {
+          return '<tr><td>' + esc(x.nama) + '<br><span class="catatan">' + esc(x.kode) + '</span></td>' +
+            '<td>' + esc(x.satuan.replace(/_/g, ' ')) + '</td>' +
+            '<td class="num"><input style="width:90px;text-align:right" type="number" step="0.01" min="0" ' +
+            'value="' + Number(x.nilai) + '" data-nilai="' + x.id + '"></td>' +
+            '<td><button class="kecil" data-simpan="' + x.id + '">Simpan</button></td></tr>';
+        }).join('');
+        document.getElementById('tabelAturan').innerHTML =
+          '<table><thead><tr><th>Aturan</th><th>Satuan</th><th class="num">Nilai</th><th></th></tr></thead><tbody>' +
+          baris + '</tbody></table>';
+
+        document.getElementById('tabelAturan').querySelectorAll('button[data-simpan]').forEach(function (b) {
+          b.addEventListener('click', function () {
+            var id = b.dataset.simpan;
+            var input = document.querySelector('input[data-nilai="' + id + '"]');
+            b.disabled = true;
+            api('aturan_potongan?id=eq.' + id, { method: 'PATCH', body: { nilai: Number(input.value) } })
+              .then(function (r) {
+                b.textContent = r.ok ? 'Tersimpan' : 'Gagal';
+                setTimeout(function () { b.textContent = 'Simpan'; b.disabled = false; }, 1200);
+              });
+          });
+        });
+      })
+      .catch(function () {
+        document.getElementById('tabelAturan').innerHTML = '<p class="catatan">Gagal memuat aturan.</p>';
+      });
+  }
+
+  fetch('/api/konfigurasi').then(function (r) { return r.json(); }).then(function (cfg) {
+    k = cfg;
+    muatUnggah();
+  }).catch(function () {
+    document.getElementById('tabelUnggah').innerHTML = '<p class="catatan">Server tidak dapat dihubungi.</p>';
+  });
+})();
+</script>
+</body>
+</html>

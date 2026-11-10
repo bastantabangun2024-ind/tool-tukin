@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tool Tukin — Unggah Presensi</title>
+<link rel="stylesheet" href="/gaya.css">
+</head>
+<body>
+<header>
+  <strong>Tool Tukin</strong>
+  <nav>
+    <a href="/" class="aktif">Unggah Presensi</a>
+    <a href="#" id="tautanDaftar">Daftar</a>
+    <a href="/masuk.html">Masuk Admin</a>
+  </nav>
+</header>
+
+<main>
+  <!-- 1. Form pegawai -->
+  <section class="kartu" id="kartuPresensi">
+    <h1>Unggah Presensi</h1>
+    <p class="sub">Isi NIP, unggah file Excel hasil unduhan dari <b>absensi.kemenag.go.id</b>,
+      lalu pilih bulan yang akan dihitung.</p>
+
+    <label for="nip">NIP</label>
+    <input id="nip" inputmode="numeric" maxlength="18" placeholder="18 angka" autocomplete="off">
+    <p class="catatan" id="infoNip">Nama, jabatan, dan bidang akan muncul setelah NIP dikenali.</p>
+
+    <dl class="identitas tersembunyi" id="identitas">
+      <dt>Nama</dt><dd id="iNama">—</dd>
+      <dt>NIP</dt><dd id="iNip">—</dd>
+      <dt>Jabatan</dt><dd id="iJabatan">—</dd>
+      <dt>Golongan</dt><dd id="iGolongan">—</dd>
+      <dt>Bidang</dt><dd id="iBidang">—</dd>
+    </dl>
+
+    <label for="berkas">File presensi (.xlsx)</label>
+    <input id="berkas" type="file" accept=".xlsx,.xls">
+
+    <div class="baris">
+      <div>
+        <label for="bulan">Bulan</label>
+        <select id="bulan"></select>
+      </div>
+      <div>
+        <label for="tahun">Tahun</label>
+        <input id="tahun" type="number" min="2020" max="2100" value="2026">
+      </div>
+    </div>
+
+    <button class="utama" id="proses" type="button">Proses</button>
+    <div class="pesan" id="pesan"></div>
+  </section>
+
+  <!-- 2. Hasil -->
+  <section class="kartu tersembunyi" id="kartuHasil">
+    <h2>Rekap Kehadiran</h2>
+    <div class="statistik" id="statistik"></div>
+
+    <div class="kotak-dua" style="margin-top:16px">
+      <div>
+        <h3>Tukin</h3>
+        <dl id="kotakTukin"></dl>
+      </div>
+      <div>
+        <h3>Uang Makan</h3>
+        <dl id="kotakUangMakan"></dl>
+      </div>
+    </div>
+
+    <div class="sukses" id="sukses">Selamat Data Anda Sudah Terupload</div>
+    <p class="catatan">Data tersimpan sebagai pengajuan berstatus <b>menunggu verifikasi</b>.
+      Potongan HUKDIS/TB diisi admin saat verifikasi.</p>
+  </section>
+
+  <!-- 3. Daftar -->
+  <section class="kartu tersembunyi" id="kartuDaftar">
+    <h1>Daftar Akun</h1>
+    <p class="sub">Isi data sesuai SK. Admin akan memeriksa dan mengaktifkan akun.</p>
+
+    <label for="dNama">Nama lengkap</label>
+    <input id="dNama" autocomplete="name">
+
+    <div class="baris">
+      <div>
+        <label for="dNip">NIP</label>
+        <input id="dNip" inputmode="numeric" maxlength="18">
+      </div>
+      <div>
+        <label for="dGol">Pangkat / Golongan</label>
+        <input id="dGol" placeholder="mis. IV/b">
+      </div>
+    </div>
+
+    <label for="dJabatan">Jabatan</label>
+    <input id="dJabatan">
+
+    <label for="dBidang">Bidang</label>
+    <select id="dBidang">
+      <option value="">— pilih bidang —</option>
+      <option>Tata Usaha</option><option>Kanwil</option><option>PAI</option>
+      <option>Bimas Buddha</option><option>Bimas Hindu</option><option>Bimas Kristen</option>
+      <option>Bimas Katolik</option><option>PenaisZawa</option><option>Penmad</option>
+      <option>Pontren</option><option>Urais</option>
+    </select>
+
+    <label for="dEmail">Email (dipakai untuk login)</label>
+    <input id="dEmail" type="email" autocomplete="email">
+
+    <button class="utama" id="kirimDaftar" type="button">Kirim Pendaftaran</button>
+    <div class="pesan" id="pesanDaftar"></div>
+  </section>
+</main>
+
+<script src="/lib/xlsx.full.min.js"></script>
+<script src="/lib/app.js"></script>
+<script>
+(function () {
+  var BIDANG_KODE = {
+    'Tata Usaha': 'TU', 'Kanwil': 'KANWIL', 'PAI': 'PAI', 'Bimas Buddha': 'BUDDHA',
+    'Bimas Hindu': 'HINDU', 'Bimas Kristen': 'KRISTEN', 'Bimas Katolik': 'KATOLIK',
+    'PenaisZawa': 'PENAISZAWA', 'Penmad': 'PENMAD', 'Pontren': 'PONTREN', 'Urais': 'URAIS'
+  };
+  var BULAN = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+    'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  var el = function (id) { return document.getElementById(id); };
+  var pegawai = null;
+
+  BULAN.forEach(function (nama, i) {
+    if (!i) return;
+    var o = document.createElement('option');
+    o.value = i; o.textContent = nama;
+    if (i === 10) o.selected = true;
+    el('bulan').appendChild(o);
+  });
+
+  function pesan(teks, jenis) {
+    var p = el('pesan');
+    if (!teks) { p.className = 'pesan'; p.textContent = ''; return; }
+    p.textContent = teks;
+    p.className = 'pesan tampil ' + (jenis || 'galat');
+  }
+
+  function rupiah(n) {
+    return 'Rp' + Math.round(Number(n) || 0).toLocaleString('id-ID');
+  }
+
+  // --- cari pegawai dari NIP ------------------------------------------------
+  var timer = null;
+  el('nip').addEventListener('input', function () {
+    var nip = this.value.replace(/\D/g, '').slice(0, 18);
+    this.value = nip;
+    clearTimeout(timer);
+    pegawai = null;
+    el('identitas').classList.add('tersembunyi');
+    el('infoNip').textContent = 'Nama, jabatan, dan bidang akan muncul setelah NIP dikenali.';
+    if (nip.length !== 18) return;
+    el('infoNip').textContent = 'Mencari NIP…';
+    timer = setTimeout(function () {
+      fetch('/api/pegawai?nip=' + nip).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      }).then(function (h) {
+        if (!h.ok) {
+          el('infoNip').textContent = h.j.pesan || 'NIP tidak ditemukan.';
+          return;
+        }
+        pegawai = h.j;
+        el('iNama').textContent = pegawai.nama;
+        el('iNip').textContent = pegawai.nip;
+        el('iJabatan').textContent = pegawai.jabatan || '—';
+        el('iGolongan').textContent = (pegawai.golongan || '—') + (pegawai.ruang ? '/' + pegawai.ruang : '');
+        el('iBidang').textContent = pegawai.bidang || '—';
+        el('identitas').classList.remove('tersembunyi');
+        el('infoNip').textContent = 'NIP dikenali.';
+      }).catch(function () { el('infoNip').textContent = 'Server tidak dapat dihubungi.'; });
+    }, 350);
+  });
+
+  // --- proses ---------------------------------------------------------------
+  el('proses').addEventListener('click', function () {
+    var tombol = this;
+    pesan('');
+    if (!pegawai) { pesan('Isi NIP yang terdaftar dulu.'); return; }
+    var file = el('berkas').files[0];
+    if (!file) { pesan('Pilih file presensi (.xlsx) hasil unduhan absensi.kemenag.go.id.'); return; }
+    var bulan = Number(el('bulan').value);
+    var tahun = Number(el('tahun').value);
+    if (!bulan || !tahun) { pesan('Pilih bulan dan tahun.'); return; }
+
+    tombol.disabled = true;
+    tombol.textContent = 'Memproses…';
+
+    var pembaca = new FileReader();
+    pembaca.onload = function () {
+      var hari;
+      try {
+        var bytes = new Uint8Array(pembaca.result);
+        hari = TukinTool.bacaSheetPresensi(Array.prototype.slice.call(bytes));
+      } catch (e) {
+        pesan('File tidak terbaca: ' + e.message);
+        tombol.disabled = false; tombol.textContent = 'Proses';
+        return;
+      }
+      var bulanFile = hari[0] && hari[0].tanggal && hari[0].tanggal.mo;
+      if (bulanFile && Number(bulanFile) !== bulan) {
+        pesan('File berisi data bulan ' + BULAN[bulanFile] + ', sedangkan yang dipilih ' + BULAN[bulan] + '.');
+        tombol.disabled = false; tombol.textContent = 'Proses';
+        return;
+      }
+
+      fetch('/api/proses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nip: pegawai.nip, tahun: tahun, bulan: bulan, namaFile: file.name, hari: hari })
+      }).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      }).then(function (h) {
+        if (!h.ok) { pesan(h.j.pesan || 'Gagal memproses.'); return; }
+        tampilkan(h.j);
+      }).catch(function () {
+        pesan('Server tidak dapat dihubungi. Pastikan server berjalan.');
+      }).then(function () {
+        tombol.disabled = false; tombol.textContent = 'Proses';
+      });
+    };
+    pembaca.readAsArrayBuffer(file);
+  });
+
+  function tampilkan(h) {
+    var k = h.kehadiran;
+    el('statistik').innerHTML = [
+      ['Hari kerja', k.hariKerja], ['Hadir', k.hadir], ['Telat', k.telat],
+      ['Pulang sebelum waktunya', k.pulangAwal], ['Tanpa keterangan', k.tanpaKeterangan],
+      ['Tanpa presensi masuk', k.tanpaPresensiMasuk], ['Tanpa presensi pulang', k.tanpaPresensiPulang],
+      ['Cuti / sakit / dinas', k.cutiSakitDinas]
+    ].map(function (p) {
+      return '<div><b>' + p[1] + '</b><span>' + p[0] + '</span></div>';
+    }).join('');
+
+    var t = h.tukin;
+    el('kotakTukin').innerHTML =
+      '<dt>Tukin bruto</dt><dd>' + rupiah(t.bruto) + '</dd>' +
+      '<dt>Total potongan</dt><dd>' + (t.persenTotal ? t.persenTotal + '%' : '0%') + '</dd>' +
+      '<dt>Nilai potongan</dt><dd>' + rupiah(t.potongan) + '</dd>' +
+      '<dt class="total">Tukin bersih</dt><dd class="total">' + rupiah(t.bersih) + '</dd>';
+
+    var u = h.uangMakan;
+    el('kotakUangMakan').innerHTML =
+      '<dt>Hari dihitung</dt><dd>' + u.hariHadir + ' hari</dd>' +
+      '<dt>Tarif per hari</dt><dd>' + rupiah(u.tarif) + '</dd>' +
+      '<dt>Bruto</dt><dd>' + rupiah(u.bruto) + '</dd>' +
+      '<dt>PPh ' + u.pphPct + '%</dt><dd>' + rupiah(u.pph) + '</dd>' +
+      '<dt class="total">Uang makan bersih</dt><dd class="total">' + rupiah(u.bersih) + '</dd>';
+
+    el('kartuHasil').classList.remove('tersembunyi');
+    el('sukses').className = 'sukses tampil';
+    el('kartuHasil').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // --- pendaftaran ---------------------------------------------------------
+  el('tautanDaftar').addEventListener('click', function (e) {
+    e.preventDefault();
+    el('kartuPresensi').classList.add('tersembunyi');
+    el('kartuHasil').classList.add('tersembunyi');
+    el('kartuDaftar').classList.remove('tersembunyi');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  el('kirimDaftar').addEventListener('click', function () {
+    var tombol = this;
+    var p = el('pesanDaftar');
+    p.className = 'pesan'; p.textContent = '';
+    var data = {
+      nama: el('dNama').value.trim(),
+      nip: el('dNip').value.trim(),
+      golongan: el('dGol').value.trim(),
+      jabatan: el('dJabatan').value.trim(),
+      bidang: BIDANG_KODE[el('dBidang').value] || '',
+      email: el('dEmail').value.trim()
+    };
+    tombol.disabled = true;
+    fetch('/api/daftar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (h) {
+      p.className = 'pesan tampil ' + (h.ok ? 'info' : 'galat');
+      p.textContent = h.j.pesan || (h.ok ? 'Pendaftaran terkirim.' : 'Gagal mengirim.');
+      if (h.ok) {
+        el('dNama').value = el('dNip').value = el('dGol').value = '';
+        el('dJabatan').value = el('dEmail').value = '';
+      }
+    }).catch(function () {
+      p.className = 'pesan tampil galat';
+      p.textContent = 'Server tidak dapat dihubungi.';
+    }).then(function () { tombol.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

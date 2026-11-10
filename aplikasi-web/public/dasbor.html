@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dasbor — Tool Tukin</title>
+<style>
+  :root { --biru:#1f4e79; --garis:#d7dee7; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+         background:#f4f6f9; color:#1f2933; }
+  header { background:#fff; border-bottom:1px solid var(--garis); padding:14px 22px;
+           display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  header strong { color:var(--biru); }
+  header .kanan { margin-left:auto; display:flex; align-items:center; gap:12px; font-size:13px; }
+  button { font:inherit; padding:7px 12px; border-radius:7px; border:1px solid var(--garis);
+           background:#fff; cursor:pointer; }
+  main { max-width:880px; margin:26px auto; padding:0 20px; }
+  .kartu { background:#fff; border:1px solid var(--garis); border-radius:12px; padding:20px 22px; margin-bottom:16px; }
+  h2 { margin:0 0 12px; font-size:15px; color:var(--biru); }
+  dl { display:grid; grid-template-columns:150px 1fr; gap:8px 12px; margin:0; font-size:14px; }
+  dt { color:#64748b; }
+  dd { margin:0; font-weight:600; }
+  .angka { display:flex; gap:26px; flex-wrap:wrap; }
+  .angka div { min-width:120px; }
+  .angka b { display:block; font-size:26px; color:var(--biru); }
+  .angka span { font-size:12px; color:#64748b; }
+  .catatan { font-size:12.5px; color:#64748b; line-height:1.55; }
+</style>
+</head>
+<body>
+<header>
+  <strong>Tool Tukin</strong>
+  <span id="peran" style="font-size:12px;color:#64748b"></span>
+  <div class="kanan">
+    <span id="siapa">memuat…</span>
+    <button id="keluar" type="button">Keluar</button>
+  </div>
+</header>
+
+<main>
+  <section class="kartu">
+    <h2>Akun</h2>
+    <dl>
+      <dt>Email</dt><dd id="email">—</dd>
+      <dt>Nama</dt><dd id="nama">—</dd>
+      <dt>Peran</dt><dd id="peran2">—</dd>
+      <dt>Status</dt><dd id="status">—</dd>
+    </dl>
+  </section>
+
+  <section class="kartu" id="kartuAdmin" hidden>
+    <h2>Ringkasan data</h2>
+    <div class="angka">
+      <div><b id="jmlPegawai">—</b><span>pegawai aktif</span></div>
+      <div><b id="jmlBidang">—</b><span>bidang</span></div>
+      <div><b id="jmlPengajuan">—</b><span>pengajuan</span></div>
+    </div>
+    <p class="catatan" style="margin:16px 0 0">
+      Menu unggah presensi, verifikasi, dan rekap belum dibuat (TAHAP 3 lanjutan).
+      Halaman ini hanya memastikan login, sesi, dan RLS bekerja.
+    </p>
+  </section>
+
+  <p class="catatan">Sesi disimpan di tab ini saja (sessionStorage) dan hilang saat tab ditutup.</p>
+</main>
+
+<script>
+(function () {
+  var sesi = null;
+  try { sesi = JSON.parse(sessionStorage.getItem('sesi') || 'null'); } catch (e) { sesi = null; }
+  if (!sesi || !sesi.access_token) { location.replace('/masuk.html'); return; }
+
+  var isi = document.getElementById('siapa');
+  isi.textContent = sesi.email || 'masuk';
+
+  document.getElementById('keluar').addEventListener('click', function () {
+    sessionStorage.removeItem('sesi');
+    location.href = '/masuk.html';
+  });
+
+  fetch('/api/konfigurasi').then(function (r) { return r.json(); }).then(function (k) {
+    var kepala = { apikey: k.kunci, Authorization: 'Bearer ' + sesi.access_token };
+
+    function ambil(jalur, opsi) {
+      return fetch(k.url + '/rest/v1/' + jalur, { headers: kepala, ...(opsi || {}) })
+        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j, r: r }; }); });
+    }
+
+    return ambil('users?select=email,nama,peran,aktif&id=eq.' + encodeURIComponent(sesi.id))
+      .then(function (h) {
+        var u = (h.j && h.j[0]) || {};
+        document.getElementById('email').textContent = u.email || sesi.email || '—';
+        document.getElementById('nama').textContent = u.nama || '—';
+        document.getElementById('peran').textContent = u.peran ? '(' + u.peran + ')' : '';
+        document.getElementById('peran2').textContent = u.peran || '— (profil belum ada)';
+        document.getElementById('status').textContent = u.aktif === false ? 'tidak aktif' : 'aktif';
+        if (u.peran !== 'admin') return;
+
+        document.getElementById('kartuAdmin').hidden = false;
+        return Promise.all([
+          ambil('pegawai?select=id&aktif=is.true', { headers: { ...kepala, Prefer: 'count=exact', Range: '0-0' } }),
+          ambil('bidang?select=id&aktif=is.true', { headers: { ...kepala, Prefer: 'count=exact', Range: '0-0' } }),
+          ambil('pengajuan_tukin?select=id', { headers: { ...kepala, Prefer: 'count=exact', Range: '0-0' } })
+        ]).then(function (hasil) {
+          function jumlah(h) {
+            var cr = h.r.headers.get('content-range') || '';
+            return cr.indexOf('/') >= 0 ? cr.split('/')[1] : '—';
+          }
+          document.getElementById('jmlPegawai').textContent = jumlah(hasil[0]);
+          document.getElementById('jmlBidang').textContent = jumlah(hasil[1]);
+          document.getElementById('jmlPengajuan').textContent = jumlah(hasil[2]);
+        });
+      });
+  }).catch(function () {
+    document.getElementById('peran2').textContent = 'gagal memuat profil';
+  });
+
+})();
+</script>
+</body>
+</html>

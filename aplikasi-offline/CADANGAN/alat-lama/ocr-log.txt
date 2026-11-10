@@ -1,0 +1,48 @@
+Halaman: 19
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-01.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-02.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-03.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-04.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-05.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-06.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-07.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-08.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-09.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-10.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-11.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-12.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-13.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-14.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-15.png
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-16.png
+Warning: #instantiateWasm: UnknownErrorException: Ensure that the `wasmUrl` API parameter is provided.
+Warning: #getJsModule: Error [ERR_MODULE_NOT_FOUND]: Cannot find package 'nulljbig2_nowasm_fallback.js' imported from C:\Users\HP\tool-tukin\node_modules\pdfjs-dist\legacy\build\pdf.worker.mjs
+Warning: Unable to decode image "img_p16_1": "Jbig2Error: JBig2 failed to initialize".
+Warning: Dependent image isn't ready yet
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-17.png
+Warning: Unable to decode image "img_p17_1": "Jbig2Error: JBig2 failed to initialize".
+Warning: Dependent image isn't ready yet
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-18.png
+Warning: Unable to decode image "img_p18_1": "Jbig2Error: JBig2 failed to initialize".
+Warning: Dependent image isn't ready yet
+render ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-19.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-01.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-02.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-03.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-04.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-05.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-06.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-07.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-08.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-09.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-10.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-11.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-12.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-13.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-14.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-15.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-16.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-17.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-18.png
+ocr ok: C:\Users\HP\tool-tukin\halaman-ocr\hal-19.png
+SELESAI → pma-ocr-full.txt

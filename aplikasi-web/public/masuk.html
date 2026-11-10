@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Masuk — Tool Tukin</title>
+<style>
+  :root { color-scheme: light; --biru:#1f4e79; --garis:#d7dee7; --merah:#b42318; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center;
+         font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+         background:#f4f6f9; color:#1f2933; padding:24px; }
+  .kartu { width:100%; max-width:400px; background:#fff; border:1px solid var(--garis);
+           border-radius:12px; padding:28px 26px; box-shadow:0 10px 30px rgba(16,24,40,.06); }
+  h1 { font-size:19px; margin:0 0 4px; color:var(--biru); }
+  p.sub { margin:0 0 22px; font-size:13px; color:#64748b; }
+  label { display:block; font-size:13px; font-weight:600; margin:14px 0 6px; }
+  input { width:100%; padding:10px 12px; font-size:14px; border:1px solid var(--garis);
+          border-radius:8px; background:#fff; }
+  input:focus { outline:2px solid #bcd3ea; border-color:var(--biru); }
+  button { width:100%; margin-top:20px; padding:11px 14px; font-size:14px; font-weight:600;
+           color:#fff; background:var(--biru); border:0; border-radius:8px; cursor:pointer; }
+  button:disabled { opacity:.65; cursor:progress; }
+  .pesan { display:none; margin-top:14px; font-size:13px; padding:10px 12px; border-radius:8px; }
+  .pesan.tampil { display:block; }
+  .pesan.galat { background:#fef3f2; color:var(--merah); border:1px solid #fecdca; }
+  .pesan.netral { background:#eff8ff; color:#175cd3; border:1px solid #b2ddff; }
+  .kaki { margin-top:18px; font-size:12px; color:#64748b; line-height:1.5; }
+</style>
+</head>
+<body>
+<form class="kartu" id="form" novalidate>
+  <h1>Tool Tukin</h1>
+  <p class="sub">Masuk dengan email dan password yang diberikan admin.</p>
+
+  <label for="email">Email</label>
+  <input id="email" type="email" autocomplete="username" required placeholder="nama@contoh.com">
+
+  <label for="password">Password</label>
+  <input id="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+
+  <button id="tombol" type="submit">Masuk</button>
+
+  <div class="pesan" id="pesan" role="alert"></div>
+
+  <p class="kaki">Belum punya akun? Hubungi admin untuk pendaftaran. Jangan bagikan password ke siapa pun.</p>
+</form>
+
+<script>
+(function () {
+  var form = document.getElementById('form');
+  var tombol = document.getElementById('tombol');
+  var pesan = document.getElementById('pesan');
+  var konfigurasi = null;
+
+  function tampilkan(teks, jenis) {
+    pesan.textContent = teks;
+    pesan.className = 'pesan tampil ' + (jenis || 'galat');
+  }
+
+  // Ambil URL + kunci publishable dari server (bukan rahasia).
+  fetch('/api/konfigurasi').then(function (r) {
+    return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+  }).then(function (h) {
+    if (!h.ok) throw new Error(h.j.pesan || 'Konfigurasi tidak terbaca');
+    konfigurasi = h.j;
+  }).catch(function (e) {
+    tampilkan('Server belum siap: ' + e.message);
+    tombol.disabled = true;
+  });
+
+  var pesanGalat = {
+    'Invalid login credentials': 'Email atau password salah.',
+    'Email not confirmed': 'Email belum dikonfirmasi admin.',
+    'Too many requests': 'Terlalu banyak percobaan. Tunggu beberapa menit.'
+  };
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    if (!konfigurasi) { tampilkan('Konfigurasi belum siap, muat ulang halaman.'); return; }
+
+    var email = document.getElementById('email').value.trim();
+    var password = document.getElementById('password').value;
+    if (!email || !password) { tampilkan('Email dan password wajib diisi.'); return; }
+
+    tombol.disabled = true;
+    tombol.textContent = 'Memeriksa…';
+
+    fetch(konfigurasi.url + '/auth/v1/token?grant_type=password', {
+      method: 'POST',
+      headers: { apikey: konfigurasi.kunci, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: password })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (h) {
+      if (!h.ok) {
+        var kunci = (h.j.error_description || h.j.msg || h.j.error || '').trim();
+        tampilkan(pesanGalat[kunci] || ('Gagal masuk: ' + (kunci || 'kesalahan tidak dikenal')));
+        return;
+      }
+      sessionStorage.setItem('sesi', JSON.stringify({
+        access_token: h.j.access_token,
+        refresh_token: h.j.refresh_token,
+        email: (h.j.user && h.j.user.email) || email,
+        id: (h.j.user && h.j.user.id) || ''
+      }));
+      tampilkan('Berhasil. Mengalihkan…', 'netral');
+      // admin -> halaman admin, pegawai -> halaman unggah presensi
+      fetch(konfigurasi.url + '/rest/v1/users?select=peran&id=eq.' + encodeURIComponent(h.j.user.id), {
+        headers: { apikey: konfigurasi.kunci, Authorization: 'Bearer ' + h.j.access_token }
+      }).then(function (x) { return x.json(); }).then(function (u) {
+        var peran = (u && u[0] && u[0].peran) || 'pegawai';
+        location.href = peran === 'admin' ? '/admin.html' : '/index.html';
+      }).catch(function () { location.href = '/index.html'; });
+    }).catch(function () {
+      tampilkan('Tidak bisa menghubungi server Supabase. Periksa koneksi internet.');
+    }).then(function () {
+      tombol.disabled = false;
+      tombol.textContent = 'Masuk';
+    });
+  });
+})();
+</script>
+</body>
+</html>

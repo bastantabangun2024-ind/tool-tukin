@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>probe2</title></head><body>
+<pre id="out">jalan...</pre>
+<script>
+var out = [];
+function log(s){ out.push(s); document.getElementById('out').textContent = out.join('\n'); }
+var ID = '1Qgldpb-j73UQFwWOc62HWOckrPllDZrC'; // ARDI_Presensi 9-2026.xlsx (folder Bapak, publik)
+async function coba(label, url) {
+  try {
+    var r = await fetch(url);
+    if (!r.ok) { log(label + ': status=' + r.status + ' (bukan 200)'); return; }
+    var b = await r.arrayBuffer();
+    var u = new Uint8Array(b.slice(0, 4));
+    var tipe = r.headers.get('content-type') || '-';
+    var magic = (u[0]===0x50 && u[1]===0x4b) ? 'ZIP/xlsx OK' : 'bukan-xlsx';
+    log(label + ': status=' + r.status + ' byte=' + b.byteLength + ' tipe=' + tipe + ' ' + magic);
+  } catch (e) { log(label + ': BLOKIR :: ' + e.name); }
+}
+(async function(){
+  log('tipe fetch=' + typeof fetch);
+  await coba('usercontent', 'https://drive.usercontent.google.com/download?id=' + ID + '&export=download');
+  await coba('uc-export', 'https://drive.google.com/uc?export=download&id=' + ID);
+  await coba('api-media-tanpa-kunci', 'https://www.googleapis.com/drive/v3/files/' + ID + '?alt=media');
+  log('SELESAI');
+})();
+</script>
+</body></html>

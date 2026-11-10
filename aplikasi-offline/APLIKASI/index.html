@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Tool Tukin & Uang Makan Bimas PPPK &amp; PNS</title>
+<style>
+  body { font-family: Arial, Helvetica, sans-serif; margin: 16px; font-size: 13px; color:#222; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color:#666; margin-bottom: 12px; }
+  .panel { border:1px solid #ccc; border-radius:6px; padding:10px 12px; margin-bottom:12px; background:#fafafa; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border:1px solid #bbb; padding:4px 6px; text-align:left; vertical-align:top; }
+  th { background:#e8eef7; font-size:12px; }
+  tr.suspect td { background:#fff3cd; }
+  .kecil { font-size:11px; color:#555; }
+  .merah { color:#b00020; font-weight:bold; }
+  .warn { color:#856404; }
+  select, input[type="number"] { font-size:12px; }
+  button { font-size:14px; padding:6px 14px; margin-right:8px; cursor:pointer; }
+  #pesan { margin: 8px 0; }
+</style>
+</head>
+<body>
+  <h1>Tool Tukin &amp; Uang Makan Bimas PPPK &amp; PNS</h1>
+  <div class="sub">Bimas Kristen · Katolik · Buddha — PPPK &amp; PNS — 100% offline, dobel-klik saja.</div>
+
+  <div class="panel">
+    <label><b>1. Pilih file presensi</b> (bisa banyak sekaligus):</label><br>
+    <input type="file" id="fileInput" multiple accept=".xlsx">
+    <button id="btnKosongkan" style="font-size:12px;padding:3px 8px">Kosongkan daftar</button>
+    <div class="kecil">Nama file seperti <code>ARDI_Presensi 9-2026.xlsx</code> — nama pegawai &amp; bulan-tahun diambil dari nama file.</div>
+  </div>
+
+  <div class="panel">
+    <label><b>1b. Ambil langsung dari Google Drive</b> (opsional):</label>
+    <div class="kecil">Dobel-klik <b>AMBIL-DARI-DRIVE.cmd</b> dulu (ada di folder <b>AMBIL-DARI-DRIVE</b>, sebelah folder APLIKASI — biarkan jendelanya terbuka), lalu tempel link folder Drive di bawah.</div>
+    <textarea id="linksDrive" rows="3" spellcheck="false"
+      style="width:100%;margin-top:6px;font-size:12px;font-family:Consolas,monospace"
+      placeholder="https://drive.google.com/drive/folders/XXXXXXXX  <- link folder BULAN (mis. 9. SEPTEMBER 2026)&#10;boleh beberapa baris sekaligus"></textarea>
+    <div style="margin-top:6px">
+      <button id="btnAmbilDrive">Ambil dari Drive</button>
+      <span class="kecil">bulan-tahun <input type="text" id="periodeDrive" size="8" placeholder="9-2026" style="font-size:12px">
+        (untuk link folder arsip: hanya bulan ini yang diambil; sekaligus jadi cadangan nama file. Kosongkan = semua bulan)</span>
+    </div>
+    <div id="pesanDrive" class="kecil"></div>
+  </div>
+
+  <div id="pesan"></div>
+
+  <div class="panel" id="panelTabel" style="display:none">
+    <b>2. Cek hasil</b> — baris kuning perlu dicek manual (anomali / potongan kena batas 100%).
+    Isi HUKDIS / TB (%) hanya kalau ada.<div class="kecil">&nbsp;</div>
+    <div style="max-height:520px; overflow:auto; margin-top:8px;">
+      <table id="tabel"></table>
+    </div>
+  </div>
+
+  <div class="panel" id="panelUnduh" style="display:none">
+    <b>3. Unduh</b> — tiap bidang &amp; status (PPPK / PNS) keluar 3 file:<br>
+    <em>Rekapitulasi Kehadiran / Tukin / Uang Makan Bimas &lt;BIDANG&gt; &lt;BULAN&gt;.xlsx</em>
+    (PPPK)<br>
+    <em>Rekapitulasi Kehadiran / Tukin / Uang Makan Bimas &lt;BIDANG&gt; PNS &lt;BULAN&gt;.xlsx</em>
+    (PNS — hanya kalau ada pegawai PNS yang filenya ikut dipilih)
+    <div style="margin-top:8px">
+      <button id="btnUnduhSemua">Unduh SEMUA</button>
+      <span id="tombolBidang"></span>
+    </div>
+  </div>
+
+<script src="lib/xlsx.full.min.js"></script>
+<script src="pegawai.js"></script>
+<script src="app.js"></script>
+<script>
+'use strict';
+var T = window.TukinTool;
+var ROSTER = window.PEGAWAI;
+
+/* ---------- state ---------- */
+var state = { file: {}, tahun: null, bulan: null }; // state.file[namaFile] = {ident, data} | {error}
+var petaManual = loadJSON('tukin-peta-nama') || {}; // namaFile -> nip (untuk nama ambigu / pilihan manual)
+var hukdisTB = loadJSON('tukin-hukdis-tb') || {};   // namaFile -> {hukdisPct, tbPct}
+
+function loadJSON(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+
+function $(id) { return document.getElementById(id); }
+var fileInput = $('fileInput'), pesan = $('pesan'), tabel = $('tabel');
+
+/* ---------- baca file ---------- */
+// dipakai bersama oleh pilihan file manual DAN tombol "Ambil dari Drive"
+function terimaFile(nama, arrayBuffer, asal) {
+  var dipakai = nama, n = 2;
+  while (state.file[dipakai]) { dipakai = nama + ' (' + n + ')'; n++; }
+  try {
+    // pola dibaca dari nama ASLI; penanda "(2)" hanya untuk membedakan kunci di layar
+    var ident = T.parseNamaFile(nama);
+    if (!ident) throw new Error('nama file tidak sesuai pola <em>NAMA_Presensi BULAN-TAHUN.xlsx</em>' +
+      (asal ? ' — coba isi kolom bulan-tahun di panel 1b' : ''));
+    state.file[dipakai] = { ident: ident, data: T.bacaSheetPresensi(arrayBuffer), asal: asal || '' };
+    if (state.tahun === null || ident.tahun * 13 + ident.bulan < state.tahun * 13 + state.bulan) {
+      state.tahun = ident.tahun; state.bulan = ident.bulan;
+    }
+  } catch (e) {
+    state.file[dipakai] = { error: e.message, asal: asal || '' };
+  }
+}
+
+fileInput.addEventListener('change', function () {
+  pesan.innerHTML = '';
+  var files = Array.from(fileInput.files || []);
+  if (!files.length) { renderHasil(); return; }
+  var selesai = 0;
+  files.forEach(function (f) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      terimaFile(f.name, fr.result, '');
+      if (++selesai === files.length) renderHasil();
+    };
+    fr.readAsArrayBuffer(f);
+  });
+});
+
+$('btnKosongkan').addEventListener('click', function () {
+  state = { file: {}, tahun: null, bulan: null };
+  pesan.innerHTML = ''; $('pesanDrive').innerHTML = '';
+  fileInput.value = '';
+  renderHasil();
+});
+
+/* ---------- pencocokan pegawai ---------- */
+function kunciRoster(x) { return x.namaKey || T.namaKey(x.nama); }
+
+// kata nama tanpa gelar: "Dr. SAMAREL TELAUM BANUA" -> [SAMAREL, TELAUM, BANUA]
+function kataNama(teks) {
+  return String(teks == null ? '' : teks).toUpperCase().replace(/[^A-Z\s]/g, ' ')
+    .split(/\s+/)
+    .filter(function (k) { return k.length >= 3 && !/^(DR|DRS|DRA|IR|H|HJ|PROF|NY|NYI)$/.test(k); });
+}
+
+function cariPegawai(namaFile, namaKey) {
+  var nipSimpan = petaManual[namaFile];
+  if (nipSimpan) {
+    var p = ROSTER.filter(function (x) { return x.nip === nipSimpan; })[0];
+    if (p) return { pegawai: p, otomatis: false };
+  }
+  function cari(kunci) { return ROSTER.filter(function (x) { return kunciRoster(x) === kunci; }); }
+  var ketemu = cari(namaKey);
+  // nama file bisa memuat nama lengkap ("ELIYANI BR GINTING_Presensi 2-2026.xlsx")
+  // -> kalau tidak ketemu, pakai kata nama pertama yang bukan gelar
+  // (PNS sering diunduh sebagai "Dr. SAMAREL TELAUM BANUA, S PAK, M.Pd._Presensi 9-2026.xlsx")
+  if (!ketemu.length) {
+    var kata = kataNama(namaKey);
+    if (kata.length) { ketemu = cari(kata[0]); namaKey = kata[0]; }
+  }
+  if (!ketemu.length) {
+    var kata1 = String(namaKey || '').trim().split(/\s+/)[0];
+    if (kata1 && kata1 !== namaKey) { ketemu = cari(kata1); namaKey = kata1; }
+  }
+  if (ketemu.length === 1) return { pegawai: ketemu[0], otomatis: true };
+  if (ketemu.length > 1) return { ambigu: ketemu };
+  return { tidakAda: true };
+}
+
+/* ---------- hitung ---------- */
+function hasilSemuaOrang() {
+  var hasil = [], masalah = [], ambigu = [];
+  Object.keys(state.file).forEach(function (namaFile) {
+    var ent = state.file[namaFile];
+    if (ent.error || !ent.data) { masalah.push('⛔ ' + namaFile + ': ' + (ent.error || 'file tidak terbaca')); return; }
+    var c = cariPegawai(namaFile, ent.ident.namaKey);
+    if (c.tidakAda) { masalah.push('⛔ ' + namaFile + ': nama "' + ent.ident.namaKey + '" tidak ada di roster'); return; }
+    if (c.ambigu) { ambigu.push({ file: namaFile, namaKey: ent.ident.namaKey, kandidat: c.ambigu }); return; }
+    var h = T.prosesSatuOrang(c.pegawai, ent.data, hukdisTB[namaFile] || {});
+    hasil.push({ file: namaFile, asal: ent.asal || '', pegawai: c.pegawai, otomatis: c.otomatis, hasil: h });
+  });
+
+  // satu orang boleh muncul dari beberapa file (mis. dari Drive ada "ARDI_Presensi..."
+  // dan "Presensi 9-2026.xlsx" di folder yang sama) -> pakai yang namanya paling jelas
+  var perNip = {}, pakai = [];
+  hasil.forEach(function (dx) {
+    var lama = perNip[dx.pegawai.nip];
+    if (!lama) { perNip[dx.pegawai.nip] = dx; pakai.push(dx); return; }
+    var dxJelas = !!T.parseNamaFile(dx.file), lamaJelas = !!T.parseNamaFile(lama.file);
+    var dipakai = dx, dibuang = lama;
+    if (!dxJelas || (dxJelas && lamaJelas && lama.file.length >= dx.file.length)) { dipakai = lama; dibuang = dx; }
+    if (dipakai !== lama) { pakai[pakai.indexOf(lama)] = dx; perNip[dx.pegawai.nip] = dx; }
+    masalah.push('⚠ ' + dx.pegawai.nama + ': ada ' + (lamaJelas && dxJelas ? '2' : 'lebih dari 1') +
+      ' file — dipakai <b>' + dipakai.file + '</b>, dilewati ' + dibuang.file);
+  });
+  return { hasil: pakai, masalah: masalah, ambigu: ambigu };
+}
+
+/* ---------- render tabel ---------- */
+function renderHasil() {
+  var r = hasilSemuaOrang();
+  pesan.innerHTML = r.masalah.map(function (m) {
+    return '<div class="' + (m.charAt(0) === '⚠' ? 'warn' : 'merah') + '">' + m + '</div>';
+  }).join('') + (r.hasil.length ? '<div class="ok">' + T.NAMA_BULAN[state.bulan || 0] + ' ' + (state.tahun || '') + '</div>' : '');
+
+  if (!r.hasil.length && !(r.ambigu && r.ambigu.length)) {
+    $('panelTabel').style.display = 'none'; $('panelUnduh').style.display = 'none'; return;
+  }
+
+  var html = '<tr>' +
+    '<th>PEGAWAI<br><span class="kecil">(file)</span></th>' +
+    '<th>bidang</th><th>hadir</th><th>libur</th><th>TK (3%) <span class="kecil" title="PMA Nomor 11 Tahun 2019 Pasal 8 Ayat (1): potongan 3% per hari tidak masuk tanpa alasan sah">(Pasal 8 ay.1)</span></th>' +
+    '<th>telat (tgl, menit)</th><th>psw (tgl, menit)</th><th>tidak presensi</th>' +
+    '<th>TL<br>% / Rp</th><th>PSW<br>% / Rp</th><th>TOTAL potongan<br>% / Rp</th><th>tukin bersih</th>' +
+    '<th>hari<br>UM</th><th>uang<br>makan</th><th>PPH</th><th>UM<br>bersih</th>' +
+    '<th>HUKDIS<br>%</th><th>TB<br>%</th></tr>';
+
+  r.hasil.forEach(function (dx) {
+    var h = dx.hasil;
+    var suspect = h.anomaliList.length > 0 || h.pct.capped;
+    var telatD = h.telatList.map(function (k) { return k.tanggal.d + ' (' + k.telat + "')"; }).join(', ') || '–';
+    var pswD = h.pswList.map(function (k) { return k.tanggal.d + ' (' + k.pswAwal + "')"; }).join(', ') || '–';
+    var noP = h.noPresensiList.map(function (k) { return k.tanggal.d + ' ' + k.sisi + (k.anomali ? '?' : ''); }).join(', ') || '–';
+    var libD = h.liburList.map(function (k) { return k.tanggal.d + ' ' + (k.libur || k.jenisTugas); }).join(', ') || '–';
+    var anom = h.anomaliList.map(function (k) {
+      return k.tanggal.d + (k.jenis === 'hadir' ? ' pulang ' + k.pswAwal + "′" : ' no-absen-' + k.sisi);
+    }).join(', ');
+
+    var namaCell = '<b>' + dx.pegawai.nama + '</b>' + (dx.otomatis ? '' : ' <span class="kecil">(manual)</span>') +
+      '<div class="kecil">' + dx.file + (dx.asal ? '<br>' + dx.asal : '') + '</div>';
+
+    html += '<tr' + (suspect ? ' class="suspect"' : '') + '">' +
+      '<td>' + namaCell + (anom ? '<div class="kecil merah">CEK: ' + anom + '</div>' : '') + '</td>' +
+      '<td>' + dx.pegawai.bidang + '<div class="kecil">' + T.statusPegawai(dx.pegawai) + '</div></td>' +
+      '<td>' + h.hariMasuk + '</td>' +
+      '<td title="' + libD + '">' + h.liburList.length + '<div class="kecil">' + libD + '</div></td>' +
+      '<td>' + h.tkHari + '</td>' +
+      '<td>' + telatD + '</td>' +
+      '<td>' + pswD + '</td>' +
+      '<td>' + noP + '</td>' +
+      '<td>' + T.persenString(h.pct.tl) + '<br>' + T.rupiahString(h.rupiahPotongan.tl) + '</td>' +
+      '<td>' + T.persenString(h.pct.psw) + '<br>' + T.rupiahString(h.rupiahPotongan.psw) + '</td>' +
+      '<td>' + T.persenString(h.pct.total) + '%<br>' + T.rupiahString(h.rupiahPotongan.total) + (h.pct.capped ? '<br><span class="merah">CAP 100%</span>' : '') + '</td>' +
+      '<td>' + T.rupiahString(h.tukinBersih) + '</td>' +
+      '<td title="hari kerja dengan minimal satu presensi masuk/pulang">' + h.uangMakan.hariHadir + '</td>' +
+      '<td>' + T.rupiahString(h.uangMakan.bruto) + '</td>' +
+      '<td>' + (h.uangMakan.pph ? T.rupiahString(h.uangMakan.pph) : '–') + '</td>' +
+      '<td>' + T.rupiahString(h.uangMakan.bersih) + '</td>' +
+      '<td><input type="number" style="width:56px" min="0" max="100" step="0.5" value="' + ((hukdisTB[dx.file] || {}).hukdisPct || 0) + '" data-file="' + dx.file + '" data-kolom="hukdisPct" onchange="inputManual(this)"></td>' +
+      '<td><input type="number" style="width:56px" min="0" max="100" step="0.5" value="' + ((hukdisTB[dx.file] || {}).tbPct || 0) + '" data-file="' + dx.file + '" data-kolom="tbPct" onchange="inputManual(this)"></td>' +
+      '</tr>';
+  });
+  // baris pilihan untuk file yang ambigu (mis. 2 DAVID)
+  (r.ambigu || []).forEach(function (a) {
+    var opsi = '<option value="">— pilih pegawai —</option>' + a.kandidat.map(function (p) {
+      var terpilih = petaManual[a.file] === p.nip;
+      return '<option value="' + p.nip + '"' + (terpilih ? ' selected' : '') + '>' + p.nama + ' (' + p.kelasJabatan + ' · ' + (p.status || 'PPPK') + ')</option>';
+    }).join('');
+    html += '<tr class="suspect"><td><b>' + a.namaKey + '</b><div class="kecil">' + a.file + '</div></td>' +
+      '<td colspan="17"><select onchange="pilihAmbigu(\'' + a.file.replace(/'/g, "\\'") + '\', this.value)">' + opsi + '</select> ' +
+      '<span class="kecil">pilihan tersimpan otomatis (localStorage), bulan depan tidak ditanya lagi</span></td></tr>';
+  });
+
+  tabel.innerHTML = html;
+  $('panelTabel').style.display = '';
+  $('panelUnduh').style.display = '';
+  renderTombolUnduh(r.hasil);
+}
+
+window.pilihAmbigu = function (namaFile, nip) {
+  if (nip) { petaManual[namaFile] = nip; } else { delete petaManual[namaFile]; }
+  saveJSON('tukin-peta-nama', petaManual);
+  renderHasil();
+};
+
+function inputManual(el) {
+  var file = el.getAttribute('data-file'), kol = el.getAttribute('data-kolom');
+  hukdisTB[file] = hukdisTB[file] || {};
+  hukdisTB[file][kol] = parseFloat(el.value) || 0;
+  saveJSON('tukin-hukdis-tb', hukdisTB);
+  renderHasil();
+}
+
+/* ---------- unduh ---------- */
+function unduhBlob(blob, namaFile) {
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = namaFile;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 5000);
+}
+function unduhWorkbook(wb, namaFile) {
+  var data = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+  unduhBlob(new Blob([data], { type: 'application/octet-stream' }), namaFile);
+}
+
+var byBidangState = {};
+
+// kunci unduhan = BIDANG|STATUS, supaya PNS dan PPPK keluar jadi berkas terpisah
+function kunciGrup(dx) { return dx.pegawai.bidang + '|' + T.statusPegawai(dx.pegawai); }
+
+function renderTombolUnduh(hasil) {
+  byBidangState = {};
+  hasil.forEach(function (dx) {
+    var k = kunciGrup(dx);
+    (byBidangState[k] = byBidangState[k] || []).push(dx);
+  });
+  var btns = '';
+  Object.keys(byBidangState).sort().forEach(function (k) {
+    btns += ' <button onclick="unduhBidang(\'' + k + '\')">Unduh ' + k.replace('|', ' ') + '</button>';
+  });
+  $('tombolBidang').innerHTML = btns;
+  $('btnUnduhSemua').style.display = Object.keys(byBidangState).length > 1 ? '' : 'none';
+}
+
+window.unduhBidang = function (kunci) {
+  var daftar = (byBidangState[kunci] || []).map(function (dx) { return dx.hasil; });
+  if (!daftar.length) return;
+  var bagian = kunci.split('|');
+  var wb = T.susunWorkbookBidang(daftar, state.tahun, state.bulan, bagian[1]);
+  var und = [
+    [wb.fileKehadiran, wb.wbKehadiran],
+    [wb.fileTukin, wb.wbTukin],
+    [wb.fileUangMakan, wb.wbUangMakan]
+  ];
+  var i = 0;
+  (function next() {
+    if (i >= und.length) return;
+    unduhWorkbook(und[i][1], und[i][0]);
+    i++; setTimeout(next, 500); // jeda agar unduhan beruntun tidak tertolak browser
+  })();
+};
+
+$('btnUnduhSemua').addEventListener('click', function () {
+  var bidangs = Object.keys(byBidangState).sort();
+  var i = 0;
+  (function next() {
+    if (i >= bidangs.length) return;
+    window.unduhBidang(bidangs[i]);
+    i++; setTimeout(next, 1500);
+  })();
+});
+
+/* ---------- ambil dari Google Drive (lewat alat-drive.js di komputer ini) ---------- */
+var pesanDrive = $('pesanDrive');
+var PORT_DRIVE = null;
+
+function tulisDrive(html) { pesanDrive.innerHTML = html; }
+
+function cekPortDrive(p) {
+  return fetch('http://127.0.0.1:' + p + '/status')
+    .then(function (r) { return r.ok ? p : null; })
+    .catch(function () { return null; });
+}
+
+async function cariPengambilDrive() {
+  if (PORT_DRIVE && (await cekPortDrive(PORT_DRIVE))) return PORT_DRIVE;
+  PORT_DRIVE = null;
+  for (var p = 8787; p <= 8797; p++) {
+    var ketemu = await cekPortDrive(p);
+    if (ketemu) { PORT_DRIVE = ketemu; return ketemu; }
+  }
+  return null;
+}
+
+async function ambilDariDrive() {
+  var link = $('linksDrive').value.trim();
+  var periode = $('periodeDrive').value.trim();
+  if (!link) {
+    tulisDrive('<span class="merah">Tempel dulu link folder Drive-nya</span> (contoh: https://drive.google.com/drive/folders/XXXX).');
+    return;
+  }
+  tulisDrive('Mencari pengambil Drive di komputer ini…');
+  var port = await cariPengambilDrive();
+  if (!port) {
+    tulisDrive('<span class="merah">Pengambil Drive belum jalan.</span><br>' +
+      'Dobel-klik <b>AMBIL-DARI-DRIVE.cmd</b> di folder AMBIL-DARI-DRIVE (sebelah folder APLIKASI), biarkan jendelanya terbuka, lalu klik tombol ini lagi.');
+    return;
+  }
+
+  tulisDrive('Membaca folder Drive… (folder besar bisa perlu 10–60 detik)');
+  var res = await fetch('http://127.0.0.1:' + port + '/daftar?link=' + encodeURIComponent(link) +
+    (periode ? '&periode=' + encodeURIComponent(periode) : ''));
+  var isi = await res.json();
+  if (!res.ok || isi.error) throw new Error(isi.error || ('pengambil menjawab status ' + res.status));
+
+  var ringkas = [];
+  if (isi.folderAkar) ringkas.push('Folder Drive: <b>' + isi.folderAkar + '</b>');
+  (isi.pesan || []).forEach(function (m) { ringkas.push('<span class="warn">' + m + '</span>'); });
+  var daftar = isi.file || [];
+  if (!daftar.length) {
+    ringkas.push('<span class="merah">Tidak ada file .xlsx yang ketemu.</span>');
+    if ((isi.dilewati || []).length) ringkas.push('Yang ada di folder: ' + isi.dilewati.map(function (d) { return d.nama; }).join(', '));
+    tulisDrive(ringkas.join('<br>') + '<br>Pastikan link-nya link folder BULAN dan folder dibagikan "siapa saja yang punya link".');
+    return;
+  }
+
+  var gagal = [];
+  var bulanTerdeteksi = {};
+  for (var i = 0; i < daftar.length; i++) {
+    var f = daftar[i];
+    tulisDrive(ringkas.join('<br>') + '<br>Mengambil ' + (i + 1) + '/' + daftar.length + ': ' + f.nama + '…');
+    try {
+      var r = await fetch('http://127.0.0.1:' + port + '/isi?id=' + encodeURIComponent(f.id) +
+        '&jenis=' + (f.jenis === 'sheet' ? 'sheet' : 'file'));
+      if (!r.ok) throw new Error(String(await r.text()).slice(0, 160));
+      var namaFile = T.namaFileDrive(f, periode);
+      var ident = T.parseNamaFile(namaFile);
+      if (ident) bulanTerdeteksi[ident.bulan + '-' + ident.tahun] = true;
+      terimaFile(namaFile, await r.arrayBuffer(), 'Drive: ' + (f.jalur || f.nama));
+    } catch (e) {
+      gagal.push(f.nama + ' — ' + e.message);
+    }
+  }
+  renderHasil();
+
+  ringkas.push('<b>' + (daftar.length - gagal.length) + ' dari ' + daftar.length + ' file presensi diambil dari Drive.</b>');
+  var bulanAda = Object.keys(bulanTerdeteksi).sort();
+  if (!periode && bulanAda.length > 1) {
+    ringkas.push('<span class="warn">Folder ini berisi ' + bulanAda.length + ' bulan (' + bulanAda.join(', ') +
+      '). Isi kolom bulan-tahun (mis. ' + bulanAda[bulanAda.length - 1] +
+      ') lalu klik lagi supaya hanya bulan itu yang diambil.</span>');
+    }
+  if ((isi.dilewati || []).length) {
+    ringkas.push('Dilewati: ' + isi.dilewati.slice(0, 12).map(function (d) { return d.nama + ' (' + d.alasan + ')'; }).join('; ') +
+      (isi.dilewati.length > 12 ? ' …' : ''));
+  }
+  if (gagal.length) ringkas.push('<span class="merah">Gagal: ' + gagal.join('; ') + '</span>');
+  tulisDrive(ringkas.join('<br>'));
+}
+
+$('btnAmbilDrive').addEventListener('click', function () {
+  var btn = this;
+  if (btn.disabled) return;
+  btn.disabled = true;
+  tulisDrive('Menghubungi pengambil Drive…');
+  ambilDariDrive()
+    .catch(function (e) { tulisDrive('<span class="merah">Gagal: ' + e.message + '</span>'); })
+    .then(function () { btn.disabled = false; });
+});
+
+$('fileInput').value = '';
+</script>
+</body>
+</html>
