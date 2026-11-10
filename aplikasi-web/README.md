@@ -242,3 +242,27 @@ dengan kredensial hanya dari variabel lingkungan → `/api/konfigurasi` 200 dan 
 - Direct Deployment: `https://aplikasi-lx09m8dw1-bastantabangun2024-1024.vercel.app`
 - Environment variables (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`) terpasang di Vercel Production & Preview.
 - Seluruh endpoint diuji langsung: `/` 200, `/masuk.html` 200, `/admin.html` 200, `/lib/app.js` 200, `/api/konfigurasi` 200, `/api/pegawai` 200.
+
+## Catatan Hari Ini (10 November 2026) — perbaikan lanjutan
+
+### 1. Perbaikan upload Drive: duplicate key presensi
+- Gejala: `Database: HTTP 409 {"code":"23505", ... "duplicate key value violates unique constraint presensi_pengajuan_id_tanggal_key"}` saat upload Drive (mis. pegawai "Winner", PPPK Bimas Buddha, bulan Oktober).
+- Penyebab: baris `(pengajuan_id, tanggal)` yang sama sudah ada dari run sebelumnya (proses ganda / upload ulang) dan penghapusan awal tidak membersihkannya.
+- Perbaikan di `app.mjs` (`simpanPengajuan`):
+  - bersihkan pengajuan duplikat untuk pegawai & periode yang sama (cascade hapus sisa presensi/rekap lama);
+  - hapus `presensi`/`rekap_*` milik pengajuan aktif sebelum insert;
+  - retry otomatis pada insert `presensi`: jika masih `23505`, hapus ulang lalu coba lagi;
+  - ubah insert `rekap_kehadiran`, `rekap_tukin`, `rekap_uang_makan` menjadi upsert (`on_conflict=pengajuan_id`, `resolution=merge-duplicates`).
+- Commit: `a2d0301` — "Perbaiki upload Drive: tangani duplicate key presensi (pengajuan_id, tanggal)".
+- Deploy: Vercel production `https://tool-tukin.vercel.app` (alias).
+
+### 2. Ekspor rekap bulanan dipisah per bidang
+- Tombol ekspor (Kehadiran/Tukin/Uang Makan) kini mengunduh satu berkas per bidang (nama file menyertakan bidang, mis. `Rekap Kehadiran Bimas Kristen OKT 2026.xlsx`); "Ketiga berkas" mengunduh semua kategori × semua bidang.
+- Judul sheet juga menyertakan bidang.
+- Perubahan: `public/rekap.js` (fungsi `kehadiran/tukin/uangMakan` menerima parameter `bidang`; tambah `susunPerBidang`), `public/admin.html` (`unduhRekap` memakai `susunPerBidang`).
+- Verifikasi Node: `require('./public/rekap.js')` → `susunPerBidang` menghasilkan 1 grup per bidang dengan nama berkas yang benar.
+- Commit: `e3d915d` — "Ekspor rekap bulanan dipisah per bidang".
+- Deploy: Vercel production `https://tool-tukin.vercel.app`.
+
+### Rencana besok
+- Lanjut perbaikan lain (sesuai kebutuhan). Kode sudah di-push & di-deploy.
