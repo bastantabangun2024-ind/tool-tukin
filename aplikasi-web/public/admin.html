@@ -906,9 +906,25 @@
       catatDrive('<b>' + hasil.length + ' pegawai tersimpan</b> dari ' + antre.length +
         ' file untuk ' + NAMA_BULAN[p.bulan - 1] + ' ' + p.tahun + ', status menunggu verifikasi.' +
         (ambigu.length ? '<br><b style="color:#b42318">' + ambigu.length +
-          ' file masih perlu dipilih pegawainya (lihat tabel di bawah).</b>' : ''));
+          ' file masih perlu dipilih pegawainya (lihat tabel di bawah).</b>' : '') +
+        '<div style="margin-top:12px"><button id="btnKeVerifikasi" class="kecil" style="font-weight:600;background:var(--biru);color:#fff">👉 Buka Tab "Sudah Unggah" untuk Menyetujui / Verifikasi</button></div>');
       gambar();
-      muatUnggah();
+
+      // Sinkronkan bulan & tahun di tab status pengajuan
+      var bEl = document.getElementById('bulanUnggah');
+      var tEl = document.getElementById('tahunUnggah');
+      if (bEl) bEl.value = p.bulan;
+      if (tEl) tEl.value = p.tahun;
+      muatUnggah(false);
+
+      var bVerif = document.getElementById('btnKeVerifikasi');
+      if (bVerif) {
+        bVerif.addEventListener('click', function () {
+          var tabBtn = document.querySelector('nav button[data-tab="unggah"]');
+          if (tabBtn) tabBtn.click();
+        });
+      }
+
       btn.disabled = false;
       document.getElementById('btnBacaDrive').disabled = false;
     }
