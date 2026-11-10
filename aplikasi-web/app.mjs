@@ -197,9 +197,36 @@ function objekPegawai(p) {
   };
 }
 
+// Gabungkan baris-baris presensi yang memiliki tanggal sama sebelum dihitung
+function gabungHariSama(hariList) {
+  if (!Array.isArray(hariList)) return [];
+  const map = new Map();
+  for (const h of hariList) {
+    if (!h || !h.tanggal) continue;
+    const k = `${h.tanggal.y}-${h.tanggal.mo}-${h.tanggal.d}`;
+    if (!map.has(k)) {
+      map.set(k, { ...h });
+    } else {
+      const ada = map.get(k);
+      // Jam masuk: pilih yang paling awal
+      if (ada.masuk === null && h.masuk !== null) ada.masuk = h.masuk;
+      else if (ada.masuk !== null && h.masuk !== null) ada.masuk = Math.min(ada.masuk, h.masuk);
+
+      // Jam pulang: pilih yang paling akhir
+      if (ada.pulang === null && h.pulang !== null) ada.pulang = h.pulang;
+      else if (ada.pulang !== null && h.pulang !== null) ada.pulang = Math.max(ada.pulang, h.pulang);
+
+      if (!ada.alasan && h.alasan) ada.alasan = h.alasan;
+      if (!ada.deskripsi && h.deskripsi) ada.deskripsi = h.deskripsi;
+    }
+  }
+  return Array.from(map.values());
+}
+
 // Hitung satu pegawai dari data presensi, lalu simpan pengajuan + rincian + rekap.
 async function simpanPengajuan(p, hari, tahun, bulan, sumberFile) {
-  const hasil = Tukin.prosesSatuOrang(objekPegawai(p), hari, {});
+  const hariBersih = gabungHariSama(hari);
+  const hasil = Tukin.prosesSatuOrang(objekPegawai(p), hariBersih, {});
 
   const pengajuan = await db('pengajuan_tukin?on_conflict=pegawai_id,tahun,bulan', {
     method: 'POST',
@@ -223,49 +250,87 @@ async function simpanPengajuan(p, hari, tahun, bulan, sumberFile) {
   });
   const idPengajuan = pengajuan[0].id;
 
+  // Bersihkan pengajuan duplikat untuk pegawai & periode yang sama (jika ada),
+  // agar sisa baris presensi/rekap milik pengajuan lama ikut terhapus (cascade).
+  await db(`pengajuan_tukin?pegawai_id=eq.${p.id}&tahun=eq.${tahun}&bulan=eq.${bulan}&id=neq.${idPengajuan}`, { method: 'DELETE' });
+
   await db(`presensi?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
   await db(`rekap_kehadiran?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
   await db(`rekap_tukin?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
   await db(`rekap_uang_makan?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
 
-  const rincian = hasil.perDay
-    .map((d) => {
-      const jenis = jenisSql(d.jenis);
-      const tanggal = tanggalSql(d.tanggal);
-      if (!jenis || !tanggal) return null;
-      let persen = 0;
-      let kode = null;
-      if (d.jenis === 'tk') { persen = 3; kode = 'tk_harian'; }
-      else if (d.jenis === 'noPresensi') { persen = d.pct || 1.5; kode = 'tanpa_presensi'; }
-      else if (d.jenis === 'hadir') {
-        persen = (d.telatPct || 0) + (d.pswPct || 0);
-        kode = d.telatPct ? 'telat' : (d.pswPct ? 'psw' : null);
+  const rincianMap = new Map();
+  for (const d of hasil.perDay) {
+    const jenis = jenisSql(d.jenis);
+    const tanggal = tanggalSql(d.tanggal);
+    if (!jenis || !tanggal) continue;
+    let persen = 0;
+    let kode = null;
+    if (d.jenis === 'tk') { persen = 3; kode = 'tk_harian'; }
+    else if (d.jenis === 'noPresensi') { persen = d.pct || 1.5; kode = 'tanpa_presensi'; }
+    else if (d.jenis === 'hadir') {
+      persen = (d.telatPct || 0) + (d.pswPct || 0);
+      kode = d.telatPct ? 'telat' : (d.pswPct ? 'psw' : null);
+    }
+    const item = {
+      pengajuan_id: idPengajuan,
+      pegawai_id: p.id,
+      tanggal,
+      jenis,
+      sisi: d.sisi || null,
+      jam_masuk: jadikanWaktu(d.masukMin),
+      jam_pulang: jadikanWaktu(d.pulangMin),
+      menit_telat: d.telat || 0,
+      menit_pulang_awal: d.pswAwal || 0,
+      potongan_kode: kode,
+      potongan_persen: persen,
+      libur_sub: d.libur || d.sub || null,
+      jenis_tugas: d.jenisTugas || null,
+      keterangan: d.keterangan || null,
+      anomali: !!d.anomali,
+    };
+    if (!rincianMap.has(tanggal)) {
+      rincianMap.set(tanggal, item);
+    } else {
+      const ada = rincianMap.get(tanggal);
+      ada.jam_masuk = ada.jam_masuk || item.jam_masuk;
+      ada.jam_pulang = ada.jam_pulang || item.jam_pulang;
+      ada.menit_telat = Math.max(ada.menit_telat || 0, item.menit_telat || 0);
+      ada.menit_pulang_awal = Math.max(ada.menit_pulang_awal || 0, item.menit_pulang_awal || 0);
+      if (item.jenis === 'hadir' && ada.jenis !== 'hadir') {
+        ada.jenis = 'hadir';
+        ada.potongan_kode = item.potongan_kode;
+        ada.potongan_persen = item.potongan_persen;
       }
-      return {
-        pengajuan_id: idPengajuan,
-        pegawai_id: p.id,
-        tanggal,
-        jenis,
-        sisi: d.sisi || null,
-        jam_masuk: jadikanWaktu(d.masukMin),
-        jam_pulang: jadikanWaktu(d.pulangMin),
-        menit_telat: d.telat || 0,
-        menit_pulang_awal: d.pswAwal || 0,
-        potongan_kode: kode,
-        potongan_persen: persen,
-        libur_sub: d.libur || d.sub || null,
-        jenis_tugas: d.jenisTugas || null,
-        keterangan: d.keterangan || null,
-        anomali: !!d.anomali,
-      };
-    })
-    .filter(Boolean);
+    }
+  }
+  const rincian = Array.from(rincianMap.values());
 
-  if (rincian.length) await db('presensi', { method: 'POST', body: JSON.stringify(rincian) });
+  if (rincian.length) {
+    const tulisPresensi = async () => {
+      await db('presensi?on_conflict=pengajuan_id,tanggal', {
+        method: 'POST',
+        headers: { Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify(rincian),
+      });
+    };
+    try {
+      await tulisPresensi();
+    } catch (e) {
+      // Jika masih ada baris duplikat (mis. sisa dari run sebelumnya), hapus lalu coba lagi.
+      if (/23505|duplicate key/i.test(String(e && e.message))) {
+        await db(`presensi?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
+        await tulisPresensi();
+      } else {
+        throw e;
+      }
+    }
+  }
 
   const hitung = (kunci) => rincian.filter((r) => r.libur_sub && new RegExp(kunci, 'i').test(r.libur_sub)).length;
-  await db('rekap_kehadiran', {
+  await db('rekap_kehadiran?on_conflict=pengajuan_id', {
     method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
     body: JSON.stringify({
       pengajuan_id: idPengajuan,
       hari_kerja: rincian.filter((r) => r.jenis !== 'weekend').length,
@@ -289,8 +354,9 @@ async function simpanPengajuan(p, hari, tahun, bulan, sumberFile) {
     }),
   });
 
-  await db('rekap_tukin', {
+  await db('rekap_tukin?on_conflict=pengajuan_id', {
     method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
     body: JSON.stringify({
       pengajuan_id: idPengajuan,
       tukin_bruto: Number(p.tukin) || 0,
@@ -310,8 +376,9 @@ async function simpanPengajuan(p, hari, tahun, bulan, sumberFile) {
     }),
   });
 
-  await db('rekap_uang_makan', {
+  await db('rekap_uang_makan?on_conflict=pengajuan_id', {
     method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates' },
     body: JSON.stringify({
       pengajuan_id: idPengajuan,
       hari_hadir: hasil.uangMakan.hariHadir,
