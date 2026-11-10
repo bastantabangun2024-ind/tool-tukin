@@ -1,0 +1,15 @@
+{
+  "name": "tool-tukin-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Tool Tukin versi web: Supabase (auth + database) dan pengambilan presensi dari Google Drive",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "siapkan-mesin": "node scripts/siapkan-mesin.mjs",
+    "migrasi": "node scripts/terapkan-migrasi.mjs"
+  }
+}

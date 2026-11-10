@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node scripts/siapkan-mesin.mjs",
+  "outputDirectory": "public",
+  "functions": {
+    "api/[...jalur].mjs": {
+      "maxDuration": 60,
+      "includeFiles": "public/lib/**"
+    }
+  }
+}

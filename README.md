@@ -93,7 +93,37 @@ terbuka selama aplikasi dipakai. Halaman ini masih lokal (belum di Vercel).
 - Mesin hitung di web (port `app.js` + uji paritas angka terhadap golden test).
 - Halaman verifikasi admin (isi HUKDIS/TB, setujui/tolak) dan ekspor 3 file rekap.
 - Isi `hari_libur` (libur nasional 2026) agar tidak dihitung sebagai hari kerja.
-- Deploy Vercel + domain, pendaftaran pegawai, ganti password admin.
+- Deploy Vercel (kode sudah disiapkan: `app.mjs`, `api/[...jalur].mjs`, `vercel.json`) dan domain.
+- Ganti password admin, dan tombol hapus/nonaktifkan pegawai.
+
+---
+
+## Menyimpan perubahan ke GitHub (aman)
+
+Repo: `https://github.com/bastantabangun2024-ind/tool-tukin` (private).
+Alur singkat setiap kali selesai mengubah sesuatu — jalankan di folder `tool-tukin`:
+
+```bash
+git status                 # lihat apa yang berubah
+git diff                   # baca isi perubahannya
+git add -A
+git diff --cached --name-only | grep -E '\.env|node_modules|username pasword'   # harus kosong
+git commit -m "Penjelasan singkat perubahan"
+git push
+```
+
+**Aturan aman:**
+
+1. **Jangan pernah** `git add` paksa file rahasia: `.env.local`, `username pasword.txt`,
+   `*.pem`. Ketiganya sudah masuk `.gitignore`; kalau `grep` di atas mengeluarkan hasil,
+   batalkan dengan `git restore --staged <berkas>`.
+2. Repo wajib **private** — `aplikasi-offline/CADANGAN/permasalahan/` berisi presensi asli pegawai.
+3. Satu commit = satu perubahan yang jelas. Hindari `git commit -a` tanpa memeriksa `git status`.
+4. Bila ada perubahan dari komputer lain: `git pull --rebase` dulu, baru `git push`.
+5. Kalau kunci `.env.local` **terlanjur** ter-commit: jangan hanya hapus filenya — segera
+   ganti kunci di Supabase (Settings → API) karena riwayat git tetap menyimpannya.
+6. Menambah berkas baru pada mesin hitung offline? Jalankan `node aplikasi-web/scripts/siapkan-mesin.mjs`
+   lebih dulu agar salinan `public/lib/` ikut berubah, lalu commit keduanya.
 
 ---
 
@@ -106,7 +136,10 @@ aplikasi-offline/CADANGAN/hasil-hari-ini.md   diary pekerjaan
 aplikasi-web/docs/01..04                      audit, arsitektur, skema, setup akun
 aplikasi-web/supabase/migrations/0001..0003   skema + seed (sudah diterapkan)
 aplikasi-web/scripts/                         migrasi, cek skema, buat admin, seed pegawai
-aplikasi-web/public/                          halaman masuk & dasbor
+aplikasi-web/app.mjs                          handler HTTP (lokal + Vercel)
+aplikasi-web/api/[...jalur].mjs               fungsi serverless Vercel
+aplikasi-web/vercel.json                     konfigurasi deploy Vercel
+aplikasi-web/public/                          halaman masuk, dasbor, admin, public/lib
 aplikasi-web/.env.example                     daftar variabel (tanpa nilai rahasia)
 ```
 

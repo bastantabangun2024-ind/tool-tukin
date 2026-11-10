@@ -108,7 +108,7 @@ node server.mjs        # http://localhost:3000/masuk.html
 - `jalankan-web.cmd` — peluncur Windows (jalankan server + buka browser).
 
 Diuji: halaman 200, login admin 200 dengan peran `admin`, password salah 400, path asing 404.
-Server ini hanya untuk lokal; deploy Vercel belum dikerjakan.
+Server ini untuk lokal; versi Vercel memakai handler yang sama (lihat bagian *Deploy Vercel*).
 
 ## Halaman depan & admin (TAHAP 3, 10 November 2026)
 
@@ -125,12 +125,19 @@ Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.ht
 **Halaman admin (`public/admin.html`, login wajib, hanya peran admin)**
 1. Sudah Unggah — daftar pengajuan + tukin bersih/potongan, tombol Setujui/Tolak.
 2. Pendaftar — daftar pendaftaran menunggu, tombol Setujui/Tolak.
-3. **Ambil dari Drive** — tempel link folder Drive publik + bulan/tahun, **Baca Folder**
+3. **Data Pegawai** — form tambah pegawai baru dan ubah pegawai yang sudah ada (nama, NIP,
+   pangkat/golongan/ruang, jabatan, kelas jabatan, bidang, status kepegawaian, tukin,
+   tarif uang makan, PPh, satker). Tersimpan di tabel **`pegawai`** Supabase — bukan di Drive.
+   `nama_key` dihitung otomatis dengan `namaKey()` mesin offline agar pencocokan nama file
+   Drive tetap sama; NIP ganda ditolak (409).
+4. **Ambil dari Drive** — tempel link folder Drive publik + bulan/tahun, **Baca Folder**
    (menampilkan file yang ketemu & yang dilewati), lalu **Proses Semua File**: presensi diunduh,
    nama file/folder dicocokkan dengan daftar pegawai, dihitung, dan disimpan `menunggu_verifikasi`.
    Memakai `aplikasi-offline/AMBIL-DARI-DRIVE/alat-drive.js` apa adanya (tanpa kunci API),
    aturan pencocokan nama sama dengan `index.html` offline.
-4. Pengaturan Potongan — 16 aturan versi 1, nilai bisa diubah lalu disimpan.
+   Tiap file dikirim sebagai **satu permintaan** (`berkas: { id, nama, jalur, folder }`) supaya
+   tidak kena batas waktu fungsi Vercel; folder tidak ditelusuri ulang per file.
+5. Pengaturan Potongan — 16 aturan versi 1, nilai bisa diubah lalu disimpan.
 
 **Endpoint baru (`server.mjs`)**
 - `GET /api/pegawai?nip=` — identitas pegawai, tanpa tukin.
@@ -139,8 +146,17 @@ Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.ht
 - `POST /api/daftar` — menyimpan pendaftaran status `menunggu`.
 - `POST /api/drive/daftar` — baca folder Drive (`{ link, bulan, tahun }`) → daftar file presensi,
   yang dilewati, dan pesan (folder arsip disaring bulan/tahun).
-- `POST /api/drive/proses` — unduh + hitung + simpan semua file dari folder Drive sekaligus.
-- `GET /lib/app.js`, `/lib/xlsx.full.min.js` — mesin hitung disajikan langsung dari folder offline.
+- `POST /api/drive/proses` — tanpa `berkas`: unduh + hitung + simpan semua file folder sekaligus
+  (lokal). Dengan `berkas: { id, nama, jalur, folder }`: hanya file itu (dipakai halaman admin,
+  satu request per file). Aturan "file pertama dipertahankan kecuali yang baru namanya lebih
+  jelas" disimpan di `pengajuan_tukin.aturan_snapshot.sumber_file` agar tetap berlaku walau
+  tiap file diproses terpisah.
+- `GET /api/pegawai/daftar` — **[admin]** daftar pegawai untuk tab Data Pegawai.
+- `POST /api/pegawai/simpan` — **[admin]** tambah (`id` kosong) atau ubah (`id` diisi) pegawai.
+  Keduanya memverifikasi token Supabase ke `/auth/v1/user` lalu mencocokkan peran `admin`
+  di tabel `users`; tanpa itu → 401.
+- `GET /lib/app.js`, `/lib/xlsx.full.min.js`, `/lib/pegawai.js` — mesin hitung. Lokal dilayani
+  dari `aplikasi-offline/APLIKASI/`; di Vercel dari salinan `public/lib/`.
 
 **Diuji:** file `Hendro_Presensi 10-2026.xlsx` (31 baris) → hadir 21, tukin bersih 3.269.215,
 uang makan bersih 773.300, sama persis dengan hitungan `app.js` langsung; rincian harian
@@ -152,5 +168,43 @@ Data uji dihapus setelah pengujian.
 NELLY) dilaporkan, link ngawur → HTTP 400. Data uji dihapus setelah pengujian.
 
 **Belum:** unggah berkas **ke** Google Drive, pilihan pegawai untuk nama ambigu, isi HUKDIS/TB
-oleh admin saat verifikasi, ekspor 3 file Excel, dan pembuatan akun otomatis saat pendaftaran
-disetujui.
+oleh admin saat verifikasi, ekspor 3 file Excel, pembuatan akun otomatis saat pendaftaran
+disetujui, dan hapus/nonaktifkan pegawai dari tab Data Pegawai.
+
+## Struktur kode (siap Vercel)
+
+| Berkas | Peran |
+|---|---|
+| `app.mjs` | seluruh handler HTTP (API + berkas statis). Dipakai bersama lokal & Vercel. |
+| `server.mjs` | hanya `createServer` + `listen` untuk lokal. |
+| `api/[...jalur].mjs` | pintu masuk fungsi serverless Vercel untuk semua `/api/*`. |
+| `mesin.mjs` | memuat `app.js` + `alat-drive.js`: pakai berkas asli di offline, atau salinan `public/lib/`. |
+| `scripts/siapkan-mesin.mjs` | menyalin mesin offline ke `public/lib/` (dipakai browser & fungsi). |
+| `vercel.json` | build `siapkan-mesin`, output `public`, `maxDuration` 60 detik. |
+
+Menjalankan ulang salinan setelah mesin offline berubah:
+
+```bash
+node scripts/siapkan-mesin.mjs
+```
+
+Salinan di `public/lib/` **dibuat otomatis** — jangan diedit manual; sumbernya tetap
+`aplikasi-offline/APLIKASI/app.js`. Di komputer lokal server tetap memakai berkas asli
+(terlihat di log: `mesin hitung: aplikasi-offline (asli)`).
+
+## Deploy Vercel
+
+1. Import repo GitHub di Vercel → **Root Directory: `aplikasi-web`** (framework: *Other*).
+2. **Environment Variables** (Production + Preview):
+   `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`.
+   Jangan pernah memakai kunci *service role/secret* di halaman web — hanya fungsi server
+   yang membacanya; browser hanya menerima kunci publishable lewat `/api/konfigurasi`.
+3. Deploy. Build menjalankan `node scripts/siapkan-mesin.mjs`; karena folder
+   `aplikasi-offline` tidak ikut terunggah, skrip memakai salinan `public/lib/` yang sudah ada.
+4. Di Supabase → *Authentication → URL Configuration*, isi **Site URL** dengan domain Vercel.
+5. Batas waktu fungsi 60 detik (Hobby). Karena itu tab Ambil dari Drive mengirim satu file per
+   permintaan; jangan mengubahnya menjadi satu permintaan untuk seluruh folder.
+
+**Diuji (tiruan Vercel):** folder tanpa `aplikasi-offline` dan tanpa `.env.local` → mesin dimuat
+`public/lib (salinan)`, `/lib/app.js` 200 (28.817 B), `/lib/pegawai.js` 200, halaman depan 200;
+dengan kredensial hanya dari variabel lingkungan → `/api/konfigurasi` 200 dan query database jalan.

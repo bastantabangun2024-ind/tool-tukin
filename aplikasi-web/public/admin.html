@@ -12,6 +12,7 @@
   <nav>
     <button data-tab="unggah" class="aktif">Sudah Unggah</button>
     <button data-tab="pendaftar">Pendaftar</button>
+    <button data-tab="pegawai">Data Pegawai</button>
     <button data-tab="drive">Ambil dari Drive</button>
     <button data-tab="pengaturan">Pengaturan Potongan</button>
     <span id="siapa" style="color:#64748b;margin-left:10px"></span>
@@ -30,6 +31,43 @@
     <h1>Pendaftar Baru</h1>
     <p class="sub">Pendaftaran yang menunggu keputusan admin.</p>
     <div id="tabelPendaftar"><p class="catatan">Memuat…</p></div>
+  </section>
+
+  <section class="kartu tersembunyi" id="tab-pegawai">
+    <h1>Data Pegawai</h1>
+    <p class="sub">Tambah pegawai baru atau ubah data yang sudah ada. Tersimpan di database Supabase
+      (tabel <b>pegawai</b>) — bukan di Drive. NIP harus 18 angka dan belum terdaftar.</p>
+    <input type="hidden" id="pId">
+    <div class="baris" style="align-items:flex-end">
+      <div><label>Nama lengkap</label><br><input id="pNama" placeholder="sama seperti di berkas presensi"></div>
+      <div><label>NIP</label><br><input id="pNip" inputmode="numeric" maxlength="18" placeholder="18 angka"></div>
+      <div><label>Status</label><br><select id="pStatus">
+        <option value="PPPK">PPPK</option><option value="PNS">PNS</option>
+        <option value="CPNS">CPNS</option><option value="PPPK_PW">PPPK PW</option>
+      </select></div>
+    </div>
+    <div class="baris" style="align-items:flex-end">
+      <div><label>Pangkat</label><br><input id="pPangkat" placeholder="Pengatur"></div>
+      <div><label>Golongan</label><br><input id="pGol" placeholder="II" style="width:90px"></div>
+      <div><label>Ruang</label><br><input id="pRuang" placeholder="c" style="width:90px"></div>
+      <div><label>Kelas jabatan</label><br><input id="pKelas" placeholder="5" style="width:90px"></div>
+    </div>
+    <div class="baris" style="align-items:flex-end">
+      <div><label>Jabatan</label><br><input id="pJabatan" placeholder="Penyuluh Agama"></div>
+      <div><label>Bidang</label><br><select id="pBidang"></select></div>
+    </div>
+    <div class="baris" style="align-items:flex-end">
+      <div><label>Tukin bruto (Rp)</label><br><input type="number" id="pTukin" min="0" step="1000" style="width:170px"></div>
+      <div><label>Tarif uang makan (Rp)</label><br><input type="number" id="pTarif" min="0" step="1000" value="37000" style="width:170px"></div>
+      <div><label>PPh (%)</label><br><input type="number" id="pPph" min="0" max="100" step="0.5" value="5" style="width:100px"></div>
+      <div><label>Satker 2</label><br><input id="pSatker" placeholder="(opsional)"></div>
+    </div>
+    <div class="baris" style="margin-top:14px">
+      <div><button id="btnSimpanPegawai">Simpan pegawai</button></div>
+      <div><button id="btnBaruPegawai">Kosongkan form</button></div>
+    </div>
+    <p class="catatan" id="catatanPegawai"></p>
+    <div id="tabelPegawai"><p class="catatan">Memuat…</p></div>
   </section>
 
   <section class="kartu tersembunyi" id="tab-drive">
@@ -85,6 +123,17 @@
       body: opsi && opsi.body ? JSON.stringify(opsi.body) : undefined
     });
   }
+  // endpoint milik server sendiri (butuh token admin untuk simpan pegawai)
+  function adminApi(jalur, opsi) {
+    return fetch(jalur, {
+      method: (opsi && opsi.method) || 'GET',
+      headers: Object.assign({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + sesi.access_token }),
+      body: opsi && opsi.body ? JSON.stringify(opsi.body) : undefined
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, status: r.status, j: j }; });
+    });
+  }
+
   function labelBulan(b) {
     return ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][b] || b;
   }
@@ -95,10 +144,11 @@
     b.addEventListener('click', function () {
       Array.prototype.forEach.call(tombolTab, function (x) { x.classList.remove('aktif'); });
       b.classList.add('aktif');
-      ['unggah', 'pendaftar', 'drive', 'pengaturan'].forEach(function (t) {
+      ['unggah', 'pendaftar', 'pegawai', 'drive', 'pengaturan'].forEach(function (t) {
         document.getElementById('tab-' + t).classList.toggle('tersembunyi', t !== b.dataset.tab);
       });
       if (b.dataset.tab === 'pendaftar') muatPendaftar();
+      if (b.dataset.tab === 'pegawai') muatPegawai();
       if (b.dataset.tab === 'drive' && !document.getElementById('bulanDrive').options.length) siapkanDrive();
       if (b.dataset.tab === 'pengaturan') muatAturan();
     });
@@ -192,6 +242,133 @@
       });
   }
 
+  // --- 2b. data pegawai -----------------------------------------------------
+  var bidangSiap = false;
+
+  function catatPegawai(html, warna) {
+    document.getElementById('catatanPegawai').innerHTML =
+      '<span style="color:' + (warna || '#475569') + '">' + html + '</span>';
+  }
+
+  function nilai(id) { return document.getElementById(id).value.trim(); }
+  function isiNilai(id, v) { document.getElementById(id).value = v == null ? '' : v; }
+
+  function kosongkanForm() {
+    ['pId', 'pNama', 'pNip', 'pPangkat', 'pGol', 'pRuang', 'pKelas', 'pJabatan', 'pSatker'].forEach(function (id) {
+      isiNilai(id, '');
+    });
+    isiNilai('pTukin', '');
+    isiNilai('pTarif', '37000');
+    isiNilai('pPph', '5');
+    document.getElementById('pStatus').value = 'PPPK';
+    catatPegawai('Form kosong — isi untuk menambah pegawai baru.', '#475569');
+  }
+
+  function isiBidang() {
+    if (bidangSiap) return Promise.resolve();
+    return api('bidang?select=id,kode,nama&order=nama')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!Array.isArray(d)) return;
+        document.getElementById('pBidang').innerHTML = d.map(function (x) {
+          return '<option value="' + esc(x.id) + '">' + esc(x.kode) + ' — ' + esc(x.nama) + '</option>';
+        }).join('');
+        bidangSiap = true;
+      })
+      .catch(function () { catatPegawai('Gagal memuat daftar bidang.', '#b42318'); });
+  }
+
+  function isiForm(p) {
+    isiNilai('pId', p.id);
+    isiNilai('pNama', p.nama);
+    isiNilai('pNip', p.nip);
+    isiNilai('pPangkat', p.pangkat);
+    isiNilai('pGol', p.golongan);
+    isiNilai('pRuang', p.ruang);
+    isiNilai('pKelas', p.kelas_jabatan);
+    isiNilai('pJabatan', p.jabatan);
+    isiNilai('pSatker', p.satker_2);
+    isiNilai('pTukin', p.tukin == null ? '' : Number(p.tukin));
+    isiNilai('pTarif', p.tarif_uang_makan == null ? '37000' : Number(p.tarif_uang_makan));
+    isiNilai('pPph', p.pph_pct == null ? '5' : Number(p.pph_pct));
+    document.getElementById('pStatus').value = p.status_kepegawaian || 'PPPK';
+    if (p.bidang_id) document.getElementById('pBidang').value = p.bidang_id;
+    catatPegawai('Mengubah data <b>' + esc(p.nama) + '</b>. Klik Simpan pegawai bila selesai.', '#0b6b3a');
+    document.getElementById('pNama').focus();
+  }
+
+  function muatPegawai() {
+    isiBidang();
+    adminApi('/api/pegawai/daftar').then(function (h) {
+      if (!h.ok) {
+        document.getElementById('tabelPegawai').innerHTML =
+          '<p class="catatan">Gagal memuat: ' + esc(h.j.pesan || ('HTTP ' + h.status)) + '</p>';
+        return;
+      }
+      var d = h.j.pegawai || [];
+      if (!d.length) {
+        document.getElementById('tabelPegawai').innerHTML = '<p class="catatan">Belum ada pegawai.</p>';
+        return;
+      }
+      document.getElementById('tabelPegawai').innerHTML =
+        '<table><thead><tr><th>Pegawai</th><th>Jabatan / Bidang</th><th>Gol</th>' +
+        '<th class="num">Tukin</th><th class="num">Uang makan</th><th></th></tr></thead><tbody>' +
+        d.map(function (p, i) {
+          return '<tr><td>' + esc(p.nama) + '<br><span class="catatan">' + esc(p.nip) + ' · ' +
+            esc(p.status_kepegawaian) + '</span></td>' +
+            '<td>' + esc(p.jabatan) + '<br><span class="catatan">' + esc(p.bidang && p.bidang.nama) + '</span></td>' +
+            '<td>' + esc(p.golongan || '') + (p.ruang ? '/' + esc(p.ruang) : '') + '</td>' +
+            '<td class="num">' + rupiah(p.tukin) + '</td>' +
+            '<td class="num">' + rupiah(p.tarif_uang_makan) + '</td>' +
+            '<td><button class="kecil" data-ubah="' + i + '">Ubah</button></td></tr>';
+        }).join('') + '</tbody></table>';
+
+      document.getElementById('tabelPegawai').querySelectorAll('button[data-ubah]').forEach(function (b) {
+        b.addEventListener('click', function () { isiForm(d[Number(b.dataset.ubah)]); });
+      });
+    }).catch(function (e) {
+      document.getElementById('tabelPegawai').innerHTML = '<p class="catatan">Gagal memuat: ' + esc(e.message) + '</p>';
+    });
+  }
+
+  document.getElementById('btnBaruPegawai').addEventListener('click', kosongkanForm);
+
+  document.getElementById('btnSimpanPegawai').addEventListener('click', function () {
+    var btn = this;
+    var nip = nilai('pNip').replace(/\s/g, '');
+    if (!/^\d{18}$/.test(nip)) { catatPegawai('NIP harus 18 angka.', '#b42318'); return; }
+    if (nilai('pNama').length < 3) { catatPegawai('Nama pegawai belum diisi.', '#b42318'); return; }
+
+    var data = {
+      nip: nip,
+      nama: nilai('pNama'),
+      pangkat: nilai('pPangkat'),
+      golongan: nilai('pGol'),
+      ruang: nilai('pRuang'),
+      jabatan: nilai('pJabatan'),
+      kelas_jabatan: nilai('pKelas'),
+      bidang_id: nilai('pBidang'),
+      status_kepegawaian: document.getElementById('pStatus').value,
+      tukin: nilai('pTukin') === '' ? null : Number(nilai('pTukin')),
+      tarif_uang_makan: nilai('pTarif') === '' ? null : Number(nilai('pTarif')),
+      pph_pct: nilai('pPph') === '' ? null : Number(nilai('pPph')),
+      satker_2: nilai('pSatker')
+    };
+    var id = nilai('pId');
+    if (id) data.id = id;
+
+    btn.disabled = true;
+    catatPegawai('Menyimpan…', '#475569');
+    adminApi('/api/pegawai/simpan', { method: 'POST', body: data }).then(function (h) {
+      if (!h.ok) { catatPegawai('Gagal: ' + esc(h.j.pesan || ('HTTP ' + h.status)), '#b42318'); return; }
+      catatPegawai('✔ ' + esc(h.j.pesan), '#0b6b3a');
+      kosongkanForm();
+      muatPegawai();
+    }).catch(function (e) {
+      catatPegawai('Gagal: ' + esc(e.message), '#b42318');
+    }).then(function () { btn.disabled = false; });
+  });
+
   // --- 3. ambil dari drive --------------------------------------------------
   var NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
     'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -270,27 +447,18 @@
     if (!daftarDrive || !(daftarDrive.file || []).length) return;
     var btn = this;
     var p = periodeDrive();
-    var jumlah = daftarDrive.file.length;
+    var link = document.getElementById('linkDrive').value.trim();
+    var antre = daftarDrive.file.slice();
+    var hasil = [];
+    var lewat = [];
+    var i = 0;
     btn.disabled = true;
     document.getElementById('btnBacaDrive').disabled = true;
-    catatDrive('Mengambil & menghitung ' + jumlah + ' file dari Drive… jangan tutup halaman ini (bisa 1–2 menit).');
 
-    fetch('/api/drive/proses', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ link: document.getElementById('linkDrive').value.trim(), bulan: p.bulan, tahun: p.tahun })
-    }).then(function (r) {
-      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
-    }).then(function (h) {
-      if (!h.ok) throw new Error(h.j.pesan || 'Gagal memproses');
-      var d = h.j;
-      var hasil = d.hasil || [];
-      var lewat = d.dilewati || [];
-      catatDrive('<b>' + hasil.length + ' pegawai tersimpan</b> dari ' + d.fileDitemukan +
-        ' file untuk ' + NAMA_BULAN[p.bulan - 1] + ' ' + p.tahun + ', status menunggu verifikasi.');
-
+    function gambar() {
+      var html = '';
       if (hasil.length) {
-        document.getElementById('tabelDrive').innerHTML =
-          '<table><thead><tr><th>Pegawai</th><th>File</th><th class="num">Hadir</th>' +
+        html += '<table><thead><tr><th>Pegawai</th><th>File</th><th class="num">Hadir</th>' +
           '<th class="num">Tukin bersih</th><th>Status</th></tr></thead><tbody>' +
           hasil.map(function (x) {
             return '<tr><td>' + esc(x.nama) + '<br><span class="catatan">' + esc(x.nip) + '</span></td>' +
@@ -300,21 +468,55 @@
           }).join('') + '</tbody></table>';
       }
       if (lewat.length) {
-        document.getElementById('tabelDrive').innerHTML +=
-          '<p class="catatan"><b>Perlu dicek (' + lewat.length + '):</b></p>' +
+        html += '<p class="catatan"><b>Perlu dicek (' + lewat.length + '):</b></p>' +
           '<table><thead><tr><th>File</th><th>Alasan</th></tr></thead><tbody>' +
           lewat.map(function (x) {
             return '<tr><td>' + esc(x.nama) + (x.jalur ? '<br><span class="catatan">' + esc(x.jalur) + '</span>' : '') +
               '</td><td>' + esc(x.alasan) + '</td></tr>';
           }).join('') + '</tbody></table>';
       }
+      document.getElementById('tabelDrive').innerHTML = html;
+    }
+
+    function selesai() {
+      catatDrive('<b>' + hasil.length + ' pegawai tersimpan</b> dari ' + antre.length +
+        ' file untuk ' + NAMA_BULAN[p.bulan - 1] + ' ' + p.tahun + ', status menunggu verifikasi.');
+      gambar();
       muatUnggah();
-    }).catch(function (e) {
-      catatDrive('<b style="color:#b42318">Gagal: ' + esc(e.message) + '</b>');
-    }).then(function () {
       btn.disabled = false;
       document.getElementById('btnBacaDrive').disabled = false;
-    });
+    }
+
+    // Satu file = satu permintaan. Vercel membatasi umur tiap fungsi (±60 detik),
+    // jadi folder besar tidak lagi diproses dalam satu request yang bisa timeout.
+    function lanjut() {
+      if (i >= antre.length) { selesai(); return; }
+      var f = antre[i++];
+      catatDrive('Memproses ' + i + '/' + antre.length + ': <b>' + esc(f.nama) +
+        '</b>… jangan tutup halaman ini.');
+      fetch('/api/drive/proses', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          link: link, bulan: p.bulan, tahun: p.tahun,
+          berkas: { id: f.id, nama: f.nama, jalur: f.jalur, folder: f.folder }
+        })
+      }).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      }).then(function (h) {
+        if (!h.ok) throw new Error(h.j.pesan || 'Gagal memproses');
+        var d = h.j;
+        (d.hasil || []).forEach(function (x) { hasil.push(x); });
+        (d.diganti || []).forEach(function (x) { lewat.push(x); });
+        (d.dilewati || []).forEach(function (x) { lewat.push(x); });
+        gambar();
+      }).catch(function (e) {
+        lewat.push({ nama: f.nama, jalur: f.jalur, alasan: String(e.message || e) });
+        gambar();
+      }).then(lanjut);
+    }
+
+    gambar();
+    lanjut();
   });
 
   // --- 4. pengaturan --------------------------------------------------------
