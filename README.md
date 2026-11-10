@@ -117,6 +117,29 @@ terbuka selama aplikasi dipakai. Halaman ini masih lokal (belum di Vercel).
 
 ---
 
+## Pedoman Pemotongan Tukin & Uang Makan (Tugas Belajar & Hukuman Disiplin)
+
+Rujukan resmi berdasarkan **PMA No. 11 Tahun 2019**, diselaraskan dengan **PP No. 94 Tahun 2021** dan **PMK No. 72/PMK.05/2016**:
+
+| Kondisi Pegawai | Dasar Hukum | Potongan Tukin Menurut PMA | Potongan Uang Makan Menurut PMK | Keterangan Tambahan |
+|---|---|---|---|---|
+| **Tugas Belajar (≤ 6 Bulan)** | PMA 11/2019 Ps. 23 | **0%** (Tukin dibayarkan 100%) | **100%** (Uang makan dihentikan) | Berlaku untuk diklat/kursus jangka pendek yang dibebaskan dari jabatan. |
+| **Tugas Belajar (> 6 Bulan)** | PMA 11/2019 Ps. 23 | **50%** (Tukin dibayarkan 50%) | **100%** (Uang makan dihentikan) | Potongan 50% berlaku mulai bulan ke-7 sejak tanggal surat penugasan studi. |
+| **Hukuman Disiplin Ringan** | PP 94/2021 & PMA 11/2019 | **0%** (Tidak ada potongan langsung atas status hukuman) | **0%** (Dibayar penuh sesuai hari hadir kerja fisik) | Hanya dipotong nominal harian (0,5% - 3%) jika hukuman dipicu oleh ketidakhadiran jam kerja. |
+| **Hukuman Disiplin Sedang** | PP 94/2021 & PMA 11/2019 | **25%** (Selama 6, 9, atau 12 bulan) | **0%** (Dibayar penuh sesuai hari hadir kerja fisik) | Persentase potongan mengacu pada PP 94/2021 yang menjadi dasar hukum disiplin nasional. |
+| **Hukuman Disiplin Berat** | PP 94/2021 & PMA 11/2019 | Menyesuaikan kelas jabatan baru atau **100%** jika diberhentikan | **0%** selama aktif ngantor / **100%** jika diberhentikan | Mengalami penurunan jabatan setingkat lebih rendah atau pembebasan jabatan menjadi pelaksana selama 12 bulan. |
+
+### Penerapan pada Sistem Tool Tukin:
+1. **Tugas Belajar (TB)**:
+   - Jika &le; 6 bulan: Tukin 100% utuh (`tb_pct = 0%`), uang makan dihentikan (`uang_makan = 0`).
+   - Jika &gt; 6 bulan: Potongan Tukin diisi `tb_pct = 50%`, uang makan dihentikan (100% dipotong).
+2. **Hukuman Disiplin (HUKDIS)**:
+   - **Ringan**: `hukdis_pct = 0%` (hanya potongan harian absensi dari file presensi). Uang makan tetap dibayar sesuai hari hadir fisik.
+   - **Sedang**: `hukdis_pct = 25%` selama periode berlakunya sanksi (6, 9, atau 12 bulan). Uang makan tetap dibayar sesuai hari hadir fisik.
+   - **Berat**: Admin menyesuaikan kelas jabatan / nominal tukin bruto di tab Data Pegawai, atau `100%` jika diberhentikan. Uang makan tetap dibayar selama masih aktif ngantor secara fisik.
+
+---
+
 ## Catatan Evaluasi & Kekurangan Ide Website (Perspektif Pegawai / PPPK)
 
 *Simulasi pengalaman pengguna saat bertindak sebagai salah satu pegawai (misal: PPPK Penyuluh Agama Kristen) yang menggunakan website ini secara mandiri:*
