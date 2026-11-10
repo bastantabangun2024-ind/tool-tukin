@@ -49,7 +49,7 @@
   }
 
   // Kehadiran: satu baris per pegawai.
-  function kehadiran(data, tahun, bulan) {
+  function kehadiran(data, tahun, bulan, bidang) {
     var kolom = ['No', 'Nama', 'NIP', 'Jabatan', 'Golongan', 'Bidang', 'Periode', 'Status',
       'Hari kerja', 'Hadir', 'Telat', 'Pulang awal', 'Tanpa keterangan', 'Tanpa presensi masuk',
       'Tanpa presensi pulang', 'Cuti', 'Sakit', 'Dinas luar', 'Izin', 'Akhir pekan'];
@@ -64,14 +64,14 @@
     });
     return {
       sheet: 'Kehadiran',
-      judul: 'REKAPITULASI KEHADIRAN — ' + labelBulan(bulan).toUpperCase() + ' ' + tahun,
-      namaBerkas: 'Rekap Kehadiran ' + singkat(bulan) + ' ' + tahun + '.xlsx',
+      judul: 'REKAPITULASI KEHADIRAN' + (bidang ? ' — ' + String(bidang).toUpperCase() : '') + ' — ' + labelBulan(bulan).toUpperCase() + ' ' + tahun,
+      namaBerkas: 'Rekap Kehadiran' + (bidang ? ' ' + bidang : '') + ' ' + singkat(bulan) + ' ' + tahun + '.xlsx',
       kolom: kolom, lebar: lebar, baris: baris,
     };
   }
 
   // Tukin: potongan dalam rupiah dan persen.
-  function tukin(data, tahun, bulan) {
+  function tukin(data, tahun, bulan, bidang) {
     var kolom = ['No', 'Nama', 'NIP', 'Jabatan', 'Golongan', 'Bidang', 'Periode', 'Status',
       'Tukin bruto', 'Pot. TK', 'Pot. telat', 'Pot. pulang awal', 'Pot. HUKDIS', 'Pot. TB',
       'Pot. lain', 'Total %', 'Total potongan', 'Pajak', 'Tukin bersih'];
@@ -86,14 +86,14 @@
     });
     return {
       sheet: 'Tukin',
-      judul: 'REKAPITULASI TUKIN — ' + labelBulan(bulan).toUpperCase() + ' ' + tahun,
-      namaBerkas: 'Rekap Tukin ' + singkat(bulan) + ' ' + tahun + '.xlsx',
+      judul: 'REKAPITULASI TUKIN' + (bidang ? ' — ' + String(bidang).toUpperCase() : '') + ' — ' + labelBulan(bulan).toUpperCase() + ' ' + tahun,
+      namaBerkas: 'Rekap Tukin' + (bidang ? ' ' + bidang : '') + ' ' + singkat(bulan) + ' ' + tahun + '.xlsx',
       kolom: kolom, lebar: lebar, baris: baris,
     };
   }
 
   // Uang makan.
-  function uangMakan(data, tahun, bulan) {
+  function uangMakan(data, tahun, bulan, bidang) {
     var kolom = ['No', 'Nama', 'NIP', 'Jabatan', 'Golongan', 'Bidang', 'Periode', 'Status',
       'Hari hadir', 'Tarif', 'Bruto', 'PPh %', 'PPh', 'Uang makan bersih'];
     var lebar = [5, 34, 22, 30, 12, 26, 16, 20, 11, 12, 14, 9, 12, 18];
@@ -106,8 +106,8 @@
     });
     return {
       sheet: 'Uang Makan',
-      judul: 'REKAPITULASI UANG MAKAN — ' + labelBulan(bulan).toUpperCase() + ' ' + tahun,
-      namaBerkas: 'Rekap Uang Makan ' + singkat(bulan) + ' ' + tahun + '.xlsx',
+      judul: 'REKAPITULASI UANG MAKAN' + (bidang ? ' — ' + String(bidang).toUpperCase() : '') + ' — ' + labelBulan(bulan).toUpperCase() + ' ' + tahun,
+      namaBerkas: 'Rekap Uang Makan' + (bidang ? ' ' + bidang : '') + ' ' + singkat(bulan) + ' ' + tahun + '.xlsx',
       kolom: kolom, lebar: lebar, baris: baris,
     };
   }
@@ -126,6 +126,12 @@
     return { jumlah: d.length, totalTukin: totalTukin, totalUangMakan: totalUm };
   }
 
+  function bidangDari(x) {
+    var p = x.pegawai || {};
+    var b = p.bidang && p.bidang.nama;
+    return b ? String(b) : 'Tanpa bidang';
+  }
+
   return {
     susun: function (data, tahun, bulan) {
       return {
@@ -133,6 +139,20 @@
         tukin: tukin(data, tahun, bulan),
         uangMakan: uangMakan(data, tahun, bulan),
       };
+    },
+    susunPerBidang: function (data, tahun, bulan) {
+      var set = {};
+      (data || []).forEach(function (x) { set[bidangDari(x)] = true; });
+      var daftarBidang = Object.keys(set).sort();
+      return daftarBidang.map(function (bidang) {
+        var subset = (data || []).filter(function (x) { return bidangDari(x) === bidang; });
+        return {
+          bidang: bidang,
+          kehadiran: kehadiran(subset, tahun, bulan, bidang),
+          tukin: tukin(subset, tahun, bulan, bidang),
+          uangMakan: uangMakan(subset, tahun, bulan, bidang),
+        };
+      });
     },
     ringkas: ringkas,
     labelBulan: labelBulan,

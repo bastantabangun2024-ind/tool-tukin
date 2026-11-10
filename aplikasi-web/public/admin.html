@@ -202,8 +202,9 @@
 
   <section class="kartu tersembunyi" id="tab-rekap">
     <h1>Ekspor Rekap Bulanan</h1>
-    <p class="sub">Tiga berkas Excel dari data yang sudah ada di database: <b>kehadiran</b>,
-      <b>tukin</b>, dan <b>uang makan</b>. Angkanya sama dengan yang tampil di tab Sudah Unggah.</p>
+    <p class="sub">Berkas Excel dari data yang sudah ada di database: <b>kehadiran</b>,
+      <b>tukin</b>, dan <b>uang makan</b>, dipisahkan per <b>bidang</b>.
+      Angkanya sama dengan yang tampil di tab Sudah Unggah.</p>
     <div class="baris" style="align-items:flex-end">
       <div><label>Bulan</label><br><select id="bulanRekap"></select></div>
       <div><label>Tahun</label><br><input type="number" id="tahunRekap" min="2020" max="2100" style="width:100px"></div>
@@ -1089,10 +1090,15 @@
       return;
     }
 
-    var susun = Rekap.susun(dataRekap.data, dataRekap.tahun, dataRekap.bulan);
-    var daftar = kunci === 'semua'
-      ? [susun.kehadiran, susun.tukin, susun.uangMakan]
-      : [susun[kunci]];
+    var groups = Rekap.susunPerBidang(dataRekap.data, dataRekap.tahun, dataRekap.bulan);
+    var daftar = [];
+    groups.forEach(function (g) {
+      if (kunci === 'semua') {
+        daftar.push(g.kehadiran, g.tukin, g.uangMakan);
+      } else {
+        daftar.push(g[kunci]);
+      }
+    });
 
     daftar.forEach(function (r) {
       var aoa = [[r.judul], [], r.kolom].concat(r.baris);
@@ -1104,7 +1110,7 @@
       XLSX.writeFile(wb, r.namaBerkas);
     });
 
-    catatRekap('✔ ' + daftar.length + ' berkas diunduh: ' +
+    catatRekap('✔ ' + daftar.length + ' berkas diunduh (per bidang): ' +
       daftar.map(function (r) { return esc(r.namaBerkas); }).join(', '), '#0b6b3a');
   }
 
