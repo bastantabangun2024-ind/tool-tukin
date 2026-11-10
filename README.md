@@ -48,6 +48,10 @@ versi web harus menghasilkan angka yang sama (uji paritas).
    - Project `aplikasi-web` berhasil di-link dan di-deploy ke Vercel production.
    - Variabel lingkungan (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`) telah disinkronkan ke Vercel.
    - Seluruh halaman publik, admin, mesin hitung di browser (`/lib/app.js`), dan endpoint serverless (`/api/konfigurasi`, `/api/pegawai`, dll.) telah diverifikasi live & aktif terhubung ke Supabase.
+8. **Pemantau Pegawai Sudah & Belum Mengunggah Presensi**:
+   - Tab **Sudah Unggah** kini dilengkapi pemilih periode (Bulan & Tahun), filter bidang, serta kartu ringkasan status (*Sudah Mengunggah*, *Belum Mengunggah*, *Menunggu Verifikasi*, *Disetujui*).
+   - Admin dapat beralih ke sub-tab **Belum Mengunggah** untuk melihat langsung daftar nama, NIP, bidang, dan jabatan pegawai yang belum mengirimkan presensi pada periode tersebut, lengkap dengan tombol **Salin Daftar Belum Unggah** untuk dibagikan ke WhatsApp.
+   - Di tab **Ekspor Rekap**, sistem otomatis menampilkan notifikasi peringatan jika masih ada pegawai aktif yang belum mengunggah presensi sebelum admin mengunduh laporan Excel.
 
 ### Alamat & akun
 

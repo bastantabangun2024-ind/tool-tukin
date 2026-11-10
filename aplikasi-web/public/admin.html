@@ -23,8 +23,58 @@
 
 <main>
   <section class="kartu" id="tab-unggah">
-    <h1>Pegawai Sudah Mengunggah</h1>
-    <p class="sub">Presensi yang masuk lewat halaman depan, beserta hasil hitung mesin Tukin.</p>
+    <h1>Status Presensi &amp; Pengajuan Pegawai</h1>
+    <p class="sub">Pantau siapa saja yang sudah mengunggah dan siapa yang belum mengunggah presensi bulanan.</p>
+
+    <div class="baris" style="align-items:flex-end;margin-bottom:14px">
+      <div style="flex:0 0 150px">
+        <label>Bulan</label>
+        <select id="bulanUnggah"></select>
+      </div>
+      <div style="flex:0 0 100px">
+        <label>Tahun</label>
+        <input type="number" id="tahunUnggah" min="2020" max="2100" style="width:100px">
+      </div>
+      <div style="flex:0 0 180px">
+        <label>Filter Bidang</label>
+        <select id="filterBidangUnggah"><option value="">Semua Bidang</option></select>
+      </div>
+      <div>
+        <button id="btnFilterUnggah">Tampilkan Periode</button>
+        <button id="btnSemuaUnggah" class="kecil" style="margin-left:6px" title="Lihat 50 pengajuan terbaru lintas periode">50 Riwayat Terbaru</button>
+      </div>
+    </div>
+
+    <!-- Ringkasan Angka Statistik -->
+    <div class="statistik" style="margin-bottom:16px">
+      <div id="statBoxSudah" style="cursor:pointer;border-color:var(--biru);background:var(--biru-muda)" title="Klik untuk tampilkan yang sudah upload">
+        <b id="statSudahJml">0</b>
+        <span>Sudah Mengunggah</span>
+      </div>
+      <div id="statBoxBelum" style="cursor:pointer" title="Klik untuk tampilkan yang belum upload">
+        <b id="statBelumJml" style="color:var(--merah)">0</b>
+        <span>Belum Mengunggah</span>
+      </div>
+      <div>
+        <b id="statMenungguJml" style="color:#b54708">0</b>
+        <span>Menunggu Verifikasi</span>
+      </div>
+      <div>
+        <b id="statDisetujuiJml" style="color:var(--hijau)">0</b>
+        <span>Disetujui</span>
+      </div>
+    </div>
+
+    <!-- Tab Pilihan Tampilan: Sudah vs Belum -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;border-bottom:1px solid var(--garis);padding-bottom:10px;align-items:center;flex-wrap:wrap">
+      <button id="subTabSudah" class="kecil" style="font-weight:600;background:var(--biru);color:#fff">Sudah Mengunggah (<span id="subBadgeSudah">0</span>)</button>
+      <button id="subTabBelum" class="kecil" style="font-weight:600">Belum Mengunggah (<span id="subBadgeBelum">0</span>)</button>
+      <div id="wadahSalinBelum" style="margin-left:auto;display:none">
+        <button id="btnSalinBelum" class="kecil" style="background:#fff;border-color:var(--garis)">📋 Salin Daftar Belum Unggah</button>
+        <span id="pesanSalin" style="font-size:12px;color:var(--hijau);margin-left:6px;font-weight:600"></span>
+      </div>
+    </div>
+
     <div id="tabelUnggah"><p class="catatan">Memuat…</p></div>
   </section>
 
@@ -180,53 +230,256 @@
     });
   });
 
-  // --- 1. sudah unggah ------------------------------------------------------
-  function muatUnggah() {
-    api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,pegawai(nama,nip),rekap_tukin(tukin_bersih,total_persen)&order=dikirim_pada.desc&limit=50')
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (!Array.isArray(d) || !d.length) {
-          document.getElementById('tabelUnggah').innerHTML = '<p class="catatan">Belum ada unggahan.</p>';
-          return;
-        }
-        var baris = d.map(function (x) {
-          var rk = satuRekap(x.rekap_tukin);
-          var aksi = x.status === 'menunggu_verifikasi'
-            ? '<button class="kecil" data-setujui="' + x.id + '">Setujui</button> ' +
-              '<button class="kecil" data-tolak="' + x.id + '">Tolak</button>'
-            : '';
-          return '<tr><td>' + esc(x.pegawai && x.pegawai.nama) + '<br><span class="catatan">' +
-            esc(x.pegawai && x.pegawai.nip) + '</span></td>' +
-            '<td>' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
-            '<td><span class="status ' + x.status + '">' + esc(x.status.replace(/_/g, ' ')) + '</span></td>' +
-            '<td class="num">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
-            '<td class="num">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
-            '<td>' + aksi + '</td></tr>';
-        }).join('');
-        document.getElementById('tabelUnggah').innerHTML =
-          '<table><thead><tr><th>Pegawai</th><th>Periode</th><th>Status</th>' +
-          '<th class="num">Tukin bersih</th><th class="num">Potongan</th><th></th></tr></thead><tbody>' +
-          baris + '</tbody></table>';
+  // --- 1. sudah & belum unggah -----------------------------------------------
+  var NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+    'Agustus', 'September', 'Oktober', 'November', 'Desember'];
 
-        document.getElementById('tabelUnggah').querySelectorAll('button').forEach(function (b) {
-          b.addEventListener('click', function () {
-            var id = b.dataset.setujui || b.dataset.tolak;
-            var status = b.dataset.setujui ? 'disetujui' : 'ditolak';
-            b.disabled = true;
-            api('pengajuan_tukin?id=eq.' + id, {
-              method: 'PATCH',
-              body: { status: status, diverifikasi_oleh: sesi.id, diverifikasi_pada: new Date().toISOString() }
-            }).then(function (r) {
-              if (!r.ok) { alert('Gagal menyimpan'); b.disabled = false; return; }
-              muatUnggah();
-            });
-          });
-        });
-      })
-      .catch(function () {
-        document.getElementById('tabelUnggah').innerHTML = '<p class="catatan">Gagal memuat data.</p>';
+  var viewModeUnggah = 'sudah'; // 'sudah' | 'belum'
+  var dataUnggah = { sudah: [], belum: [], semua: false, bulan: 0, tahun: 0 };
+
+  function siapkanUnggah() {
+    var sel = document.getElementById('bulanUnggah');
+    if (!sel.options.length) {
+      NAMA_BULAN.forEach(function (nama, i) {
+        var o = document.createElement('option');
+        o.value = i + 1;
+        o.textContent = nama;
+        sel.appendChild(o);
       });
+      var kini = new Date();
+      sel.value = kini.getMonth() + 1;
+      document.getElementById('tahunUnggah').value = kini.getFullYear();
+    }
   }
+
+  function isiFilterBidang(pegawaiList) {
+    var sel = document.getElementById('filterBidangUnggah');
+    if (sel.options.length > 1) return;
+    var set = new Set();
+    pegawaiList.forEach(function (p) {
+      if (p.bidang && p.bidang.nama) set.add(p.bidang.nama);
+    });
+    Array.from(set).sort().forEach(function (b) {
+      var o = document.createElement('option');
+      o.value = b;
+      o.textContent = b;
+      sel.appendChild(o);
+    });
+  }
+
+  function muatUnggah(semuaRiwayat) {
+    siapkanUnggah();
+    var tabel = document.getElementById('tabelUnggah');
+    tabel.innerHTML = '<p class="catatan">Memuat data presensi…</p>';
+
+    if (semuaRiwayat) {
+      dataUnggah.semua = true;
+      api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,pegawai_id,pegawai(id,nama,nip,status_kepegawaian,jabatan,bidang:bidang_id(nama)),rekap_tukin(tukin_bersih,total_persen)&order=dikirim_pada.desc&limit=50')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!Array.isArray(d)) d = [];
+          dataUnggah.sudah = d;
+          dataUnggah.belum = [];
+          viewModeUnggah = 'sudah';
+          tampilkanTabelUnggah();
+        }).catch(function () {
+          tabel.innerHTML = '<p class="catatan">Gagal memuat data.</p>';
+        });
+      return;
+    }
+
+    dataUnggah.semua = false;
+    var bulan = Number(document.getElementById('bulanUnggah').value);
+    var tahun = Number(document.getElementById('tahunUnggah').value);
+    dataUnggah.bulan = bulan;
+    dataUnggah.tahun = tahun;
+
+    Promise.all([
+      api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,pegawai_id,pegawai(id,nama,nip,status_kepegawaian,jabatan,bidang:bidang_id(nama)),rekap_tukin(tukin_bersih,total_persen)&tahun=eq.' + tahun + '&bulan=eq.' + bulan + '&order=dikirim_pada.desc'),
+      api('pegawai?select=id,nama,nip,status_kepegawaian,jabatan,golongan,ruang,bidang:bidang_id(nama)&aktif=eq.true&order=nama.asc')
+    ]).then(function (res) {
+      return Promise.all([res[0].json(), res[1].json()]);
+    }).then(function (hasil) {
+      var pengajuan = Array.isArray(hasil[0]) ? hasil[0] : [];
+      var semuaPegawai = Array.isArray(hasil[1]) ? hasil[1] : [];
+
+      isiFilterBidang(semuaPegawai);
+
+      var filterBidang = (document.getElementById('filterBidangUnggah').value || '').trim();
+      if (filterBidang) {
+        semuaPegawai = semuaPegawai.filter(function (p) {
+          return p.bidang && p.bidang.nama === filterBidang;
+        });
+        pengajuan = pengajuan.filter(function (p) {
+          return p.pegawai && p.pegawai.bidang && p.pegawai.bidang.nama === filterBidang;
+        });
+      }
+
+      var sudahIds = new Set();
+      pengajuan.forEach(function (x) { if (x.pegawai_id) sudahIds.add(x.pegawai_id); });
+
+      var belum = semuaPegawai.filter(function (p) { return !sudahIds.has(p.id); });
+
+      dataUnggah.sudah = pengajuan;
+      dataUnggah.belum = belum;
+      tampilkanTabelUnggah();
+    }).catch(function (e) {
+      tabel.innerHTML = '<p class="catatan">Gagal memuat data: ' + esc(e.message) + '</p>';
+    });
+  }
+
+  function tampilkanTabelUnggah() {
+    var sudah = dataUnggah.sudah || [];
+    var belum = dataUnggah.belum || [];
+    var menunggu = sudah.filter(function (x) { return x.status === 'menunggu_verifikasi'; }).length;
+    var disetujui = sudah.filter(function (x) { return x.status === 'disetujui'; }).length;
+
+    document.getElementById('statSudahJml').textContent = sudah.length;
+    document.getElementById('subBadgeSudah').textContent = sudah.length;
+    document.getElementById('statBelumJml').textContent = dataUnggah.semua ? '—' : belum.length;
+    document.getElementById('subBadgeBelum').textContent = dataUnggah.semua ? '—' : belum.length;
+    document.getElementById('statMenungguJml').textContent = menunggu;
+    document.getElementById('statDisetujuiJml').textContent = disetujui;
+
+    var btnSudah = document.getElementById('subTabSudah');
+    var btnBelum = document.getElementById('subTabBelum');
+    var wadahSalin = document.getElementById('wadahSalinBelum');
+    var boxSudah = document.getElementById('statBoxSudah');
+    var boxBelum = document.getElementById('statBoxBelum');
+
+    if (viewModeUnggah === 'sudah') {
+      btnSudah.style.background = 'var(--biru)';
+      btnSudah.style.color = '#fff';
+      btnBelum.style.background = '#fff';
+      btnBelum.style.color = 'inherit';
+      boxSudah.style.background = 'var(--biru-muda)';
+      boxSudah.style.borderColor = 'var(--biru)';
+      boxBelum.style.background = '#fff';
+      boxBelum.style.borderColor = 'var(--garis)';
+      wadahSalin.style.display = 'none';
+      renderTabelSudah(sudah);
+    } else {
+      btnBelum.style.background = 'var(--merah)';
+      btnBelum.style.color = '#fff';
+      btnSudah.style.background = '#fff';
+      btnSudah.style.color = 'inherit';
+      boxBelum.style.background = '#fef3f2';
+      boxBelum.style.borderColor = 'var(--merah)';
+      boxSudah.style.background = '#fff';
+      boxSudah.style.borderColor = 'var(--garis)';
+      wadahSalin.style.display = belum.length ? 'block' : 'none';
+      renderTabelBelum(belum);
+    }
+  }
+
+  function renderTabelSudah(d) {
+    var tabel = document.getElementById('tabelUnggah');
+    if (!d.length) {
+      tabel.innerHTML = '<p class="catatan">Belum ada pegawai yang mengunggah pada periode ini.</p>';
+      return;
+    }
+    var baris = d.map(function (x) {
+      var rk = satuRekap(x.rekap_tukin);
+      var aksi = x.status === 'menunggu_verifikasi'
+        ? '<button class="kecil" data-setujui="' + x.id + '">Setujui</button> ' +
+          '<button class="kecil" data-tolak="' + x.id + '">Tolak</button>'
+        : '';
+      var bidangNama = (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
+      return '<tr><td><b>' + esc(x.pegawai && x.pegawai.nama) + '</b><br><span class="catatan">' +
+        esc(x.pegawai && x.pegawai.nip) + (bidangNama ? ' • ' + esc(bidangNama) : '') + '</span></td>' +
+        '<td>' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
+        '<td><span class="status ' + x.status + '">' + esc(x.status.replace(/_/g, ' ')) + '</span></td>' +
+        '<td class="num">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
+        '<td class="num">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
+        '<td>' + aksi + '</td></tr>';
+    }).join('');
+    tabel.innerHTML =
+      '<table><thead><tr><th>Pegawai</th><th>Periode</th><th>Status</th>' +
+      '<th class="num">Tukin bersih</th><th class="num">Potongan</th><th>Aksi</th></tr></thead><tbody>' +
+      baris + '</tbody></table>';
+
+    tabel.querySelectorAll('button[data-setujui], button[data-tolak]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.dataset.setujui || b.dataset.tolak;
+        var status = b.dataset.setujui ? 'disetujui' : 'ditolak';
+        b.disabled = true;
+        api('pengajuan_tukin?id=eq.' + id, {
+          method: 'PATCH',
+          body: { status: status, diverifikasi_oleh: sesi.id, diverifikasi_pada: new Date().toISOString() }
+        }).then(function (r) {
+          if (!r.ok) { alert('Gagal menyimpan'); b.disabled = false; return; }
+          muatUnggah(dataUnggah.semua);
+        });
+      });
+    });
+  }
+
+  function renderTabelBelum(d) {
+    var tabel = document.getElementById('tabelUnggah');
+    if (!d.length) {
+      tabel.innerHTML = '<div class="sukses tampil">🎉 Luar biasa! Seluruh pegawai aktif sudah mengunggah presensi untuk periode ini.</div>';
+      return;
+    }
+    var baris = d.map(function (p, idx) {
+      var bidangNama = (p.bidang && p.bidang.nama) || '—';
+      return '<tr><td style="color:var(--abu)">' + (idx + 1) + '</td>' +
+        '<td><b>' + esc(p.nama) + '</b><br><span class="catatan">NIP: ' + esc(p.nip) + '</span></td>' +
+        '<td><span class="status">' + esc(p.status_kepegawaian || '—') + '</span></td>' +
+        '<td>' + esc(bidangNama) + '</td>' +
+        '<td>' + esc(p.jabatan || '—') + '</td>' +
+        '<td><span class="status ditolak">Belum Ada Presensi</span></td></tr>';
+    }).join('');
+
+    tabel.innerHTML =
+      '<table><thead><tr><th>#</th><th>Nama Pegawai</th><th>Status</th><th>Bidang</th><th>Jabatan</th><th>Keterangan</th></tr></thead><tbody>' +
+      baris + '</tbody></table>';
+  }
+
+  document.getElementById('btnFilterUnggah').addEventListener('click', function () {
+    muatUnggah(false);
+  });
+  document.getElementById('filterBidangUnggah').addEventListener('change', function () {
+    muatUnggah(false);
+  });
+  document.getElementById('btnSemuaUnggah').addEventListener('click', function () {
+    muatUnggah(true);
+  });
+
+  document.getElementById('statBoxSudah').addEventListener('click', function () {
+    viewModeUnggah = 'sudah';
+    tampilkanTabelUnggah();
+  });
+  document.getElementById('subTabSudah').addEventListener('click', function () {
+    viewModeUnggah = 'sudah';
+    tampilkanTabelUnggah();
+  });
+  document.getElementById('statBoxBelum').addEventListener('click', function () {
+    if (dataUnggah.semua) return;
+    viewModeUnggah = 'belum';
+    tampilkanTabelUnggah();
+  });
+  document.getElementById('subTabBelum').addEventListener('click', function () {
+    if (dataUnggah.semua) return;
+    viewModeUnggah = 'belum';
+    tampilkanTabelUnggah();
+  });
+
+  document.getElementById('btnSalinBelum').addEventListener('click', function () {
+    if (!dataUnggah.belum || !dataUnggah.belum.length) return;
+    var bln = NAMA_BULAN[dataUnggah.bulan - 1] || dataUnggah.bulan;
+    var thn = dataUnggah.tahun;
+    var teks = 'Daftar Pegawai Belum Mengunggah Presensi (' + bln + ' ' + thn + '):\n' +
+      dataUnggah.belum.map(function (p, i) {
+        var bd = p.bidang ? ' [' + p.bidang.nama + ']' : '';
+        return (i + 1) + '. ' + p.nama + ' (NIP ' + p.nip + ')' + bd;
+      }).join('\n');
+
+    navigator.clipboard.writeText(teks).then(function () {
+      var psn = document.getElementById('pesanSalin');
+      psn.textContent = 'Tersalin ke clipboard!';
+      setTimeout(function () { psn.textContent = ''; }, 2500);
+    });
+  });
 
   // --- 2. pendaftar ---------------------------------------------------------
   function muatPendaftar() {
@@ -676,52 +929,83 @@
     document.getElementById('tabelRekap').innerHTML = '';
     catatRekap('Memuat data ' + Rekap.labelBulan(bulan) + ' ' + tahun + '…');
 
-    api('pengajuan_tukin?select=tahun,bulan,status,' +
-      'pegawai(nama,nip,jabatan,golongan,ruang,bidang:bidang_id(nama)),' +
-      'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*)' +
-      '&tahun=eq.' + tahun + '&bulan=eq.' + bulan)
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        if (!Array.isArray(d)) throw new Error('Jawaban database tidak dikenali');
-        dataRekap = { tahun: tahun, bulan: bulan, data: d };
+    Promise.all([
+      api('pengajuan_tukin?select=tahun,bulan,status,' +
+        'pegawai(id,nama,nip,jabatan,golongan,ruang,bidang:bidang_id(nama)),' +
+        'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*)' +
+        '&tahun=eq.' + tahun + '&bulan=eq.' + bulan),
+      api('pegawai?select=id,nama,nip,status_kepegawaian,jabatan,bidang:bidang_id(nama)&aktif=eq.true&order=nama.asc')
+    ]).then(function (res) {
+      return Promise.all([res[0].json(), res[1].json()]);
+    }).then(function (hasil) {
+      var d = Array.isArray(hasil[0]) ? hasil[0] : [];
+      var semuaPegawai = Array.isArray(hasil[1]) ? hasil[1] : [];
+      dataRekap = { tahun: tahun, bulan: bulan, data: d };
 
-        if (!d.length) {
-          catatRekap('Tidak ada pengajuan pada ' + Rekap.labelBulan(bulan) + ' ' + tahun +
-            '. Rekap dibuat dari data yang sudah masuk.', '#b42318');
-          document.getElementById('tabelRekap').innerHTML =
-            '<p class="catatan">Tidak ada data untuk periode ini.</p>';
-          return;
-        }
+      var sudahNips = new Set();
+      d.forEach(function (x) { if (x.pegawai && x.pegawai.nip) sudahNips.add(x.pegawai.nip); });
+      var belum = semuaPegawai.filter(function (p) { return !sudahNips.has(p.nip); });
 
-        var ring = Rekap.ringkas(d);
-        catatRekap('<b>' + ring.jumlah + ' pengajuan</b> pada ' + Rekap.labelBulan(bulan) + ' ' + tahun +
-          ' — total tukin bersih ' + rupiah(ring.totalTukin) +
-          ', uang makan bersih ' + rupiah(ring.totalUangMakan) + '.', '#0b6b3a');
-        document.getElementById('tombolRekap').style.display = '';
+      if (!d.length) {
+        catatRekap('Tidak ada pengajuan pada ' + Rekap.labelBulan(bulan) + ' ' + tahun +
+          '. Rekap dibuat dari data yang sudah masuk.', '#b42318');
+        var peringatanKosong = belum.length
+          ? '<div class="pesan galat tampil" style="margin:14px 0">' +
+            '⚠️ <b>Belum ada pegawai yang mengunggah presensi</b> untuk ' + Rekap.labelBulan(bulan) + ' ' + tahun +
+            ' (dari ' + semuaPegawai.length + ' pegawai aktif).</div>'
+          : '';
+        document.getElementById('tabelRekap').innerHTML = peringatanKosong +
+          '<p class="catatan">Tidak ada data untuk periode ini.</p>';
+        return;
+      }
 
-        var sus = Rekap.susun(d, tahun, bulan);
-        var tukinPerNip = {};
-        var umPerNip = {};
-        sus.tukin.baris.forEach(function (b) { tukinPerNip[b[2]] = b[18]; });
-        sus.uangMakan.baris.forEach(function (b) { umPerNip[b[2]] = b[13]; });
+      var ring = Rekap.ringkas(d);
+      catatRekap('<b>' + ring.jumlah + ' pengajuan</b> pada ' + Rekap.labelBulan(bulan) + ' ' + tahun +
+        ' — total tukin bersih ' + rupiah(ring.totalTukin) +
+        ', uang makan bersih ' + rupiah(ring.totalUangMakan) + '.', '#0b6b3a');
+      document.getElementById('tombolRekap').style.display = '';
 
-        document.getElementById('tabelRekap').innerHTML =
-          '<table><thead><tr><th>Pegawai</th><th>Bidang</th><th>Status</th>' +
-          '<th class="num">Hadir</th><th class="num">Tukin bersih</th>' +
-          '<th class="num">Uang makan</th></tr></thead><tbody>' +
-          sus.kehadiran.baris.map(function (b) {
-            var t = tukinPerNip[b[2]];
-            var u = umPerNip[b[2]];
-            return '<tr><td>' + esc(b[1]) + '<br><span class="catatan">' + esc(b[2]) + '</span></td>' +
-              '<td>' + esc(b[5]) + '</td><td>' + esc(b[7]) + '</td>' +
-              '<td class="num">' + b[9] + '</td>' +
-              '<td class="num">' + (t === undefined ? '—' : rupiah(t)) + '</td>' +
-              '<td class="num">' + (u === undefined ? '—' : rupiah(u)) + '</td></tr>';
-          }).join('') + '</tbody></table>';
-      })
-      .catch(function (e) {
-        catatRekap('Gagal memuat: ' + esc(e.message), '#b42318');
-      });
+      var infoStatus = '';
+      if (belum.length > 0) {
+        infoStatus = '<div class="pesan galat tampil" style="margin:14px 0">' +
+          '⚠️ <b>Perhatian:</b> Terdapat <b>' + belum.length + ' pegawai aktif</b> yang belum mengunggah presensi ' +
+          'pada ' + Rekap.labelBulan(bulan) + ' ' + tahun + ' (dari total ' + semuaPegawai.length + ' pegawai). ' +
+          'Rekap Excel di bawah hanya mencakup yang sudah mengunggah.<br>' +
+          '<details style="margin-top:8px;cursor:pointer"><summary><b>Klik untuk melihat daftar yang belum mengunggah (' + belum.length + ' orang)</b></summary>' +
+          '<ol style="margin:6px 0 0;padding-left:22px">' +
+          belum.map(function (p) {
+            return '<li><b>' + esc(p.nama) + '</b> (NIP ' + esc(p.nip) + ') — ' + esc((p.bidang && p.bidang.nama) || '—') + '</li>';
+          }).join('') +
+          '</ol></details></div>';
+      } else {
+        infoStatus = '<div class="sukses tampil" style="margin:14px 0">' +
+          '🎉 <b>Lengkap:</b> Seluruh pegawai aktif (' + semuaPegawai.length + ' orang) sudah mengunggah presensi untuk periode ini.' +
+          '</div>';
+      }
+
+      var sus = Rekap.susun(d, tahun, bulan);
+      var tukinPerNip = {};
+      var umPerNip = {};
+      sus.tukin.baris.forEach(function (b) { tukinPerNip[b[2]] = b[18]; });
+      sus.uangMakan.baris.forEach(function (b) { umPerNip[b[2]] = b[13]; });
+
+      document.getElementById('tabelRekap').innerHTML = infoStatus +
+        '<table><thead><tr><th>Pegawai</th><th>Bidang</th><th>Status</th>' +
+        '<th class="num">Hadir</th><th class="num">Tukin bersih</th>' +
+        '<th class="num">Uang makan</th></tr></thead><tbody>' +
+        sus.kehadiran.baris.map(function (b) {
+          var t = tukinPerNip[b[2]];
+          var u = umPerNip[b[2]];
+          return '<tr><td>' + esc(b[1]) + '<br><span class="catatan">' + esc(b[2]) + '</span></td>' +
+            '<td>' + esc(b[5]) + '</td><td>' + esc(b[7]) + '</td>' +
+            '<td class="num">' + b[9] + '</td>' +
+            '<td class="num">' + (t === undefined ? '—' : rupiah(t)) + '</td>' +
+            '<td class="num">' + (u === undefined ? '—' : rupiah(u)) + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    })
+    .catch(function (e) {
+      catatRekap('Gagal memuat: ' + esc(e.message), '#b42318');
+    });
   }
 
   function unduhRekap(kunci) {
