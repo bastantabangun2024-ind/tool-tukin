@@ -44,13 +44,20 @@ versi web harus menghasilkan angka yang sama (uji paritas).
    - Nama file/folder dicocokkan ke daftar pegawai dengan aturan yang sama seperti `index.html`
      offline; file ganda untuk satu orang dipilih yang namanya jelas; nama ambigu dilaporkan.
    - Hasil: `pengajuan_tukin` + `presensi` + 3 tabel rekap per pegawai, status `menunggu_verifikasi`.
+7. **Deploy Vercel Production Selesai & Live**:
+   - Project `aplikasi-web` berhasil di-link dan di-deploy ke Vercel production.
+   - Variabel lingkungan (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`) telah disinkronkan ke Vercel.
+   - Seluruh halaman publik, admin, mesin hitung di browser (`/lib/app.js`), dan endpoint serverless (`/api/konfigurasi`, `/api/pegawai`, dll.) telah diverifikasi live & aktif terhubung ke Supabase.
 
 ### Alamat & akun
 
 | Keperluan | Alamat |
 |---|---|
+| Website Live (Vercel) | https://aplikasi-web-seven.vercel.app |
+| Halaman masuk / login | https://aplikasi-web-seven.vercel.app/masuk.html |
+| Halaman Admin | https://aplikasi-web-seven.vercel.app/admin.html |
 | Halaman masuk (lokal) | http://localhost:3000/masuk.html |
-| Dasbor | http://localhost:3000/dasbor.html |
+| Dasbor (lokal) | http://localhost:3000/dasbor.html |
 | Dashboard Supabase | https://supabase.com/dashboard/project/nbgwulqufumtqnmlghef |
 | API project | `https://nbgwulqufumtqnmlghef.supabase.co` |
 
@@ -84,6 +91,15 @@ terbuka selama aplikasi dipakai. Halaman ini masih lokal (belum di Vercel).
 - **Ambil dari Drive** dengan folder asli Bapak ("9. SEPTEMBER 2026", 20 file presensi):
   14–15 pegawai tersimpan otomatis, tukin/uang makan sama dengan hitungan `app.js`, file rekap
   manual & 50+ berkas PDF/JPG dilewati, nama ambigu (DAVID, NELLY) dilaporkan. Data uji dihapus.
+- **Deploy Vercel Production**:
+  - Aliased: `https://aplikasi-web-seven.vercel.app`
+  - URL pengujian endpoint:
+    - `/` (200 OK)
+    - `/masuk.html` (200 OK)
+    - `/admin.html` (200 OK)
+    - `/lib/app.js` (200 OK, 28.8 KB)
+    - `/api/konfigurasi` (200 OK, mengembalikan Supabase URL & publishable key)
+    - `/api/pegawai?nip=197904112025211007` (200 OK, data pegawai Supabase berhasil dibaca)
 
 ### Belum dikerjakan
 
@@ -92,7 +108,7 @@ terbuka selama aplikasi dipakai. Halaman ini masih lokal (belum di Vercel).
 - Mesin hitung di web (port `app.js` + uji paritas angka terhadap golden test).
 - Isi HUKDIS/TB oleh admin saat verifikasi pengajuan.
 - Isi `hari_libur` (libur nasional 2026) agar tidak dihitung sebagai hari kerja.
-- Deploy Vercel (kode sudah disiapkan: `app.mjs`, `api/[...jalur].mjs`, `vercel.json`) dan domain.
+- Domain khusus (kustom) bila dibutuhkan (saat ini sudah live di domain Vercel).
 - Ganti password admin.
 
 ---
