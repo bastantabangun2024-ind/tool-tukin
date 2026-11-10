@@ -14,6 +14,7 @@
     <button data-tab="pendaftar">Pendaftar</button>
     <button data-tab="pegawai">Data Pegawai</button>
     <button data-tab="drive">Ambil dari Drive</button>
+    <button data-tab="rekap">Ekspor Rekap</button>
     <button data-tab="pengaturan">Pengaturan Potongan</button>
     <span id="siapa" style="color:#64748b;margin-left:10px"></span>
     <button id="keluar">Keluar</button>
@@ -93,8 +94,29 @@
       periode <b>berikutnya</b>; pengajuan yang sudah tersimpan menyimpan snapshot sendiri.</p>
     <div id="tabelAturan"><p class="catatan">Memuat…</p></div>
   </section>
+
+  <section class="kartu tersembunyi" id="tab-rekap">
+    <h1>Ekspor Rekap Bulanan</h1>
+    <p class="sub">Tiga berkas Excel dari data yang sudah ada di database: <b>kehadiran</b>,
+      <b>tukin</b>, dan <b>uang makan</b>. Angkanya sama dengan yang tampil di tab Sudah Unggah.</p>
+    <div class="baris" style="align-items:flex-end">
+      <div><label>Bulan</label><br><select id="bulanRekap"></select></div>
+      <div><label>Tahun</label><br><input type="number" id="tahunRekap" min="2020" max="2100" style="width:100px"></div>
+      <div><button id="btnMuatRekap">Muat data</button></div>
+    </div>
+    <p class="catatan" id="catatanRekap">Pilih periode lalu tekan Muat data.</p>
+    <div class="baris" id="tombolRekap" style="display:none">
+      <div><button data-ekspor="kehadiran">Rekap Kehadiran (.xlsx)</button></div>
+      <div><button data-ekspor="tukin">Rekap Tukin (.xlsx)</button></div>
+      <div><button data-ekspor="uangMakan">Rekap Uang Makan (.xlsx)</button></div>
+      <div><button data-ekspor="semua">Ketiga berkas</button></div>
+    </div>
+    <div id="tabelRekap"></div>
+  </section>
 </main>
 
+<script src="/lib/xlsx.full.min.js"></script>
+<script src="/rekap.js"></script>
 <script>
 (function () {
   var sesi = null;
@@ -134,6 +156,9 @@
     });
   }
 
+  // rekap_* berelasi satu-satu: PostgREST bisa mengirim objek, bukan array.
+  function satuRekap(v) { return Array.isArray(v) ? v[0] : v; }
+
   function labelBulan(b) {
     return ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][b] || b;
   }
@@ -144,12 +169,13 @@
     b.addEventListener('click', function () {
       Array.prototype.forEach.call(tombolTab, function (x) { x.classList.remove('aktif'); });
       b.classList.add('aktif');
-      ['unggah', 'pendaftar', 'pegawai', 'drive', 'pengaturan'].forEach(function (t) {
+      ['unggah', 'pendaftar', 'pegawai', 'drive', 'rekap', 'pengaturan'].forEach(function (t) {
         document.getElementById('tab-' + t).classList.toggle('tersembunyi', t !== b.dataset.tab);
       });
       if (b.dataset.tab === 'pendaftar') muatPendaftar();
       if (b.dataset.tab === 'pegawai') muatPegawai();
       if (b.dataset.tab === 'drive' && !document.getElementById('bulanDrive').options.length) siapkanDrive();
+      if (b.dataset.tab === 'rekap' && !document.getElementById('bulanRekap').options.length) siapkanRekap();
       if (b.dataset.tab === 'pengaturan') muatAturan();
     });
   });
@@ -164,7 +190,7 @@
           return;
         }
         var baris = d.map(function (x) {
-          var rk = x.rekap_tukin && x.rekap_tukin[0];
+          var rk = satuRekap(x.rekap_tukin);
           var aksi = x.status === 'menunggu_verifikasi'
             ? '<button class="kecil" data-setujui="' + x.id + '">Setujui</button> ' +
               '<button class="kecil" data-tolak="' + x.id + '">Tolak</button>'
@@ -618,6 +644,118 @@
 
     gambar();
     lanjut();
+  });
+
+  // --- 3b. ekspor rekap -----------------------------------------------------
+  var dataRekap = null;
+
+  function catatRekap(html, warna) {
+    document.getElementById('catatanRekap').innerHTML =
+      '<span style="color:' + (warna || '#475569') + '">' + html + '</span>';
+  }
+
+  function siapkanRekap() {
+    var sel = document.getElementById('bulanRekap');
+    if (sel.options.length) return;
+    Rekap.NAMA_BULAN.forEach(function (nama, i) {
+      var o = document.createElement('option');
+      o.value = i + 1;
+      o.textContent = nama;
+      sel.appendChild(o);
+    });
+    var kini = new Date();
+    sel.value = kini.getMonth() + 1;
+    document.getElementById('tahunRekap').value = kini.getFullYear();
+  }
+
+  function muatRekap() {
+    var bulan = Number(document.getElementById('bulanRekap').value);
+    var tahun = Number(document.getElementById('tahunRekap').value);
+    dataRekap = null;
+    document.getElementById('tombolRekap').style.display = 'none';
+    document.getElementById('tabelRekap').innerHTML = '';
+    catatRekap('Memuat data ' + Rekap.labelBulan(bulan) + ' ' + tahun + '…');
+
+    api('pengajuan_tukin?select=tahun,bulan,status,' +
+      'pegawai(nama,nip,jabatan,golongan,ruang,bidang:bidang_id(nama)),' +
+      'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*)' +
+      '&tahun=eq.' + tahun + '&bulan=eq.' + bulan)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!Array.isArray(d)) throw new Error('Jawaban database tidak dikenali');
+        dataRekap = { tahun: tahun, bulan: bulan, data: d };
+
+        if (!d.length) {
+          catatRekap('Tidak ada pengajuan pada ' + Rekap.labelBulan(bulan) + ' ' + tahun +
+            '. Rekap dibuat dari data yang sudah masuk.', '#b42318');
+          document.getElementById('tabelRekap').innerHTML =
+            '<p class="catatan">Tidak ada data untuk periode ini.</p>';
+          return;
+        }
+
+        var ring = Rekap.ringkas(d);
+        catatRekap('<b>' + ring.jumlah + ' pengajuan</b> pada ' + Rekap.labelBulan(bulan) + ' ' + tahun +
+          ' — total tukin bersih ' + rupiah(ring.totalTukin) +
+          ', uang makan bersih ' + rupiah(ring.totalUangMakan) + '.', '#0b6b3a');
+        document.getElementById('tombolRekap').style.display = '';
+
+        var sus = Rekap.susun(d, tahun, bulan);
+        var tukinPerNip = {};
+        var umPerNip = {};
+        sus.tukin.baris.forEach(function (b) { tukinPerNip[b[2]] = b[18]; });
+        sus.uangMakan.baris.forEach(function (b) { umPerNip[b[2]] = b[13]; });
+
+        document.getElementById('tabelRekap').innerHTML =
+          '<table><thead><tr><th>Pegawai</th><th>Bidang</th><th>Status</th>' +
+          '<th class="num">Hadir</th><th class="num">Tukin bersih</th>' +
+          '<th class="num">Uang makan</th></tr></thead><tbody>' +
+          sus.kehadiran.baris.map(function (b) {
+            var t = tukinPerNip[b[2]];
+            var u = umPerNip[b[2]];
+            return '<tr><td>' + esc(b[1]) + '<br><span class="catatan">' + esc(b[2]) + '</span></td>' +
+              '<td>' + esc(b[5]) + '</td><td>' + esc(b[7]) + '</td>' +
+              '<td class="num">' + b[9] + '</td>' +
+              '<td class="num">' + (t === undefined ? '—' : rupiah(t)) + '</td>' +
+              '<td class="num">' + (u === undefined ? '—' : rupiah(u)) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      })
+      .catch(function (e) {
+        catatRekap('Gagal memuat: ' + esc(e.message), '#b42318');
+      });
+  }
+
+  function unduhRekap(kunci) {
+    if (!dataRekap || !dataRekap.data.length) {
+      catatRekap('Muat data dulu sebelum mengekspor.', '#b42318');
+      return;
+    }
+    if (typeof XLSX === 'undefined') {
+      catatRekap('Pustaka Excel belum termuat. Muat ulang halaman lalu coba lagi.', '#b42318');
+      return;
+    }
+
+    var susun = Rekap.susun(dataRekap.data, dataRekap.tahun, dataRekap.bulan);
+    var daftar = kunci === 'semua'
+      ? [susun.kehadiran, susun.tukin, susun.uangMakan]
+      : [susun[kunci]];
+
+    daftar.forEach(function (r) {
+      var aoa = [[r.judul], [], r.kolom].concat(r.baris);
+      var ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws['!cols'] = r.lebar.map(function (w) { return { wch: w }; });
+      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: r.kolom.length - 1 } }];
+      var wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, r.sheet);
+      XLSX.writeFile(wb, r.namaBerkas);
+    });
+
+    catatRekap('✔ ' + daftar.length + ' berkas diunduh: ' +
+      daftar.map(function (r) { return esc(r.namaBerkas); }).join(', '), '#0b6b3a');
+  }
+
+  document.getElementById('btnMuatRekap').addEventListener('click', muatRekap);
+  document.getElementById('tombolRekap').querySelectorAll('button[data-ekspor]').forEach(function (b) {
+    b.addEventListener('click', function () { unduhRekap(b.dataset.ekspor); });
   });
 
   // --- 4. pengaturan --------------------------------------------------------

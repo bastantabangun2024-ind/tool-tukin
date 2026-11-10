@@ -143,7 +143,11 @@ Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.ht
    Bila nama file cocok dengan **lebih dari satu pegawai** (mis. dua "DAVID"), file tidak lagi
    hanya dilaporkan gagal: muncul baris **“Perlu dipilih”** berisi daftar kandidat; admin memilih
    orangnya lalu menekan **Proses**, dan file itu diproses ulang dengan `pegawai_id` pilihan.
-5. Pengaturan Potongan — 16 aturan versi 1, nilai bisa diubah lalu disimpan.
+5. **Ekspor Rekap** — pilih bulan + tahun, **Muat data**, lalu unduh **Rekap Kehadiran**,
+   **Rekap Tukin**, **Rekap Uang Makan**, atau ketiganya. Berkas dibuat di browser dengan
+   `public/lib/xlsx.full.min.js` (tanpa server, jadi tidak kena batas waktu Vercel).
+   Isi penyusun rekap ada di `public/rekap.js` (dipakai juga oleh uji Node).
+6. Pengaturan Potongan — 16 aturan versi 1, nilai bisa diubah lalu disimpan.
 
 **Endpoint baru (`server.mjs`)**
 - `GET /api/pegawai?nip=` — identitas pegawai, tanpa tukin.
@@ -175,8 +179,25 @@ Data uji dihapus setelah pengujian.
 (hadir/tukin sama dengan `app.js`), file rekap manual + PDF/JPG dilewati, nama ambigu (DAVID,
 NELLY) dilaporkan, link ngawur → HTTP 400. Data uji dihapus setelah pengujian.
 
+**Kolom rekap yang diekspor**
+
+- *Kehadiran*: hari kerja, hadir, telat, pulang awal, tanpa keterangan, tanpa presensi
+  masuk/pulang, cuti, sakit, dinas luar, izin, akhir pekan.
+- *Tukin*: tukin bruto, potongan TK/telat/pulang awal/HUKDIS/TB/lain, total %, total potongan,
+  pajak, tukin bersih.
+- *Uang makan*: hari hadir, tarif, bruto, PPh %, PPh, bersih.
+
+**Diuji (ekspor):** dua pengajuan Oktober 2026 (Hendro, David) → ketiga berkas dibuat
+(18,6–18,7 KB, 2 baris data), dibaca ulang dan isinya cocok: Hendro bruto 3.319.000 − 49.785
+= 3.269.215; David 3.319.000 − 116.165 = 3.282.835; uang makan keduanya 773.300; total
+6.472.050 dan 1.546.600. Data uji dihapus setelah pengujian.
+
+**Perbaikan sekalian:** `rekap_*` berelasi satu-satu sehingga PostgREST mengirim **objek**,
+bukan array — kolom tukin di tab *Sudah Unggah* sebelumnya bisa tampil “—”. Sekarang dibaca
+lewat `satuRekap()` yang menerima keduanya.
+
 **Belum:** unggah berkas **ke** Google Drive, isi HUKDIS/TB oleh admin saat verifikasi,
-ekspor 3 file Excel, dan pembuatan akun otomatis saat pendaftaran disetujui.
+dan pembuatan akun otomatis saat pendaftaran disetujui.
 
 ## Struktur kode (siap Vercel)
 
