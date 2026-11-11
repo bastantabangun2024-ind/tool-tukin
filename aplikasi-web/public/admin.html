@@ -636,8 +636,15 @@
             }).then(function (h) {
               if (!h.ok) { alert('Gagal: ' + (h.j.pesan || ('HTTP ' + h.status))); b.disabled = false; return; }
               if (aksi === 'setujui' && h.j.passwordSementara) {
-                alert('Akun dibuat.\nEmail: ' + h.j.email + '\nPassword sementara: ' + h.j.passwordSementara +
-                  (h.j.emailTerkirim ? '\n\nEmail kredensial sudah dikirim ke pegawai.' : '\n\nEmail belum terkirim: ' + (h.j.catatanEmail || 'RESEND_API_KEY belum diisi')));
+                var pesanAkun = 'Akun dibuat.\nEmail: ' + h.j.email + '\nPassword sementara: ' + h.j.passwordSementara;
+                if (h.j.emailTerkirim) {
+                  pesanAkun += '\n\nEmail kredensial sudah dikirim ke pegawai.';
+                } else if (h.j.emailDinonaktifkan) {
+                  pesanAkun += '\n\nNotifikasi email sedang dinonaktifkan. Sampaikan email & password ini langsung ke pegawai.';
+                } else {
+                  pesanAkun += '\n\nEmail belum terkirim: ' + (h.j.catatanEmail || 'RESEND_API_KEY belum diisi');
+                }
+                alert(pesanAkun);
               }
               muatPendaftar();
             }).catch(function (e) { alert('Gagal: ' + e.message); b.disabled = false; });

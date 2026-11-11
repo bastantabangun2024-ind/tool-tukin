@@ -199,8 +199,8 @@ lewat `satuRekap()` yang menerima keduanya.
 **Belum:** unggah berkas **ke** Google Drive, isi HUKDIS/TB oleh admin saat verifikasi.
 
 **Sudah (perbaikan lanjutan):** pembuatan akun otomatis saat pendaftaran disetujui,
-cek status pendaftaran tanpa login, notifikasi email (Resend, best effort), unduh bukti,
-dan catatan privasi NIP.
+cek status pendaftaran tanpa login, unduh bukti, dan catatan privasi NIP.
+(Notifikasi email via Resend dinonaktifkan sementara — kredensial akun diberikan manual oleh admin.)
 
 ## Struktur kode (siap Vercel)
 
@@ -288,17 +288,26 @@ dengan kredensial hanya dari variabel lingkungan → `/api/konfigurasi` 200 dan 
 - Tolak: ubah status + kirim email penolakan (+ catatan).
 - Admin UI pendaftar diubah memakai endpoint ini; menampilkan password sementara bila email belum terkirim.
 - Notifikasi email ke admin saat pendaftaran baru dikirim (best effort).
+  **Nonaktif sementara** — lihat bagian 5.
 
 ### 4. Privasi NIP
 - Lookup NIP hanya menampilkan data dasar (nama, jabatan, bidang, status); tukin/gaji tidak ditampilkan.
 - Catatan privasi ditambahkan di beranda.
 
-### 5. Email (Resend)
-- Integrasi Resend via `fetch` (tanpa dependency baru). Jika `RESEND_API_KEY` kosong, sistem tetap jalan dan hanya mencatat peringatan.
-- Variabel env baru: `RESEND_API_KEY`, `RESEND_FROM` (lihat `.env.example`).
+### 5. Email (Resend) — **NONAKTIF sementara**
+- Status sekarang: **notifikasi email dimatikan**. Tanpa `EMAIL_NOTIFIKASI=aktif`, fungsi `kirimEmail()`
+  langsung kembali tanpa menghubungi Resend, jadi tidak ada email ke admin maupun ke pegawai.
+- Kredensial akun pegawai (dibuat saat pendaftaran disetujui) disampaikan **manual** oleh admin:
+  dialog konfirmasi di tab Pendaftar menampilkan email + password sementara untuk disalin.
+- Untuk mengaktifkan kembali: isi `EMAIL_NOTIFIKASI=aktif`, `RESEND_API_KEY`, dan `RESEND_FROM`
+  dengan domain pengirim yang **sudah terverifikasi di Resend** (lihat `.env.example`).
+- Integrasi Resend memakai `fetch` (tanpa dependency baru). Domain `*.vercel.app` **tidak bisa**
+  diverifikasi karena DNS-nya bukan milik Anda; `onboarding@resend.dev` hanya bisa mengirim ke
+  email pemilik akun Resend.
 
 ### Kekurangan / catatan
-- Email real memerlukan akun & API key Resend serta domain pengirim terverifikasi; default `onboarding@resend.dev` hanya untuk uji.
+- Email real memerlukan domain pengirim terverifikasi; sementara itu notifikasi email dimatikan
+  dan kredensial pegawai diberikan langsung oleh admin.
 - Akun pegawai dibuat dengan password sementara dan status kepegawaian default `PPPK`; admin dapat menyesuaikan data pegawai setelahnya.
 - Belum ada reset password mandiri / session expiry handling; pengguna mengandalkan email kredensial dari admin.
 - Status check publik hanya memerlukan NIP + email; cukup untuk kebutuhan internal, tetapi belum ada rate limit.

@@ -113,7 +113,19 @@ async function db(jalur, opsi = {}) {
 }
 
 // --- email -----------------------------------------------------------------
+// Notifikasi email SENGAJA DINONAKTIFKAN secara default (permintaan sementara).
+// Aktifkan lagi kapan saja dengan mengisi EMAIL_NOTIFIKASI=aktif di env
+// (bersamaan dengan RESEND_API_KEY & RESEND_FROM); tanpa itu semua pemanggilan
+// kirimEmail() langsung dilewati tanpa kontak ke Resend.
+function emailAktif() {
+  const nilai = String(env.EMAIL_NOTIFIKASI ?? '').trim().toLowerCase();
+  return ['1', 'true', 'ya', 'aktif', 'on'].includes(nilai);
+}
+
 async function kirimEmail({ to, subject, text, html }) {
+  if (!emailAktif()) {
+    return { ok: false, dinonaktifkan: true, pesan: 'Notifikasi email sedang dinonaktifkan' };
+  }
   const kunci = env.RESEND_API_KEY || '';
   if (!kunci) {
     console.warn('[email] RESEND_API_KEY belum diisi; email tidak dikirim:', subject, '->', to);
@@ -966,6 +978,7 @@ export async function handler(req, res) {
         email: p.email,
         passwordSementara: password,
         emailTerkirim: emailHasil.ok,
+        emailDinonaktifkan: !!emailHasil.dinonaktifkan,
         catatanEmail: emailHasil.ok ? '' : emailHasil.pesan,
       });
     }
