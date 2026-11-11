@@ -2,6 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "node scripts/siapkan-mesin.mjs",
   "outputDirectory": "public",
+  "crons": [
+    { "path": "/api/awas", "schedule": "17 1 * * *" }
+  ],
   "headers": [
     {
       "source": "/lib/xlsx.full.min.js",
