@@ -118,6 +118,22 @@
       <div><button id="btnBaruPegawai">Kosongkan form</button></div>
     </div>
     <p class="catatan" id="catatanPegawai"></p>
+
+    <div class="baris" style="align-items:flex-end;margin-bottom:6px">
+      <div>
+        <label for="cariPegawai">Cari pegawai</label>
+        <input id="cariPegawai" type="search" autocomplete="off" placeholder="ketik nama atau NIP">
+      </div>
+      <div style="flex:0 0 220px">
+        <label for="filterBidangPegawai">Bidang</label>
+        <select id="filterBidangPegawai"><option value="">Semua bidang</option></select>
+      </div>
+      <div style="flex:0 0 auto">
+        <button class="kecil" type="button" id="btnResetCariPegawai">Reset</button>
+        <div class="catatan" id="jumlahPegawai" style="margin-top:6px"></div>
+      </div>
+    </div>
+
     <div id="tabelPegawai"><p class="catatan">Memuat…</p></div>
   </section>
 
@@ -825,20 +841,53 @@
     document.getElementById('pNama').focus();
   }
 
-  function muatPegawai() {
-    isiBidang();
-    adminApi('/api/pegawai/daftar').then(function (h) {
-      if (!h.ok) {
-        document.getElementById('tabelPegawai').innerHTML =
-          '<p class="catatan">Gagal memuat: ' + esc(h.j.pesan || ('HTTP ' + h.status)) + '</p>';
+  var pegawaiSemua = [];   // seluruh pegawai dari server
+  var pegawaiTampil = [];  // hasil saringan kotak cari + bidang
+
+  // Isi dropdown bidang dari data pegawai (bukan daftar bidang master),
+  // supaya pilihan yang muncul hanya bidang yang benar-benar dipakai.
+  function isiFilterBidangPegawai() {
+    var sel = document.getElementById('filterBidangPegawai');
+    var lama = sel.value;
+    var set = new Set();
+    pegawaiSemua.forEach(function (p) {
+      if (p.bidang && p.bidang.nama) set.add(p.bidang.nama);
+    });
+    var nama = Array.from(set).sort();
+    sel.innerHTML = '<option value="">Semua bidang</option>' + nama.map(function (b) {
+      return '<option value="' + esc(b) + '">' + esc(b) + '</option>';
+    }).join('');
+    sel.value = set.has(lama) ? lama : '';
+  }
+
+  function saringPegawai() {
+    var cari = nilai('cariPegawai').toLowerCase();
+    var bidang = document.getElementById('filterBidangPegawai').value;
+    return pegawaiSemua.filter(function (p) {
+      if (bidang && ((p.bidang && p.bidang.nama) || '') !== bidang) return false;
+      if (!cari) return true;
+      return (String(p.nama || '') + ' ' + String(p.nip || '')).toLowerCase().indexOf(cari) > -1;
+    });
+  }
+
+  function renderPegawai() {
+      var tabelPegawai = document.getElementById('tabelPegawai');
+      var jumlah = document.getElementById('jumlahPegawai');
+      pegawaiTampil = saringPegawai();
+
+      if (!pegawaiSemua.length) {
+        jumlah.textContent = '';
+        tabelPegawai.innerHTML = '<p class="catatan">Belum ada pegawai.</p>';
         return;
       }
-      var d = h.j.pegawai || [];
-      if (!d.length) {
-        document.getElementById('tabelPegawai').innerHTML = '<p class="catatan">Belum ada pegawai.</p>';
+      jumlah.textContent = pegawaiTampil.length + ' dari ' + pegawaiSemua.length + ' pegawai';
+      if (!pegawaiTampil.length) {
+        tabelPegawai.innerHTML = '<p class="catatan">Tidak ada pegawai yang cocok dengan pencarian.</p>';
         return;
       }
-      document.getElementById('tabelPegawai').innerHTML =
+
+      var d = pegawaiTampil;
+      tabelPegawai.innerHTML =
         '<table><thead><tr><th>Pegawai</th><th>Jabatan / Bidang</th><th>Gol</th>' +
         '<th class="num">Tukin</th><th class="num">Uang makan</th><th></th></tr></thead><tbody>' +
         d.map(function (p, i) {
@@ -854,7 +903,7 @@
             '<button class="kecil" data-hapus="' + i + '">Hapus</button></td></tr>';
         }).join('') + '</tbody></table>';
 
-      var tabel = document.getElementById('tabelPegawai');
+      var tabel = tabelPegawai;
       tabel.querySelectorAll('button[data-ubah]').forEach(function (b) {
         b.addEventListener('click', function () { isiForm(d[Number(b.dataset.ubah)]); });
       });
@@ -893,10 +942,33 @@
           });
         });
       });
+  }
+
+  function muatPegawai() {
+    isiBidang();
+    adminApi('/api/pegawai/daftar').then(function (h) {
+      if (!h.ok) {
+        document.getElementById('jumlahPegawai').textContent = '';
+        document.getElementById('tabelPegawai').innerHTML =
+          '<p class="catatan">Gagal memuat: ' + esc(h.j.pesan || ('HTTP ' + h.status)) + '</p>';
+        return;
+      }
+      pegawaiSemua = h.j.pegawai || [];
+      isiFilterBidangPegawai();
+      renderPegawai();
     }).catch(function (e) {
+      document.getElementById('jumlahPegawai').textContent = '';
       document.getElementById('tabelPegawai').innerHTML = '<p class="catatan">Gagal memuat: ' + esc(e.message) + '</p>';
     });
   }
+
+  document.getElementById('cariPegawai').addEventListener('input', renderPegawai);
+  document.getElementById('filterBidangPegawai').addEventListener('change', renderPegawai);
+  document.getElementById('btnResetCariPegawai').addEventListener('click', function () {
+    isiNilai('cariPegawai', '');
+    document.getElementById('filterBidangPegawai').value = '';
+    renderPegawai();
+  });
 
   document.getElementById('btnBaruPegawai').addEventListener('click', kosongkanForm);
 
@@ -1193,6 +1265,56 @@
     document.getElementById('tahunRekap').value = kini.getFullYear();
   }
 
+  var HARI_PANJANG = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+  var BULAN_PANJANG = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+    'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  function labelTanggalPanjang(iso) {
+    var c = String(iso || '').split('-');
+    if (c.length !== 3) return String(iso || '');
+    var t = new Date(Number(c[0]), Number(c[1]) - 1, Number(c[2]));
+    return HARI_PANJANG[t.getDay()] + ', ' + Number(c[2]) + ' ' +
+      (BULAN_PANJANG[Number(c[1]) - 1] || '') + ' ' + c[0];
+  }
+
+  // Sebab potongan satu baris presensi — nilai ini disimpan mesin hitung
+  // saat pengajuan dibuat, jadi angkanya sama dengan yang masuk ke rekap.
+  function sebabPotongan(r) {
+    var sebab = [];
+    var telat = Number(r.menit_telat) || 0;
+    var pulangAwal = Number(r.menit_pulang_awal) || 0;
+    if (telat > 0) sebab.push('Terlambat absensi masuk ' + telat + ' menit');
+    if (pulangAwal > 0) sebab.push('Absensi pulang lebih awal ' + pulangAwal + ' menit');
+    if (r.jenis === 'tidak_presensi') {
+      sebab.push(r.sisi === 'masuk' ? 'Tidak absensi masuk'
+        : r.sisi === 'pulang' ? 'Tidak absensi pulang' : 'Tidak absensi');
+    }
+    if (r.jenis === 'tk') sebab.push('Tanpa keterangan');
+    if (r.libur_sub) sebab.push(String(r.libur_sub));
+    return sebab;
+  }
+
+  function htmlRincianPotongan(dx) {
+    var baris = (dx.presensi || []).slice().sort(function (a, b) {
+      return String(a.tanggal).localeCompare(String(b.tanggal));
+    }).map(function (r) {
+      var sebab = sebabPotongan(r);
+      if (!sebab.length) return '';
+      var pct = Number(r.potongan_persen) || 0;
+      var jam = r.jam_masuk ? 'Masuk ' + String(r.jam_masuk).slice(0, 5) +
+        (r.jam_pulang ? ' · Pulang ' + String(r.jam_pulang).slice(0, 5) : '') : '';
+      return '<li><b>' + esc(labelTanggalPanjang(r.tanggal)) + '</b> — ' + esc(sebab.join('; ')) +
+        (pct ? ' <span class="status ditolak">' + String(pct).replace('.', ',') + '%</span>' : '') +
+        (jam ? '<br><span class="catatan">' + esc(jam) + '</span>' : '') + '</li>';
+    }).filter(function (x) { return x; });
+
+    var kepala = '<div class="catatan" style="margin:0 0 4px"><b>Rincian sebab potongan</b></div>';
+    if (!baris.length) {
+      return kepala + '<p class="catatan" style="margin:0">Tidak ada potongan pada periode ini.</p>';
+    }
+    return kepala + '<ol class="daftar-potongan">' + baris.join('') + '</ol>';
+  }
+
   function muatRekap() {
     var bulan = Number(document.getElementById('bulanRekap').value);
     var tahun = Number(document.getElementById('tahunRekap').value);
@@ -1249,7 +1371,7 @@
           };
         }).filter(function (r) { return r.tanggal; });
         var h = (typeof TukinTool !== 'undefined') ? TukinTool.prosesSatuOrang(offlinePegawai, rows, manual) : null;
-        return { pengajuan: x, pegawai: offlinePegawai, hasil: h, status: x.status };
+        return { pengajuan: x, pegawai: offlinePegawai, hasil: h, status: x.status, presensi: x.presensi || [] };
       });
       dataRekap = { tahun: tahun, bulan: bulan, data: d, hasil: hasilOrang };
 
@@ -1301,15 +1423,29 @@
         '<table><thead><tr><th>Pegawai</th><th>Bidang</th><th>Status</th>' +
         '<th class="num">Hadir</th><th class="num">Tukin bersih</th>' +
         '<th class="num">Uang makan</th></tr></thead><tbody>' +
-        (dataRekap.hasil || []).map(function (dx) {
+        (dataRekap.hasil || []).map(function (dx, i) {
           var h = dx.hasil || {};
           var um = h.uangMakan || {};
-          return '<tr><td>' + esc(dx.pegawai.nama) + '<br><span class="catatan">' + esc(dx.pegawai.nip) + '</span></td>' +
+          return '<tr><td><button type="button" class="kecil panah-potongan" data-potongan="' + i +
+              '" aria-expanded="false" title="Lihat rincian sebab potongan">▸</button> ' +
+              esc(dx.pegawai.nama) + '<br><span class="catatan">' + esc(dx.pegawai.nip) + '</span></td>' +
             '<td>' + esc(dx.pegawai.bidang) + '</td><td>' + esc(dx.status.replace(/_/g, ' ')) + '</td>' +
             '<td class="num">' + (h.hariMasuk != null ? h.hariMasuk : '—') + '</td>' +
             '<td class="num">' + rupiah(h.tukinBersih) + '</td>' +
-            '<td class="num">' + rupiah(um.bersih) + '</td></tr>';
+            '<td class="num">' + rupiah(um.bersih) + '</td></tr>' +
+            '<tr class="baris-potongan" id="potonganRekap-' + i + '" style="display:none">' +
+            '<td colspan="6">' + htmlRincianPotongan(dx) + '</td></tr>';
         }).join('') + '</tbody></table>';
+
+      document.getElementById('tabelRekap').querySelectorAll('button[data-potongan]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var barisDetail = document.getElementById('potonganRekap-' + b.dataset.potongan);
+          var buka = barisDetail.style.display === 'none';
+          barisDetail.style.display = buka ? '' : 'none';
+          b.textContent = buka ? '▾' : '▸';
+          b.setAttribute('aria-expanded', buka ? 'true' : 'false');
+        });
+      });
     })
     .catch(function (e) {
       catatRekap('Gagal memuat: ' + esc(e.message), '#b42318');
