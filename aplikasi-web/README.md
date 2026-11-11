@@ -1,7 +1,8 @@
 # Aplikasi Web — Sistem Informasi Tukin & Uang Makan
 
-Status: **TAHAP 1 selesai (audit + rancangan)**. Belum ada kode produksi.
-Sesuai catatan di `../website.md`, tahap berikutnya dikerjakan **setelah disetujui**.
+Status: **berjalan di produksi** — https://tool-tukin.vercel.app (Vercel + Supabase).
+Dokumen audit/rancangan di `docs/` tetap dipakai sebagai acuan; ringkasan perubahan terbaru
+ada di bagian **Perubahan 11 November 2026** di bawah.
 
 Keputusan 10 November 2026: **berkas disimpan di Google Drive** (Supabase hanya Auth + database),
 dan **potongan HUKDIS/TB diaktifkan sejak awal** (diisi admin saat verifikasi).
@@ -201,6 +202,56 @@ lewat `satuRekap()` yang menerima keduanya.
 **Sudah (perbaikan lanjutan):** pembuatan akun otomatis saat pendaftaran disetujui,
 cek status pendaftaran tanpa login, unduh bukti, dan catatan privasi NIP.
 (Notifikasi email via Resend dinonaktifkan sementara — kredensial akun diberikan manual oleh admin.)
+
+## Perubahan 11 November 2026 (tampilan, ekspor, ukuran situs)
+
+Semua di bawah ini sudah tayang di https://tool-tukin.vercel.app.
+
+### Notifikasi email dinonaktifkan sementara
+- `kirimEmail()` hanya menghubungi Resend bila `EMAIL_NOTIFIKASI=aktif`. Tanpa itu tidak ada
+  email ke admin maupun ke pegawai, dan tidak ada panggilan keluar ke Resend.
+- Kredensial akun diberikan manual: dialog **Setujui** di tab *Pendaftar* menampilkan email +
+  password sementara dengan tombol **Salin** per nilai dan **Salin Semua** (siap ditempel ke WhatsApp).
+- `daftar.html` menjelaskan bahwa email & password diberikan admin setelah disetujui, bukan
+  dikirim otomatis lewat email.
+- Kode email tetap utuh; aktifkan lagi dengan `EMAIL_NOTIFIKASI=aktif` + domain pengirim yang
+  sudah terverifikasi di Resend (`RESEND_FROM`).
+
+### Tampilan admin di layar HP
+- Kelas `.tabel-kartu` (di `gaya.css`): tabel **Pendaftar**, **Data Pegawai**, **Ekspor Rekap**,
+  dan **Sudah Unggah** berubah menjadi kartu bertumpuk di lebar ≤640 px — header tabel
+  disembunyikan, tiap sel diberi label kolom, tombol aksi selebar kartu. Tidak ada lagi
+  guliran horizontal.
+- Baris *Rincian sebab potongan* tampil sebagai kartu bergaris putus-putus di bawah kartunya.
+
+### Tab Data Pegawai
+- Kotak **cari** (nama/NIP) + **dropdown bidang** di atas tabel, plus penghitung
+  "x dari y pegawai". Filter ikut dipertahankan setelah menyimpan/mengaktifkan pegawai.
+
+### Tab Ekspor Rekap
+- Panah **▸** di tiap nama membuka **rincian sebab potongan** per hari: terlambat absensi masuk
+  X menit, absensi pulang lebih awal X menit, tidak absensi masuk/pulang, tanpa keterangan,
+  dinas luar — lengkap dengan hari, tanggal, jam masuk/pulang, dan persen potongannya.
+- Kotak centang **Bidang** dan **Pegawai** (dengan pencarian) menentukan siapa yang masuk ke
+  berkas yang diunduh.
+- Tombol **⬇ 3 berkas** per bidang mengunduh kehadiran + tukin + uang makan bidang itu sekaligus,
+  tanpa mengubah centang yang sedang aktif.
+
+### Ukuran & kecepatan situs
+- Aset statis disajikan Vercel dengan kompresi **Brotli**.
+- `/lib/xlsx.full.min.js` diberi cache peramban `max-age=604800` (7 hari) lewat `vercel.json`.
+  Mesin hitung (`/lib/app.js`) sengaja **tidak** di-cache lama agar hasil hitung di browser
+  tidak tertinggal dari versi server.
+- `xlsx.full.min.js` (881 KB) **tidak lagi diunduh saat tab admin dibuka**. Pustaka dimuat
+  sekali saat ekspor pertama, lalu dipakai dari cache peramban. Halaman publik `index.html`
+  masih memuatnya lebih awal karena dipakai untuk membaca berkas presensi yang diunggah.
+
+### Kapasitas data (perkiraan)
+- Satu pengajuan = 1 baris `pengajuan_tukin` + ±22 baris `presensi` + 3 baris rekap.
+- 300 pegawai × 12 bulan ≈ 79.000 baris presensi per tahun — puluhan MB per tahun, jadi batas
+  database gratis Supabase (500 MB) masih longgar untuk beberapa tahun. Pantau di
+  Dashboard → **Usage**. Batas gratis lain: 5 GB egress/bulan, 50.000 MAU, 2 proyek aktif,
+  dan proyek **dijeda bila tidak ada aktivitas ±1 minggu**.
 
 ## Struktur kode (siap Vercel)
 

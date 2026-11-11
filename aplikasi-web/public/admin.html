@@ -262,7 +262,6 @@
   </section>
 </main>
 
-<script src="/lib/xlsx.full.min.js"></script>
 <script src="/lib/app.js"></script>
 <script src="/rekap.js"></script>
 <script>
@@ -1611,15 +1610,37 @@
     unduhRekap('semua', daftar);
   }
 
+  // Pustaka Excel (881 KB) baru diunduh saat pertama kali mengekspor, bukan
+  // setiap kali tab admin dibuka. Setelah itu dipakai cache peramban.
+  var janjiXlsx = null;
+  function muatXlsx() {
+    if (typeof XLSX !== 'undefined') return Promise.resolve();
+    if (!janjiXlsx) {
+      janjiXlsx = new Promise(function (selesai, gagal) {
+        var s = document.createElement('script');
+        s.src = '/lib/xlsx.full.min.js';
+        s.onload = function () { selesai(); };
+        s.onerror = function () { janjiXlsx = null; gagal(new Error('gagal memuat pustaka Excel')); };
+        document.head.appendChild(s);
+      });
+    }
+    return janjiXlsx;
+  }
+
   function unduhRekap(kunci, hasilKhusus) {
     if (!dataRekap || !dataRekap.data.length) {
       catatRekap('Muat data dulu sebelum mengekspor.', '#b42318');
       return;
     }
-    if (typeof XLSX === 'undefined') {
-      catatRekap('Pustaka Excel belum termuat. Muat ulang halaman lalu coba lagi.', '#b42318');
-      return;
-    }
+    if (typeof XLSX === 'undefined') catatRekap('Memuat pustaka Excel (sekali saja)…');
+    muatXlsx().then(function () {
+      unduhRekapSiap(kunci, hasilKhusus);
+    }).catch(function () {
+      catatRekap('Pustaka Excel gagal dimuat. Periksa koneksi lalu coba lagi.', '#b42318');
+    });
+  }
+
+  function unduhRekapSiap(kunci, hasilKhusus) {
 
     if (typeof TukinTool === 'undefined' || !TukinTool.susunWorkbookBidang) {
       catatRekap('Mesin hitung belum termuat. Muat ulang halaman.', '#b42318');
