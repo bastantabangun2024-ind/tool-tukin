@@ -1,0 +1,34 @@
+name: Jaga Supabase tetap aktif
+
+# Supabase Free menjeda proyek yang tidak menerima aktivitas database ±1 minggu.
+# Endpoint /api/awas melakukan satu query nyata ke database, jadi panggilan ini
+# dihitung sebagai aktivitas. 4x sehari sudah lebih dari cukup.
+
+on:
+  schedule:
+    # 01:17, 07:17, 13:17, 19:17 UTC = 08:17, 14:17, 20:17, 02:17 WIB
+    # Menit 17 dipakai agar tidak bertabrakan dengan lonjakan di menit 00.
+    - cron: '17 1,7,13,19 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: jaga-supabase
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Panggil endpoint keep-alive
+        run: |
+          set -euo pipefail
+          kode=$(curl -sS -m 30 -o /tmp/awas.json -w '%{http_code}' \
+            https://tool-tukin.vercel.app/api/awas)
+          echo "HTTP $kode"
+          cat /tmp/awas.json
+          echo
+          test "$kode" = "200"
+          grep -q '"ok":true' /tmp/awas.json

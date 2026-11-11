@@ -672,6 +672,20 @@ export async function handler(req, res) {
       return kirimJson(res, 200, { url: SUPABASE_URL, kunci: KUNCI_PUBLIK });
     }
 
+    // Keep-alive Supabase Free plan: satu query ringan tapi nyata ke database
+    // (bukan sekadar balas "ok"), dipanggil .github/workflows/jaga-supabase.yml
+    // 4x sehari agar proyek tidak dijeda karena tidak ada aktivitas.
+    if (jalur === '/api/awas') {
+      const mulai = Date.now();
+      const baris = await db('bidang?select=id&limit=1');
+      return kirimJson(res, 200, {
+        ok: true,
+        waktu: new Date().toISOString(),
+        bidang: Array.isArray(baris) ? baris.length : 0,
+        ms: Date.now() - mulai,
+      });
+    }
+
     if (jalur === '/api/pegawai' && req.method === 'GET') {
       const nip = (url.searchParams.get('nip') || '').replace(/\s/g, '');
       if (!/^\d{18}$/.test(nip)) return kirimJson(res, 400, { pesan: 'NIP harus 18 angka' });

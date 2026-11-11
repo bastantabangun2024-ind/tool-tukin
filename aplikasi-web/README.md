@@ -246,6 +246,18 @@ Semua di bawah ini sudah tayang di https://tool-tukin.vercel.app.
   sekali saat ekspor pertama, lalu dipakai dari cache peramban. Halaman publik `index.html`
   masih memuatnya lebih awal karena dipakai untuk membaca berkas presensi yang diunggah.
 
+### Keep-alive Supabase (GitHub Actions)
+- `GET /api/awas` menjalankan satu query ringan **sungguhan** (`select id from bidang limit 1`)
+  lalu membalas `{"ok":true,"waktu":...}`. Endpoint ini publik dan tidak membuka data apa pun.
+- `.github/workflows/jaga-supabase.yml` memanggilnya **4x sehari** (01:17, 07:17, 13:17, 19:17 UTC
+  = 08:17, 14:17, 20:17, 02:17 WIB) agar proyek Supabase Free tidak dijeda karena sepi aktivitas
+  ±1 minggu. Workflow bisa juga dijalankan manual dari tab **Actions**.
+- Catatan: di repo **publik**, GitHub menonaktifkan workflow terjadwal setelah 60 hari tanpa
+  aktivitas repo — cukup commit/perubahan kecil untuk mengaktifkannya kembali. Di repo privat
+  aturan itu tidak berlaku (memakai kuota menit Actions, ±20 menit/bulan untuk job ini).
+- Tetap bukan jaminan resmi dari Supabase: email peringatan ±1 minggu sebelum jeda tetap
+  dikirim, dan paket Pro satu-satunya yang dijamin bebas jeda + backup harian.
+
 ### Kapasitas data (perkiraan)
 - Satu pengajuan = 1 baris `pengajuan_tukin` + ±22 baris `presensi` + 3 baris rekap.
 - 300 pegawai × 12 bulan ≈ 79.000 baris presensi per tahun — puluhan MB per tahun, jadi batas
