@@ -249,6 +249,8 @@ Semua di bawah ini sudah tayang di https://tool-tukin.vercel.app.
 ### Keep-alive Supabase (GitHub Actions)
 - `GET /api/awas` menjalankan satu query ringan **sungguhan** (`select id from bidang limit 1`)
   lalu membalas `{"ok":true,"waktu":...}`. Endpoint ini publik dan tidak membuka data apa pun.
+- Sebagai lapis kedua, `vercel.json` juga mendaftarkan **cron harian** `17 1 * * *` ke `/api/awas`
+  (paket Hobby hanya mengizinkan sekali sehari, eksekusi bisa bergeser ±1 jam).
 - `.github/workflows/jaga-supabase.yml` memanggilnya **4x sehari** (01:17, 07:17, 13:17, 19:17 UTC
   = 08:17, 14:17, 20:17, 02:17 WIB) agar proyek Supabase Free tidak dijeda karena sepi aktivitas
   ±1 minggu. Workflow bisa juga dijalankan manual dari tab **Actions**.
