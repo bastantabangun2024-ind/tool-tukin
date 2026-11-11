@@ -602,6 +602,122 @@
   });
 
   // --- 2. pendaftar ---------------------------------------------------------
+  // Salin ke clipboard dengan cadangan execCommand untuk peramban lama/HTTP.
+  function salinKeClipboard(teks) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(teks);
+    }
+    return new Promise(function (selesai, gagal) {
+      var ta = document.createElement('textarea');
+      ta.value = teks;
+      ta.style.cssText = 'position:fixed;top:-1000px;left:-1000px';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy') ? selesai() : gagal(new Error('ditolak peramban')); }
+      catch (e) { gagal(e); }
+      finally { ta.remove(); }
+    });
+  }
+
+  // Dialog kredensial setelah pendaftaran disetujui: tiap nilai punya tombol Salin,
+  // karena notifikasi email sedang dinonaktifkan dan harus disampaikan manual.
+  function tampilkanKredensial(info) {
+    var lama = document.getElementById('modalKredensial');
+    if (lama) lama.remove();
+
+    var latar = document.createElement('div');
+    latar.id = 'modalKredensial';
+    latar.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999';
+    latar.addEventListener('click', function (e) { if (e.target === latar) latar.remove(); });
+
+    var kotak = document.createElement('div');
+    kotak.style.cssText = 'background:#fff;border-radius:12px;padding:20px 22px;max-width:470px;width:100%;box-shadow:0 20px 50px rgba(15,23,42,.28)';
+
+    var judul = document.createElement('h2');
+    judul.textContent = 'Akun pegawai dibuat';
+    judul.style.cssText = 'margin:0 0 2px;font-size:17px';
+    kotak.appendChild(judul);
+
+    var nama = document.createElement('p');
+    nama.className = 'catatan';
+    nama.style.margin = '0 0 14px';
+    nama.textContent = info.nama || '';
+    kotak.appendChild(nama);
+
+    function barisKredensial(label, nilai) {
+      var wadah = document.createElement('div');
+      wadah.style.cssText = 'display:flex;gap:8px;align-items:flex-end;margin-bottom:10px';
+      var isi = document.createElement('div');
+      isi.style.cssText = 'flex:1;min-width:0';
+      var l = document.createElement('div');
+      l.style.cssText = 'font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:2px';
+      l.textContent = label;
+      var v = document.createElement('div');
+      v.style.cssText = 'font-family:ui-monospace,Consolas,monospace;font-size:14px;word-break:break-all;user-select:all;padding:6px 8px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px';
+      v.textContent = nilai;
+      isi.appendChild(l);
+      isi.appendChild(v);
+      var tombol = document.createElement('button');
+      tombol.type = 'button';
+      tombol.className = 'kecil';
+      tombol.textContent = 'Salin';
+      tombol.addEventListener('click', function () {
+        salinKeClipboard(nilai).then(function () {
+          tombol.textContent = '✓ Tersalin';
+          setTimeout(function () { tombol.textContent = 'Salin'; }, 1800);
+        }).catch(function () { alert('Gagal menyalin. Salin manual: ' + nilai); });
+      });
+      wadah.appendChild(isi);
+      wadah.appendChild(tombol);
+      return wadah;
+    }
+
+    kotak.appendChild(barisKredensial('Email login', info.email || ''));
+    kotak.appendChild(barisKredensial('Password sementara', info.password || ''));
+
+    var ket = document.createElement('p');
+    ket.className = 'catatan';
+    ket.style.margin = '4px 0 14px';
+    if (info.emailTerkirim) {
+      ket.textContent = 'Email kredensial juga sudah dikirim otomatis ke pegawai.';
+    } else if (info.emailDinonaktifkan) {
+      ket.textContent = 'Notifikasi email sedang dinonaktifkan — kirim email & password ini ke pegawai lewat WhatsApp/telepon. Minta pegawai segera mengganti password setelah masuk.';
+    } else {
+      ket.textContent = 'Email belum terkirim: ' + (info.catatanEmail || 'RESEND_API_KEY belum diisi') + '. Sampaikan kredensial ini secara manual.';
+    }
+    kotak.appendChild(ket);
+
+    var aksi = document.createElement('div');
+    aksi.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap';
+
+    var btnSemua = document.createElement('button');
+    btnSemua.type = 'button';
+    btnSemua.className = 'kecil';
+    btnSemua.textContent = '📋 Salin Semua';
+    btnSemua.addEventListener('click', function () {
+      var teks = 'Akun Tool Tukin' + (info.nama ? '\nNama: ' + info.nama : '') +
+        '\nEmail: ' + (info.email || '') +
+        '\nPassword sementara: ' + (info.password || '') +
+        '\n\nMasuk di ' + location.origin + '/masuk.html lalu segera ganti password Anda.';
+      salinKeClipboard(teks).then(function () {
+        btnSemua.textContent = '✓ Tersalin';
+        setTimeout(function () { btnSemua.textContent = '📋 Salin Semua'; }, 1800);
+      }).catch(function () { alert(teks); });
+    });
+
+    var btnTutup = document.createElement('button');
+    btnTutup.type = 'button';
+    btnTutup.className = 'utama';
+    btnTutup.textContent = 'Tutup';
+    btnTutup.addEventListener('click', function () { latar.remove(); });
+
+    aksi.appendChild(btnSemua);
+    aksi.appendChild(btnTutup);
+    kotak.appendChild(aksi);
+    latar.appendChild(kotak);
+    document.body.appendChild(latar);
+  }
+
   function muatPendaftar() {
     api('pendaftaran?select=id,nama,nip,golongan,jabatan,email,created_at,bidang:bidang_id(nama)&status=eq.menunggu&order=created_at.desc')
       .then(function (r) { return r.json(); })
@@ -614,7 +730,7 @@
           return '<tr><td>' + esc(x.nama) + '<br><span class="catatan">' + esc(x.email) + '</span></td>' +
             '<td>' + esc(x.nip) + '</td><td>' + esc(x.golongan) + '</td>' +
             '<td>' + esc(x.jabatan) + '<br><span class="catatan">' + esc(x.bidang && x.bidang.nama) + '</span></td>' +
-            '<td><button class="kecil" data-terima="' + x.id + '">Setujui</button> ' +
+            '<td><button class="kecil" data-terima="' + x.id + '" data-nama="' + esc(x.nama) + '">Setujui</button> ' +
             '<button class="kecil" data-tolakd="' + x.id + '">Tolak</button></td></tr>';
         }).join('');
         document.getElementById('tabelPendaftar').innerHTML =
@@ -636,15 +752,14 @@
             }).then(function (h) {
               if (!h.ok) { alert('Gagal: ' + (h.j.pesan || ('HTTP ' + h.status))); b.disabled = false; return; }
               if (aksi === 'setujui' && h.j.passwordSementara) {
-                var pesanAkun = 'Akun dibuat.\nEmail: ' + h.j.email + '\nPassword sementara: ' + h.j.passwordSementara;
-                if (h.j.emailTerkirim) {
-                  pesanAkun += '\n\nEmail kredensial sudah dikirim ke pegawai.';
-                } else if (h.j.emailDinonaktifkan) {
-                  pesanAkun += '\n\nNotifikasi email sedang dinonaktifkan. Sampaikan email & password ini langsung ke pegawai.';
-                } else {
-                  pesanAkun += '\n\nEmail belum terkirim: ' + (h.j.catatanEmail || 'RESEND_API_KEY belum diisi');
-                }
-                alert(pesanAkun);
+                tampilkanKredensial({
+                  nama: b.dataset.nama || '',
+                  email: h.j.email || '',
+                  password: h.j.passwordSementara,
+                  emailTerkirim: !!h.j.emailTerkirim,
+                  emailDinonaktifkan: !!h.j.emailDinonaktifkan,
+                  catatanEmail: h.j.catatanEmail || ''
+                });
               }
               muatPendaftar();
             }).catch(function (e) { alert('Gagal: ' + e.message); b.disabled = false; });

@@ -18,7 +18,8 @@
 <main>
   <section class="kartu">
     <h1>Daftar Akun Pegawai</h1>
-    <p class="sub">Isi data sesuai SK. Admin akan memeriksa dan mengaktifkan akun, lalu memberikan email/password login.</p>
+    <p class="sub">Isi data sesuai SK. Admin akan memeriksa dan mengaktifkan akun. Setelah disetujui,
+      email &amp; password login diberikan langsung oleh admin (lewat WhatsApp/telepon atau disampaikan tatap muka).</p>
 
     <label for="dNama">Nama lengkap</label>
     <input id="dNama" autocomplete="name">
@@ -53,8 +54,10 @@
     <div class="pesan" id="pesanDaftar"></div>
 
     <p class="catatan" style="margin-top:14px">
-      Setelah dikirim, admin akan memverifikasi. Jika disetujui, akun &amp; password login
-      akan diberikan admin lewat email. Simpan bukti pengiriman ini.
+      Setelah dikirim, admin akan memverifikasi. Jika disetujui, akun aktif dan <b>email + password sementara
+      disampaikan manual oleh admin</b> — tidak dikirim otomatis lewat email, jadi pastikan nomor WhatsApp
+      Anda aktif. Anda juga bisa memantau status di kotak <b>Cek Status Pendaftaran</b> di bawah dengan NIP &amp; email
+      yang sama. Simpan bukti pengiriman ini.
     </p>
     <div style="margin-top:10px">
       <button class="kecil" id="unduhBuktiDaftar" type="button">Unduh bukti pendaftaran terakhir (.txt)</button>
@@ -63,7 +66,9 @@
 
   <section class="kartu">
     <h1>Cek Status Pendaftaran</h1>
-    <p class="sub">Masukkan NIP &amp; email yang dipakai saat mendaftar (tanpa login).</p>
+    <p class="sub">Masukkan NIP &amp; email yang dipakai saat mendaftar (tanpa login).
+      Bila status sudah <b>Disetujui</b>, hubungi admin untuk menerima email &amp; password login —
+      kredensial tidak dikirim otomatis ke email Anda.</p>
     <div class="baris">
       <div>
         <label for="cNip">NIP</label>
