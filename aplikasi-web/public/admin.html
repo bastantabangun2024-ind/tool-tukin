@@ -227,6 +227,31 @@
       <div><button id="btnMuatRekap">Muat data</button> <button id="btnResetRekap">Reset</button></div>
     </div>
     <p class="catatan" id="catatanRekap">Pilih periode lalu tekan Muat data.</p>
+
+    <div id="kotakEkspor" style="display:none;margin:16px 0">
+      <h2>Pilih yang akan diekspor</h2>
+      <p class="sub" style="margin-bottom:10px">Rekap dibuat <b>terpisah per bidang</b> — tiap bidang menghasilkan
+        berkas sendiri (nama berkas sudah memuat nama bidang). Centang bidang dan pegawai yang ingin diunduh.</p>
+      <div class="baris">
+        <div>
+          <label>Bidang
+            <span class="catatan" style="font-weight:400;display:inline">(<a href="#" id="linkBidangSemua">semua</a>
+              &middot; <a href="#" id="linkBidangKosong">kosongkan</a>)</span>
+          </label>
+          <div class="cek-daftar" id="cekEksporBidang"></div>
+        </div>
+        <div>
+          <label for="cariPegawaiEkspor">Pegawai
+            <span class="catatan" style="font-weight:400;display:inline">(<a href="#" id="linkPegawaiSemua">semua</a>
+              &middot; <a href="#" id="linkPegawaiKosong">kosongkan</a>)</span>
+          </label>
+          <input id="cariPegawaiEkspor" type="search" autocomplete="off" placeholder="cari nama atau NIP">
+          <div class="cek-daftar" id="cekEksporPegawai"></div>
+          <div class="catatan" id="infoEkspor"></div>
+        </div>
+      </div>
+    </div>
+
     <div class="baris" id="tombolRekap" style="display:none">
       <div><button data-ekspor="kehadiran">Rekap Kehadiran (.xlsx)</button></div>
       <div><button data-ekspor="tukin">Rekap Tukin (.xlsx)</button></div>
@@ -1315,11 +1340,114 @@
     return kepala + '<ol class="daftar-potongan">' + baris.join('') + '</ol>';
   }
 
+  // --- pilihan ekspor: bidang & pegawai ------------------------------------
+  var bidangEkspor = new Set();   // nama bidang yang dicentang
+  var pegawaiEkspor = new Set();  // nip pegawai yang dicentang
+
+  function daftarBidangEkspor() {
+    var set = new Set();
+    ((dataRekap && dataRekap.hasil) || []).forEach(function (dx) {
+      if (dx.pegawai.bidang) set.add(dx.pegawai.bidang);
+    });
+    return Array.from(set).sort();
+  }
+
+  // Pegawai yang benar-benar diekspor: bidangnya dicentang DAN pegawainya dicentang.
+  function hasilEkspor() {
+    if (!dataRekap || !dataRekap.hasil) return [];
+    return dataRekap.hasil.filter(function (dx) {
+      return bidangEkspor.has(dx.pegawai.bidang || '') && pegawaiEkspor.has(dx.pegawai.nip);
+    });
+  }
+
+  function tulisInfoEkspor() {
+    var total = (dataRekap && dataRekap.hasil) ? dataRekap.hasil.length : 0;
+    document.getElementById('infoEkspor').textContent =
+      hasilEkspor().length + ' dari ' + total + ' pegawai akan diekspor.';
+  }
+
+  function renderCekBidangEkspor() {
+    document.getElementById('cekEksporBidang').innerHTML = daftarBidangEkspor().map(function (b) {
+      return '<label><input type="checkbox" data-bidang="' + esc(b) + '"' +
+        (bidangEkspor.has(b) ? ' checked' : '') + '> <span>' + esc(b) + '</span></label>';
+    }).join('') || '<span class="catatan">Belum ada data bidang.</span>';
+  }
+
+  function renderCekPegawaiEkspor() {
+    var cari = (document.getElementById('cariPegawaiEkspor').value || '').trim().toLowerCase();
+    var daftar = ((dataRekap && dataRekap.hasil) || []).filter(function (dx) {
+      if (!bidangEkspor.has(dx.pegawai.bidang || '')) return false;
+      if (!cari) return true;
+      return (String(dx.pegawai.nama) + ' ' + String(dx.pegawai.nip)).toLowerCase().indexOf(cari) > -1;
+    });
+    document.getElementById('cekEksporPegawai').innerHTML = daftar.map(function (dx) {
+      return '<label><input type="checkbox" data-nip="' + esc(dx.pegawai.nip) + '"' +
+        (pegawaiEkspor.has(dx.pegawai.nip) ? ' checked' : '') + '> <span>' + esc(dx.pegawai.nama) +
+        '<br><span class="catatan">' + esc(dx.pegawai.bidang) + '</span></span></label>';
+    }).join('') || '<span class="catatan">Tidak ada pegawai pada bidang yang dipilih.</span>';
+    tulisInfoEkspor();
+  }
+
+  function renderCekEkspor() {
+    renderCekBidangEkspor();
+    renderCekPegawaiEkspor();
+  }
+
+  function siapkanPilihanEkspor() {
+    bidangEkspor = new Set(daftarBidangEkspor());
+    pegawaiEkspor = new Set(((dataRekap && dataRekap.hasil) || []).map(function (dx) { return dx.pegawai.nip; }));
+    renderCekEkspor();
+    document.getElementById('kotakEkspor').style.display = '';
+  }
+
+  document.getElementById('cekEksporBidang').addEventListener('change', function (e) {
+    var b = e.target;
+    if (!b.dataset.bidang) return;
+    if (b.checked) bidangEkspor.add(b.dataset.bidang); else bidangEkspor.delete(b.dataset.bidang);
+    renderCekPegawaiEkspor();
+  });
+
+  document.getElementById('cekEksporPegawai').addEventListener('change', function (e) {
+    var b = e.target;
+    if (!b.dataset.nip) return;
+    if (b.checked) pegawaiEkspor.add(b.dataset.nip); else pegawaiEkspor.delete(b.dataset.nip);
+    tulisInfoEkspor();
+  });
+
+  document.getElementById('cariPegawaiEkspor').addEventListener('input', renderCekPegawaiEkspor);
+
+  document.getElementById('linkBidangSemua').addEventListener('click', function (e) {
+    e.preventDefault();
+    bidangEkspor = new Set(daftarBidangEkspor());
+    renderCekEkspor();
+  });
+
+  document.getElementById('linkBidangKosong').addEventListener('click', function (e) {
+    e.preventDefault();
+    bidangEkspor = new Set();
+    renderCekEkspor();
+  });
+
+  document.getElementById('linkPegawaiSemua').addEventListener('click', function (e) {
+    e.preventDefault();
+    pegawaiEkspor = new Set(((dataRekap && dataRekap.hasil) || []).filter(function (dx) {
+      return bidangEkspor.has(dx.pegawai.bidang || '');
+    }).map(function (dx) { return dx.pegawai.nip; }));
+    renderCekPegawaiEkspor();
+  });
+
+  document.getElementById('linkPegawaiKosong').addEventListener('click', function (e) {
+    e.preventDefault();
+    pegawaiEkspor = new Set();
+    renderCekPegawaiEkspor();
+  });
+
   function muatRekap() {
     var bulan = Number(document.getElementById('bulanRekap').value);
     var tahun = Number(document.getElementById('tahunRekap').value);
     dataRekap = null;
     document.getElementById('tombolRekap').style.display = 'none';
+    document.getElementById('kotakEkspor').style.display = 'none';
     document.getElementById('tabelRekap').innerHTML = '';
     catatRekap('Memuat data ' + Rekap.labelBulan(bulan) + ' ' + tahun + '…');
 
@@ -1397,6 +1525,7 @@
         ' — total tukin bersih ' + rupiah(ring.totalTukin) +
         ', uang makan bersih ' + rupiah(ring.totalUangMakan) + '.', '#0b6b3a');
       document.getElementById('tombolRekap').style.display = '';
+      siapkanPilihanEkspor();
 
       var infoStatus = '';
       if (belum.length > 0) {
@@ -1468,8 +1597,14 @@
       return;
     }
 
+    var dipilih = hasilEkspor();
+    if (!dipilih.length) {
+      catatRekap('Pilih minimal satu bidang dan satu pegawai yang akan diekspor.', '#b42318');
+      return;
+    }
+
     var groups = {};
-    (dataRekap.hasil || []).forEach(function (dx) {
+    dipilih.forEach(function (dx) {
       var key = dx.pegawai.bidang + '|' + TukinTool.statusPegawai(dx.pegawai);
       (groups[key] = groups[key] || []).push(dx.hasil);
     });
@@ -1513,6 +1648,7 @@
   document.getElementById('btnResetRekap').addEventListener('click', function () {
     dataRekap = null;
     document.getElementById('tombolRekap').style.display = 'none';
+    document.getElementById('kotakEkspor').style.display = 'none';
     document.getElementById('tabelRekap').innerHTML = '';
     catatRekap('Tampilan direset. Tekan Muat data untuk memuat ulang.', '#475569');
   });
