@@ -71,20 +71,24 @@ textarea { width:100%; resize:vertical; font-family:Consolas, monospace; font-si
 .daftar-potongan { margin:4px 0 0; padding-left:20px; font-size:12.5px; line-height:1.6; }
 .daftar-potongan li { margin-bottom:6px; }
 
-/* --- Tabel pendaftar: di layar HP jadi kartu bertumpuk ------------------- */
-.tabel-pendaftar td.aksi { white-space:nowrap; }
+/* --- Tabel lebar (pendaftar, pegawai, rekap): di HP jadi kartu bertumpuk - */
+.tabel-kartu td.aksi { white-space:nowrap; }
 @media (max-width:640px) {
-  .tabel-pendaftar table, .tabel-pendaftar thead, .tabel-pendaftar tbody,
-  .tabel-pendaftar tr, .tabel-pendaftar td { display:block; width:100%; }
-  .tabel-pendaftar thead { display:none; }
-  .tabel-pendaftar tr { border:1px solid var(--garis); border-radius:10px;
-                        padding:12px 14px; margin-bottom:10px; background:#fff; }
-  .tabel-pendaftar td { border:0; padding:3px 0; white-space:normal; }
-  .tabel-pendaftar td[data-label]::before { content:attr(data-label); display:block;
-                        font-size:11px; font-weight:600; text-transform:uppercase;
-                        letter-spacing:.03em; color:var(--abu); }
-  .tabel-pendaftar td.aksi { display:flex; gap:8px; padding-top:10px; }
-  .tabel-pendaftar td.aksi button { flex:1 1 0; padding:9px 10px; font-weight:600; }
+  .tabel-kartu table, .tabel-kartu thead, .tabel-kartu tbody,
+  .tabel-kartu tr, .tabel-kartu td { display:block; width:100%; }
+  .tabel-kartu thead { display:none; }
+  .tabel-kartu tr { border:1px solid var(--garis); border-radius:10px;
+                    padding:12px 14px; margin-bottom:10px; background:#fff; }
+  .tabel-kartu td { border:0; padding:3px 0; white-space:normal; }
+  .tabel-kartu td.num { text-align:left; }
+  .tabel-kartu td[data-label]::before { content:attr(data-label); display:block;
+                    font-size:11px; font-weight:600; text-transform:uppercase;
+                    letter-spacing:.03em; color:var(--abu); }
+  .tabel-kartu td.aksi { display:flex; gap:8px; padding-top:10px; flex-wrap:wrap; }
+  .tabel-kartu td.aksi button { flex:1 1 0; padding:9px 10px; font-weight:600; }
+  .tabel-kartu tr.baris-potongan { background:#f8fafc; border-style:dashed; }
+  .tabel-kartu tr.baris-potongan td { padding:2px 0; }
+  .tabel-kartu .panah-potongan { margin-bottom:6px; }
 }
 
 /* --- Dialog kredensial (tab Pendaftar) ---------------------------------- */

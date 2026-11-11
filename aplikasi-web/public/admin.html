@@ -81,7 +81,7 @@
   <section class="kartu tersembunyi" id="tab-pendaftar">
     <h1>Pendaftar Baru</h1>
     <p class="sub">Pendaftaran yang menunggu keputusan admin.</p>
-    <div id="tabelPendaftar" class="tabel-pendaftar"><p class="catatan">Memuat…</p></div>
+    <div id="tabelPendaftar" class="tabel-kartu"><p class="catatan">Memuat…</p></div>
   </section>
 
   <section class="kartu tersembunyi" id="tab-pegawai">
@@ -134,7 +134,7 @@
       </div>
     </div>
 
-    <div id="tabelPegawai"><p class="catatan">Memuat…</p></div>
+    <div id="tabelPegawai" class="tabel-kartu"><p class="catatan">Memuat…</p></div>
   </section>
 
   <section class="kartu tersembunyi" id="tab-drive">
@@ -233,7 +233,7 @@
       <div><button data-ekspor="uangMakan">Rekap Uang Makan (.xlsx)</button></div>
       <div><button data-ekspor="semua">Ketiga berkas</button></div>
     </div>
-    <div id="tabelRekap"></div>
+    <div id="tabelRekap" class="tabel-kartu"></div>
   </section>
 </main>
 
@@ -894,11 +894,11 @@
           return '<tr' + (p.aktif ? '' : ' style="opacity:.55"') + '><td>' + esc(p.nama) +
             (p.aktif ? '' : ' <span class="catatan">(nonaktif)</span>') +
             '<br><span class="catatan">' + esc(p.nip) + ' · ' + esc(p.status_kepegawaian) + '</span></td>' +
-            '<td>' + esc(p.jabatan) + '<br><span class="catatan">' + esc(p.bidang && p.bidang.nama) + '</span></td>' +
-            '<td>' + esc(p.golongan || '') + (p.ruang ? '/' + esc(p.ruang) : '') + '</td>' +
-            '<td class="num">' + rupiah(p.tukin) + '</td>' +
-            '<td class="num">' + rupiah(p.tarif_uang_makan) + '</td>' +
-            '<td><button class="kecil" data-ubah="' + i + '">Ubah</button> ' +
+            '<td data-label="Jabatan / Bidang">' + esc(p.jabatan) + '<br><span class="catatan">' + esc(p.bidang && p.bidang.nama) + '</span></td>' +
+            '<td data-label="Gol">' + esc(p.golongan || '') + (p.ruang ? '/' + esc(p.ruang) : '') + '</td>' +
+            '<td class="num" data-label="Tukin">' + rupiah(p.tukin) + '</td>' +
+            '<td class="num" data-label="Uang makan">' + rupiah(p.tarif_uang_makan) + '</td>' +
+            '<td class="aksi"><button class="kecil" data-ubah="' + i + '">Ubah</button> ' +
             '<button class="kecil" data-aktif="' + i + '">' + (p.aktif ? 'Nonaktifkan' : 'Aktifkan') + '</button> ' +
             '<button class="kecil" data-hapus="' + i + '">Hapus</button></td></tr>';
         }).join('') + '</tbody></table>';
@@ -1429,10 +1429,11 @@
           return '<tr><td><button type="button" class="kecil panah-potongan" data-potongan="' + i +
               '" aria-expanded="false" title="Lihat rincian sebab potongan">▸</button> ' +
               esc(dx.pegawai.nama) + '<br><span class="catatan">' + esc(dx.pegawai.nip) + '</span></td>' +
-            '<td>' + esc(dx.pegawai.bidang) + '</td><td>' + esc(dx.status.replace(/_/g, ' ')) + '</td>' +
-            '<td class="num">' + (h.hariMasuk != null ? h.hariMasuk : '—') + '</td>' +
-            '<td class="num">' + rupiah(h.tukinBersih) + '</td>' +
-            '<td class="num">' + rupiah(um.bersih) + '</td></tr>' +
+            '<td data-label="Bidang">' + esc(dx.pegawai.bidang) + '</td>' +
+            '<td data-label="Status">' + esc(dx.status.replace(/_/g, ' ')) + '</td>' +
+            '<td class="num" data-label="Hadir">' + (h.hariMasuk != null ? h.hariMasuk : '—') + '</td>' +
+            '<td class="num" data-label="Tukin bersih">' + rupiah(h.tukinBersih) + '</td>' +
+            '<td class="num" data-label="Uang makan">' + rupiah(um.bersih) + '</td></tr>' +
             '<tr class="baris-potongan" id="potonganRekap-' + i + '" style="display:none">' +
             '<td colspan="6">' + htmlRincianPotongan(dx) + '</td></tr>';
         }).join('') + '</tbody></table>';
