@@ -78,6 +78,9 @@ textarea { width:100%; resize:vertical; font-family:Consolas, monospace; font-si
                     font-size:13px; font-weight:400; line-height:1.45; }
 .cek-daftar input[type="checkbox"] { width:auto; flex:0 0 auto; margin:2px 0 0; }
 .cek-daftar .catatan { margin:0; }
+.cek-baris { display:flex; gap:8px; align-items:center; justify-content:space-between; }
+.cek-baris label { margin:4px 0; }
+.unduh-cepat { padding:3px 8px; font-size:11.5px; white-space:nowrap; flex:0 0 auto; }
 
 /* --- Tabel lebar (pendaftar, pegawai, rekap): di HP jadi kartu bertumpuk - */
 .tabel-kartu td.aksi { white-space:nowrap; }
@@ -89,6 +92,7 @@ textarea { width:100%; resize:vertical; font-family:Consolas, monospace; font-si
                     padding:12px 14px; margin-bottom:10px; background:#fff; }
   .tabel-kartu td { border:0; padding:3px 0; white-space:normal; }
   .tabel-kartu td.num { text-align:left; }
+  .tabel-kartu td.nomor { display:none; }
   .tabel-kartu td[data-label]::before { content:attr(data-label); display:block;
                     font-size:11px; font-weight:600; text-transform:uppercase;
                     letter-spacing:.03em; color:var(--abu); }

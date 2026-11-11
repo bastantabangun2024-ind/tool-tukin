@@ -75,7 +75,7 @@
       </div>
     </div>
 
-    <div id="tabelUnggah"><p class="catatan">Memuat…</p></div>
+    <div id="tabelUnggah" class="tabel-kartu"><p class="catatan">Memuat…</p></div>
   </section>
 
   <section class="kartu tersembunyi" id="tab-pendaftar">
@@ -493,11 +493,11 @@
       var bidangNama = (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
       return '<tr><td><b>' + esc(x.pegawai && x.pegawai.nama) + '</b><br><span class="catatan">' +
         esc(x.pegawai && x.pegawai.nip) + (bidangNama ? ' • ' + esc(bidangNama) : '') + '</span></td>' +
-        '<td>' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
-        '<td><span class="status ' + x.status + '">' + esc(x.status.replace(/_/g, ' ')) + '</span></td>' +
-        '<td class="num">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
-        '<td class="num">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
-        '<td>' + aksi + '</td></tr>';
+        '<td data-label="Periode">' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
+        '<td data-label="Status"><span class="status ' + x.status + '">' + esc(x.status.replace(/_/g, ' ')) + '</span></td>' +
+        '<td class="num" data-label="Tukin bersih">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
+        '<td class="num" data-label="Potongan">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
+        '<td class="aksi">' + aksi + '</td></tr>';
     }
 
     var html = '';
@@ -516,11 +516,11 @@
         var bidangNama = (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
         return '<tr><td><b>' + esc(x.pegawai && x.pegawai.nama) + '</b><br><span class="catatan">' +
           esc(x.pegawai && x.pegawai.nip) + (bidangNama ? ' • ' + esc(bidangNama) : '') + '</span></td>' +
-          '<td>' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
-          '<td><span class="status ditolak">ditolak</span></td>' +
-          '<td class="num">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
-          '<td class="num">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
-          '<td><button class="kecil" data-reset="' + x.id + '">Reset</button></td></tr>';
+          '<td data-label="Periode">' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
+          '<td data-label="Status"><span class="status ditolak">ditolak</span></td>' +
+          '<td class="num" data-label="Tukin bersih">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
+          '<td class="num" data-label="Potongan">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
+          '<td class="aksi"><button class="kecil" data-reset="' + x.id + '">Reset</button></td></tr>';
       }).join('');
       html += '<div style="margin-top:14px;padding:10px 12px;border:1px dashed var(--merah);border-radius:8px;background:#fef3f2">' +
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
@@ -583,12 +583,12 @@
     }
     var baris = d.map(function (p, idx) {
       var bidangNama = (p.bidang && p.bidang.nama) || '—';
-      return '<tr><td style="color:var(--abu)">' + (idx + 1) + '</td>' +
+      return '<tr><td class="nomor" style="color:var(--abu)">' + (idx + 1) + '</td>' +
         '<td><b>' + esc(p.nama) + '</b><br><span class="catatan">NIP: ' + esc(p.nip) + '</span></td>' +
-        '<td><span class="status">' + esc(p.status_kepegawaian || '—') + '</span></td>' +
-        '<td>' + esc(bidangNama) + '</td>' +
-        '<td>' + esc(p.jabatan || '—') + '</td>' +
-        '<td><span class="status ditolak">Belum Ada Presensi</span></td></tr>';
+        '<td data-label="Status"><span class="status">' + esc(p.status_kepegawaian || '—') + '</span></td>' +
+        '<td data-label="Bidang">' + esc(bidangNama) + '</td>' +
+        '<td data-label="Jabatan">' + esc(p.jabatan || '—') + '</td>' +
+        '<td data-label="Keterangan"><span class="status ditolak">Belum Ada Presensi</span></td></tr>';
     }).join('');
 
     tabel.innerHTML =
@@ -1368,8 +1368,10 @@
 
   function renderCekBidangEkspor() {
     document.getElementById('cekEksporBidang').innerHTML = daftarBidangEkspor().map(function (b) {
-      return '<label><input type="checkbox" data-bidang="' + esc(b) + '"' +
-        (bidangEkspor.has(b) ? ' checked' : '') + '> <span>' + esc(b) + '</span></label>';
+      return '<div class="cek-baris"><label><input type="checkbox" data-bidang="' + esc(b) + '"' +
+        (bidangEkspor.has(b) ? ' checked' : '') + '> <span>' + esc(b) + '</span></label>' +
+        '<button type="button" class="kecil unduh-cepat" data-unduh-bidang="' + esc(b) + '" ' +
+        'title="Unduh kehadiran, tukin, dan uang makan bidang ini sekaligus">⬇ 3 berkas</button></div>';
     }).join('') || '<span class="catatan">Belum ada data bidang.</span>';
   }
 
@@ -1405,6 +1407,15 @@
     if (!b.dataset.bidang) return;
     if (b.checked) bidangEkspor.add(b.dataset.bidang); else bidangEkspor.delete(b.dataset.bidang);
     renderCekPegawaiEkspor();
+  });
+
+  // Tombol "⬇ 3 berkas" per bidang: hanya mengunduh, tidak mengubah centang.
+  document.getElementById('cekEksporBidang').addEventListener('click', function (e) {
+    var tombol = e.target.closest && e.target.closest('button[data-unduh-bidang]');
+    if (!tombol) return;
+    tombol.disabled = true;
+    unduhCepatBidang(tombol.dataset.unduhBidang);
+    setTimeout(function () { tombol.disabled = false; }, 3000);
   });
 
   document.getElementById('cekEksporPegawai').addEventListener('change', function (e) {
@@ -1582,7 +1593,25 @@
     });
   }
 
-  function unduhRekap(kunci) {
+  // Unduh cepat: satu bidang, ketiga berkas sekaligus, tanpa mengubah centang.
+  function unduhCepatBidang(namaBidang) {
+    if (!dataRekap || !dataRekap.hasil || !dataRekap.hasil.length) {
+      catatRekap('Muat data dulu sebelum mengekspor.', '#b42318');
+      return;
+    }
+    var daftar = dataRekap.hasil.filter(function (dx) {
+      return (dx.pegawai.bidang || '') === namaBidang;
+    });
+    if (!daftar.length) {
+      catatRekap('Tidak ada pegawai bidang <b>' + esc(namaBidang) + '</b> pada periode ini.', '#b42318');
+      return;
+    }
+    catatRekap('Menyiapkan kehadiran, tukin, dan uang makan bidang <b>' + esc(namaBidang) +
+      '</b> (' + daftar.length + ' pegawai)…');
+    unduhRekap('semua', daftar);
+  }
+
+  function unduhRekap(kunci, hasilKhusus) {
     if (!dataRekap || !dataRekap.data.length) {
       catatRekap('Muat data dulu sebelum mengekspor.', '#b42318');
       return;
@@ -1597,7 +1626,7 @@
       return;
     }
 
-    var dipilih = hasilEkspor();
+    var dipilih = hasilKhusus || hasilEkspor();
     if (!dipilih.length) {
       catatRekap('Pilih minimal satu bidang dan satu pegawai yang akan diekspor.', '#b42318');
       return;
