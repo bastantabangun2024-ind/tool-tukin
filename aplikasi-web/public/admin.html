@@ -386,10 +386,11 @@
   }
 
   function tampilkanTabelUnggah() {
-    var sudah = dataUnggah.sudah || [];
+    var semuaSudah = dataUnggah.sudah || [];
+    var sudah = semuaSudah.filter(function (x) { return x.status !== 'ditolak'; });
     var belum = dataUnggah.belum || [];
-    var menunggu = sudah.filter(function (x) { return x.status === 'menunggu_verifikasi'; }).length;
-    var disetujui = sudah.filter(function (x) { return x.status === 'disetujui'; }).length;
+    var menunggu = semuaSudah.filter(function (x) { return x.status === 'menunggu_verifikasi'; }).length;
+    var disetujui = semuaSudah.filter(function (x) { return x.status === 'disetujui'; }).length;
 
     document.getElementById('statSudahJml').textContent = sudah.length;
     document.getElementById('subBadgeSudah').textContent = sudah.length;
@@ -414,7 +415,7 @@
       boxBelum.style.background = '#fff';
       boxBelum.style.borderColor = 'var(--garis)';
       wadahSalin.style.display = 'none';
-      renderTabelSudah(sudah);
+      renderTabelSudah(dataUnggah.sudah || []);
     } else {
       btnBelum.style.background = 'var(--merah)';
       btnBelum.style.color = '#fff';
@@ -431,17 +432,21 @@
 
   function renderTabelSudah(d) {
     var tabel = document.getElementById('tabelUnggah');
-    if (!d.length) {
+    var ditolak = (d || []).filter(function (x) { return x.status === 'ditolak'; });
+    var aktif = (d || []).filter(function (x) { return x.status !== 'ditolak'; });
+
+    if (!aktif.length && !ditolak.length) {
       tabel.innerHTML = '<p class="catatan">Belum ada pegawai yang mengunggah pada periode ini.</p>';
       return;
     }
-    var baris = d.map(function (x) {
+
+    function barisAktif(x) {
       var rk = satuRekap(x.rekap_tukin);
       var aksi = '';
       if (x.status === 'menunggu_verifikasi') {
         aksi = '<button class="kecil" data-setujui="' + x.id + '">Setujui</button> ' +
           '<button class="kecil" data-reset="' + x.id + '">Reset</button>';
-      } else if (x.status === 'ditolak' || x.status === 'perlu_perbaikan') {
+      } else if (x.status === 'perlu_perbaikan') {
         aksi = '<button class="kecil" data-reset="' + x.id + '">Reset</button>';
       }
       var bidangNama = (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
@@ -452,11 +457,40 @@
         '<td class="num">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
         '<td class="num">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
         '<td>' + aksi + '</td></tr>';
-    }).join('');
-    tabel.innerHTML =
-      '<table><thead><tr><th>Pegawai</th><th>Periode</th><th>Status</th>' +
-      '<th class="num">Tukin bersih</th><th class="num">Potongan</th><th>Aksi</th></tr></thead><tbody>' +
-      baris + '</tbody></table>';
+    }
+
+    var html = '';
+    if (aktif.length) {
+      var baris = aktif.map(barisAktif).join('');
+      html += '<table><thead><tr><th>Pegawai</th><th>Periode</th><th>Status</th>' +
+        '<th class="num">Tukin bersih</th><th class="num">Potongan</th><th>Aksi</th></tr></thead><tbody>' +
+        baris + '</tbody></table>';
+    } else {
+      html += '<p class="catatan">Tidak ada pengajuan aktif (menunggu/disetujui) pada periode ini.</p>';
+    }
+
+    if (ditolak.length) {
+      var barisDitolak = ditolak.map(function (x) {
+        var rk = satuRekap(x.rekap_tukin);
+        var bidangNama = (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
+        return '<tr><td><b>' + esc(x.pegawai && x.pegawai.nama) + '</b><br><span class="catatan">' +
+          esc(x.pegawai && x.pegawai.nip) + (bidangNama ? ' • ' + esc(bidangNama) : '') + '</span></td>' +
+          '<td>' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
+          '<td><span class="status ditolak">ditolak</span></td>' +
+          '<td class="num">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
+          '<td class="num">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
+          '<td><button class="kecil" data-reset="' + x.id + '">Reset</button></td></tr>';
+      }).join('');
+      html += '<div style="margin-top:14px;padding:10px 12px;border:1px dashed var(--merah);border-radius:8px;background:#fef3f2">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<b style="color:var(--merah)">Riwayat ditolak (' + ditolak.length + ')</b>' +
+        '<button class="kecil" id="btnBersihkanDitolak">Bersihkan semua</button></div>' +
+        '<table style="margin-top:8px"><thead><tr><th>Pegawai</th><th>Periode</th><th>Status</th>' +
+        '<th class="num">Tukin bersih</th><th class="num">Potongan</th><th>Aksi</th></tr></thead><tbody>' +
+        barisDitolak + '</tbody></table></div>';
+    }
+
+    tabel.innerHTML = html;
 
     tabel.querySelectorAll('button[data-setujui]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -483,6 +517,21 @@
         });
       });
     });
+
+    var btnBersih = document.getElementById('btnBersihkanDitolak');
+    if (btnBersih) {
+      btnBersih.addEventListener('click', function () {
+        if (!confirm('Hapus semua riwayat ditolak pada tampilan ini (' + ditolak.length + ' baris)?')) return;
+        btnBersih.disabled = true;
+        var ids = ditolak.map(function (x) { return x.id; });
+        (function hapusBerurutan(i) {
+          if (i >= ids.length) { muatUnggah(dataUnggah.semua); return; }
+          api('pengajuan_tukin?id=eq.' + ids[i], { method: 'DELETE' }).then(function () {
+            hapusBerurutan(i + 1);
+          });
+        })(0);
+      });
+    }
   }
 
   function renderTabelBelum(d) {
