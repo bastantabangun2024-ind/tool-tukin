@@ -392,3 +392,14 @@ dengan kredensial hanya dari variabel lingkungan → `/api/konfigurasi` 200 dan 
 - Setelah selesai, bar penuh (hijau) dan ringkasan "Selesai: X pegawai tersimpan".
 - Tombol tetap nonaktif selama proses berlangsung.
 - Perubahan: `public/admin.html` (fungsi `lanjut` + `selesai` pada tab Drive).
+
+### 8. Rincian potongan di tab Sudah Unggah (11 November 2026)
+- Nama pegawai di tab **Sudah Unggah** kini punya tanda panah **▸** seperti di tab **Ekspor Rekap**.
+  Saat diklik, baris rincian terbuka berisi tanggal, sebab potongan (telat, pulang awal,
+  tidak presensi, tanpa keterangan, cuti/sakit/dinas/izin), persen potongan, serta jam masuk/pulang.
+- Admin dapat memeriksa rincian ini **sebelum** menekan **Setujui** atau **Reset**.
+- Detail memakai data `presensi` yang tersimpan saat pengajuan dibuat, sehingga angkanya sama
+  dengan yang masuk ke rekap. Tersedia juga pada tabel riwayat **ditolak**.
+- Query tab Sudah Unggah ditambah `presensi(*)`; tombol panah memakai atribut `data-rincian`
+  dan fungsi `htmlRincianPotongan()` yang sudah dipakai tab Ekspor Rekap.
+- Perubahan: `public/admin.html` (`muatUnggah`, `renderTabelSudah`, handler `data-rincian`).

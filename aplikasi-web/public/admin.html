@@ -371,7 +371,7 @@
 
     if (semuaRiwayat) {
       dataUnggah.semua = true;
-      api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,pegawai_id,pegawai(id,nama,nip,status_kepegawaian,jabatan,bidang:bidang_id(nama)),rekap_tukin(tukin_bersih,total_persen)&order=dikirim_pada.desc&limit=50')
+      api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,pegawai_id,pegawai(id,nama,nip,status_kepegawaian,jabatan,bidang:bidang_id(nama)),rekap_tukin(tukin_bersih,total_persen),presensi(*)&order=dikirim_pada.desc&limit=50')
         .then(function (r) { return r.json(); })
         .then(function (d) {
           if (!Array.isArray(d)) d = [];
@@ -392,7 +392,7 @@
     dataUnggah.tahun = tahun;
 
     Promise.all([
-      api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,pegawai_id,pegawai(id,nama,nip,status_kepegawaian,jabatan,bidang:bidang_id(nama)),rekap_tukin(tukin_bersih,total_persen)&tahun=eq.' + tahun + '&bulan=eq.' + bulan + '&order=dikirim_pada.desc'),
+      api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,pegawai_id,pegawai(id,nama,nip,status_kepegawaian,jabatan,bidang:bidang_id(nama)),rekap_tukin(tukin_bersih,total_persen),presensi(*)&tahun=eq.' + tahun + '&bulan=eq.' + bulan + '&order=dikirim_pada.desc'),
       api('pegawai?select=id,nama,nip,status_kepegawaian,jabatan,golongan,ruang,bidang:bidang_id(nama)&aktif=eq.true&order=nama.asc')
     ]).then(function (res) {
       return Promise.all([res[0].json(), res[1].json()]);
@@ -480,7 +480,7 @@
       return;
     }
 
-    function barisAktif(x) {
+    function barisAktif(x, i) {
       var rk = satuRekap(x.rekap_tukin);
       var aksi = '';
       if (x.status === 'menunggu_verifikasi') {
@@ -490,18 +490,23 @@
         aksi = '<button class="kecil" data-reset="' + x.id + '">Reset</button>';
       }
       var bidangNama = (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
-      return '<tr><td><b>' + esc(x.pegawai && x.pegawai.nama) + '</b><br><span class="catatan">' +
+      var idRincian = 'rincianUnggahAktif-' + i;
+      return '<tr><td><button type="button" class="kecil panah-potongan" data-rincian="' + idRincian +
+          '" aria-expanded="false" title="Lihat rincian sebab potongan">▸</button> <b>' +
+          esc(x.pegawai && x.pegawai.nama) + '</b><br><span class="catatan">' +
         esc(x.pegawai && x.pegawai.nip) + (bidangNama ? ' • ' + esc(bidangNama) : '') + '</span></td>' +
         '<td data-label="Periode">' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
         '<td data-label="Status"><span class="status ' + x.status + '">' + esc(x.status.replace(/_/g, ' ')) + '</span></td>' +
         '<td class="num" data-label="Tukin bersih">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
         '<td class="num" data-label="Potongan">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
-        '<td class="aksi">' + aksi + '</td></tr>';
+        '<td class="aksi">' + aksi + '</td></tr>' +
+        '<tr class="baris-potongan" id="' + idRincian + '" style="display:none">' +
+        '<td colspan="6">' + htmlRincianPotongan({ presensi: x.presensi || [] }) + '</td></tr>';
     }
 
     var html = '';
     if (aktif.length) {
-      var baris = aktif.map(barisAktif).join('');
+      var baris = aktif.map(function (x, i) { return barisAktif(x, i); }).join('');
       html += '<table><thead><tr><th>Pegawai</th><th>Periode</th><th>Status</th>' +
         '<th class="num">Tukin bersih</th><th class="num">Potongan</th><th>Aksi</th></tr></thead><tbody>' +
         baris + '</tbody></table>';
@@ -510,16 +515,21 @@
     }
 
     if (ditolak.length) {
-      var barisDitolak = ditolak.map(function (x) {
+      var barisDitolak = ditolak.map(function (x, i) {
         var rk = satuRekap(x.rekap_tukin);
         var bidangNama = (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
-        return '<tr><td><b>' + esc(x.pegawai && x.pegawai.nama) + '</b><br><span class="catatan">' +
+        var idRincian = 'rincianUnggahTolak-' + i;
+        return '<tr><td><button type="button" class="kecil panah-potongan" data-rincian="' + idRincian +
+            '" aria-expanded="false" title="Lihat rincian sebab potongan">▸</button> <b>' +
+            esc(x.pegawai && x.pegawai.nama) + '</b><br><span class="catatan">' +
           esc(x.pegawai && x.pegawai.nip) + (bidangNama ? ' • ' + esc(bidangNama) : '') + '</span></td>' +
           '<td data-label="Periode">' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
           '<td data-label="Status"><span class="status ditolak">ditolak</span></td>' +
           '<td class="num" data-label="Tukin bersih">' + (rk ? rupiah(rk.tukin_bersih) : '—') + '</td>' +
           '<td class="num" data-label="Potongan">' + (rk ? Number(rk.total_persen) + '%' : '—') + '</td>' +
-          '<td class="aksi"><button class="kecil" data-reset="' + x.id + '">Reset</button></td></tr>';
+          '<td class="aksi"><button class="kecil" data-reset="' + x.id + '">Reset</button></td></tr>' +
+          '<tr class="baris-potongan" id="' + idRincian + '" style="display:none">' +
+          '<td colspan="6">' + htmlRincianPotongan({ presensi: x.presensi || [] }) + '</td></tr>';
       }).join('');
       html += '<div style="margin-top:14px;padding:10px 12px;border:1px dashed var(--merah);border-radius:8px;background:#fef3f2">' +
         '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
@@ -531,6 +541,17 @@
     }
 
     tabel.innerHTML = html;
+
+    tabel.querySelectorAll('button[data-rincian]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var barisDetail = document.getElementById(b.dataset.rincian);
+        if (!barisDetail) return;
+        var buka = barisDetail.style.display === 'none';
+        barisDetail.style.display = buka ? '' : 'none';
+        b.textContent = buka ? '▾' : '▸';
+        b.setAttribute('aria-expanded', buka ? 'true' : 'false');
+      });
+    });
 
     tabel.querySelectorAll('button[data-setujui]').forEach(function (b) {
       b.addEventListener('click', function () {
