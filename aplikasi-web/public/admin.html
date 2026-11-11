@@ -208,7 +208,7 @@
     <div class="baris" style="align-items:flex-end">
       <div><label>Bulan</label><br><select id="bulanRekap"></select></div>
       <div><label>Tahun</label><br><input type="number" id="tahunRekap" min="2020" max="2100" style="width:100px"></div>
-      <div><button id="btnMuatRekap">Muat data</button></div>
+      <div><button id="btnMuatRekap">Muat data</button> <button id="btnResetRekap">Reset</button></div>
     </div>
     <p class="catatan" id="catatanRekap">Pilih periode lalu tekan Muat data.</p>
     <div class="baris" id="tombolRekap" style="display:none">
@@ -222,6 +222,7 @@
 </main>
 
 <script src="/lib/xlsx.full.min.js"></script>
+<script src="/lib/app.js"></script>
 <script src="/rekap.js"></script>
 <script>
 (function () {
@@ -436,10 +437,13 @@
     }
     var baris = d.map(function (x) {
       var rk = satuRekap(x.rekap_tukin);
-      var aksi = x.status === 'menunggu_verifikasi'
-        ? '<button class="kecil" data-setujui="' + x.id + '">Setujui</button> ' +
-          '<button class="kecil" data-tolak="' + x.id + '">Tolak</button>'
-        : '';
+      var aksi = '';
+      if (x.status === 'menunggu_verifikasi') {
+        aksi = '<button class="kecil" data-setujui="' + x.id + '">Setujui</button> ' +
+          '<button class="kecil" data-reset="' + x.id + '">Reset</button>';
+      } else if (x.status === 'ditolak' || x.status === 'perlu_perbaikan') {
+        aksi = '<button class="kecil" data-reset="' + x.id + '">Reset</button>';
+      }
       var bidangNama = (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
       return '<tr><td><b>' + esc(x.pegawai && x.pegawai.nama) + '</b><br><span class="catatan">' +
         esc(x.pegawai && x.pegawai.nip) + (bidangNama ? ' • ' + esc(bidangNama) : '') + '</span></td>' +
@@ -454,16 +458,27 @@
       '<th class="num">Tukin bersih</th><th class="num">Potongan</th><th>Aksi</th></tr></thead><tbody>' +
       baris + '</tbody></table>';
 
-    tabel.querySelectorAll('button[data-setujui], button[data-tolak]').forEach(function (b) {
+    tabel.querySelectorAll('button[data-setujui]').forEach(function (b) {
       b.addEventListener('click', function () {
-        var id = b.dataset.setujui || b.dataset.tolak;
-        var status = b.dataset.setujui ? 'disetujui' : 'ditolak';
+        var id = b.dataset.setujui;
         b.disabled = true;
         api('pengajuan_tukin?id=eq.' + id, {
           method: 'PATCH',
-          body: { status: status, diverifikasi_oleh: sesi.id, diverifikasi_pada: new Date().toISOString() }
+          body: { status: 'disetujui', diverifikasi_oleh: sesi.id, diverifikasi_pada: new Date().toISOString() }
         }).then(function (r) {
           if (!r.ok) { alert('Gagal menyimpan'); b.disabled = false; return; }
+          muatUnggah(dataUnggah.semua);
+        });
+      });
+    });
+
+    tabel.querySelectorAll('button[data-reset]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var id = b.dataset.reset;
+        if (!confirm('Reset (hapus) pengajuan ini? Data presensi & rekapnya ikut terhapus, dan penyuluh kembali ke daftar belum mengunggah.')) return;
+        b.disabled = true;
+        api('pengajuan_tukin?id=eq.' + id, { method: 'DELETE' }).then(function (r) {
+          if (!r.ok) { alert('Gagal mereset'); b.disabled = false; return; }
           muatUnggah(dataUnggah.semua);
         });
       });
@@ -560,15 +575,23 @@
         document.getElementById('tabelPendaftar').querySelectorAll('button').forEach(function (b) {
           b.addEventListener('click', function () {
             var id = b.dataset.terima || b.dataset.tolakd;
-            var status = b.dataset.terima ? 'disetujui' : 'ditolak';
+            var aksi = b.dataset.terima ? 'setujui' : 'tolak';
+            var catatan = '';
+            if (aksi === 'tolak') {
+              catatan = prompt('Catatan penolakan (opsional):', '') || '';
+            }
             b.disabled = true;
-            api('pendaftaran?id=eq.' + id, {
-              method: 'PATCH',
-              body: { status: status, diputuskan_oleh: sesi.id, diputuskan_pada: new Date().toISOString() }
-            }).then(function (r) {
-              if (!r.ok) { alert('Gagal menyimpan'); b.disabled = false; return; }
+            adminApi('/api/pendaftaran/putuskan', {
+              method: 'POST',
+              body: { id: id, aksi: aksi, catatan: catatan }
+            }).then(function (h) {
+              if (!h.ok) { alert('Gagal: ' + (h.j.pesan || ('HTTP ' + h.status))); b.disabled = false; return; }
+              if (aksi === 'setujui' && h.j.passwordSementara) {
+                alert('Akun dibuat.\nEmail: ' + h.j.email + '\nPassword sementara: ' + h.j.passwordSementara +
+                  (h.j.emailTerkirim ? '\n\nEmail kredensial sudah dikirim ke pegawai.' : '\n\nEmail belum terkirim: ' + (h.j.catatanEmail || 'RESEND_API_KEY belum diisi')));
+              }
               muatPendaftar();
-            });
+            }).catch(function (e) { alert('Gagal: ' + e.message); b.disabled = false; });
           });
         });
       })
@@ -904,7 +927,10 @@
     }
 
     function selesai() {
-      catatDrive('<b>' + hasil.length + ' pegawai tersimpan</b> dari ' + antre.length +
+      catatDrive(
+        '<div style="background:#e2e8f0;border-radius:6px;height:18px;overflow:hidden;margin-bottom:8px">' +
+        '<div style="width:100%;background:var(--hijau);height:100%"></div></div>' +
+        '<b style="color:var(--hijau)">✅ Selesai:</b> <b>' + hasil.length + ' pegawai tersimpan</b> dari ' + antre.length +
         ' file untuk ' + NAMA_BULAN[p.bulan - 1] + ' ' + p.tahun + ', status menunggu verifikasi.' +
         (ambigu.length ? '<br><b style="color:#b42318">' + ambigu.length +
           ' file masih perlu dipilih pegawainya (lihat tabel di bawah).</b>' : '') +
@@ -935,8 +961,12 @@
     function lanjut() {
       if (i >= antre.length) { selesai(); return; }
       var f = antre[i++];
-      catatDrive('Memproses ' + i + '/' + antre.length + ': <b>' + esc(f.nama) +
-        '</b>… jangan tutup halaman ini.');
+      var pct = Math.round((i / antre.length) * 100);
+      catatDrive(
+        '<div style="margin-bottom:8px"><b style="color:var(--biru)">⏳ Sedang memproses… harap tunggu, jangan tutup halaman ini.</b></div>' +
+        '<div style="background:#e2e8f0;border-radius:6px;height:18px;overflow:hidden;margin-bottom:6px">' +
+        '<div style="width:' + pct + '%;background:var(--biru);height:100%;transition:width .2s"></div></div>' +
+        '<div style="font-size:13px">Progres: <b>' + i + ' / ' + antre.length + '</b> file (' + pct + '%) — sekarang: <b>' + esc(f.nama) + '</b></div>');
       fetch('/api/drive/proses', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1003,16 +1033,55 @@
 
     Promise.all([
       api('pengajuan_tukin?select=tahun,bulan,status,' +
-        'pegawai(id,nama,nip,jabatan,golongan,ruang,bidang:bidang_id(nama)),' +
-        'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*)' +
+        'pegawai(id,nama,nip,nama_key,jabatan,golongan,ruang,kelas_jabatan,status_kepegawaian,tukin,tarif_uang_makan,pph_pct,satker_2,satker_3,bidang:bidang_id(nama)),' +
+        'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*),presensi(*)' +
         '&tahun=eq.' + tahun + '&bulan=eq.' + bulan),
       api('pegawai?select=id,nama,nip,status_kepegawaian,jabatan,bidang:bidang_id(nama)&aktif=eq.true&order=nama.asc')
     ]).then(function (res) {
       return Promise.all([res[0].json(), res[1].json()]);
     }).then(function (hasil) {
       var d = Array.isArray(hasil[0]) ? hasil[0] : [];
+      // penyuluh yang ditolak tidak ikut rekap
+      d = d.filter(function (x) { return String(x.status || '') !== 'ditolak'; });
       var semuaPegawai = Array.isArray(hasil[1]) ? hasil[1] : [];
-      dataRekap = { tahun: tahun, bulan: bulan, data: d };
+      // bangun hasil per orang memakai mesin offline agar format Excel sama persis
+      var hasilOrang = d.map(function (x) {
+        var p = x.pegawai || {};
+        var bidangNama = (p.bidang && p.bidang.nama) || '';
+        var offlinePegawai = {
+          bidang: bidangNama,
+          status: p.status_kepegawaian || 'PPPK',
+          nip: p.nip || '',
+          nama: p.nama || '',
+          namaKey: p.nama_key || '',
+          gol: p.ruang ? (p.golongan + '/' + p.ruang) : (p.golongan || ''),
+          jabatan: p.jabatan || '',
+          kelasJabatan: p.kelas_jabatan || '',
+          tukin: Number(p.tukin) || 0,
+          tarifUangMakan: Number(p.tarif_uang_makan) || 37000,
+          pphPct: (p.pph_pct == null ? undefined : Number(p.pph_pct)),
+          satker2: p.satker_2,
+          satker3: p.satker_3,
+        };
+        var rt = satuRekap(x.rekap_tukin) || {};
+        var manual = { hukdisPct: Number(rt.hukdis_pct) || 0, tbPct: Number(rt.tb_pct) || 0 };
+        var HARI = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+        var rows = (x.presensi || []).map(function (r) {
+          var t = (typeof TukinTool !== 'undefined' && TukinTool.parseTanggal) ? TukinTool.parseTanggal(r.tanggal) : null;
+          var hari = t ? HARI[new Date(t.y, t.mo - 1, t.d).getDay()] : '';
+          return {
+            tanggal: t,
+            hari: hari,
+            masuk: (typeof TukinTool !== 'undefined' && TukinTool.parseTime) ? TukinTool.parseTime(r.jam_masuk) : null,
+            pulang: (typeof TukinTool !== 'undefined' && TukinTool.parseTime) ? TukinTool.parseTime(r.jam_pulang) : null,
+            alasan: r.libur_sub || '',
+            deskripsi: r.keterangan || '',
+          };
+        }).filter(function (r) { return r.tanggal; });
+        var h = (typeof TukinTool !== 'undefined') ? TukinTool.prosesSatuOrang(offlinePegawai, rows, manual) : null;
+        return { pengajuan: x, pegawai: offlinePegawai, hasil: h, status: x.status };
+      });
+      dataRekap = { tahun: tahun, bulan: bulan, data: d, hasil: hasilOrang };
 
       var sudahNips = new Set();
       d.forEach(function (x) { if (x.pegawai && x.pegawai.nip) sudahNips.add(x.pegawai.nip); });
@@ -1055,24 +1124,21 @@
           '</div>';
       }
 
-      var sus = Rekap.susun(d, tahun, bulan);
-      var tukinPerNip = {};
-      var umPerNip = {};
-      sus.tukin.baris.forEach(function (b) { tukinPerNip[b[2]] = b[18]; });
-      sus.uangMakan.baris.forEach(function (b) { umPerNip[b[2]] = b[13]; });
+      var sus = (typeof TukinTool !== 'undefined' && dataRekap.hasil)
+        ? null : Rekap.susun(d, tahun, bulan);
 
       document.getElementById('tabelRekap').innerHTML = infoStatus +
         '<table><thead><tr><th>Pegawai</th><th>Bidang</th><th>Status</th>' +
         '<th class="num">Hadir</th><th class="num">Tukin bersih</th>' +
         '<th class="num">Uang makan</th></tr></thead><tbody>' +
-        sus.kehadiran.baris.map(function (b) {
-          var t = tukinPerNip[b[2]];
-          var u = umPerNip[b[2]];
-          return '<tr><td>' + esc(b[1]) + '<br><span class="catatan">' + esc(b[2]) + '</span></td>' +
-            '<td>' + esc(b[5]) + '</td><td>' + esc(b[7]) + '</td>' +
-            '<td class="num">' + b[9] + '</td>' +
-            '<td class="num">' + (t === undefined ? '—' : rupiah(t)) + '</td>' +
-            '<td class="num">' + (u === undefined ? '—' : rupiah(u)) + '</td></tr>';
+        (dataRekap.hasil || []).map(function (dx) {
+          var h = dx.hasil || {};
+          var um = h.uangMakan || {};
+          return '<tr><td>' + esc(dx.pegawai.nama) + '<br><span class="catatan">' + esc(dx.pegawai.nip) + '</span></td>' +
+            '<td>' + esc(dx.pegawai.bidang) + '</td><td>' + esc(dx.status.replace(/_/g, ' ')) + '</td>' +
+            '<td class="num">' + (h.hariMasuk != null ? h.hariMasuk : '—') + '</td>' +
+            '<td class="num">' + rupiah(h.tukinBersih) + '</td>' +
+            '<td class="num">' + rupiah(um.bersih) + '</td></tr>';
         }).join('') + '</tbody></table>';
     })
     .catch(function (e) {
@@ -1090,31 +1156,59 @@
       return;
     }
 
-    var groups = Rekap.susunPerBidang(dataRekap.data, dataRekap.tahun, dataRekap.bulan);
+    if (typeof TukinTool === 'undefined' || !TukinTool.susunWorkbookBidang) {
+      catatRekap('Mesin hitung belum termuat. Muat ulang halaman.', '#b42318');
+      return;
+    }
+
+    var groups = {};
+    (dataRekap.hasil || []).forEach(function (dx) {
+      var key = dx.pegawai.bidang + '|' + TukinTool.statusPegawai(dx.pegawai);
+      (groups[key] = groups[key] || []).push(dx.hasil);
+    });
+
     var daftar = [];
-    groups.forEach(function (g) {
-      if (kunci === 'semua') {
-        daftar.push(g.kehadiran, g.tukin, g.uangMakan);
-      } else {
-        daftar.push(g[kunci]);
+    Object.keys(groups).sort().forEach(function (key) {
+      var bagian = key.split('|');
+      var wb = TukinTool.susunWorkbookBidang(groups[key], dataRekap.tahun, dataRekap.bulan, bagian[1]);
+      if (!wb) return;
+      if (kunci === 'semua' || kunci === 'kehadiran') daftar.push([wb.fileKehadiran, wb.wbKehadiran]);
+      if (kunci === 'semua' || kunci === 'tukin') daftar.push([wb.fileTukin, wb.wbTukin]);
+      if (kunci === 'semua' || kunci === 'uangMakan') daftar.push([wb.fileUangMakan, wb.wbUangMakan]);
+    });
+
+    if (!daftar.length) {
+      catatRekap('Tidak ada berkas untuk diunduh.', '#b42318');
+      return;
+    }
+
+    var i = 0;
+    function next() {
+      if (i >= daftar.length) {
+        catatRekap('✔ ' + daftar.length + ' berkas diunduh: ' +
+          daftar.map(function (x) { return esc(x[0]); }).join(', '), '#0b6b3a');
+        return;
       }
-    });
-
-    daftar.forEach(function (r) {
-      var aoa = [[r.judul], [], r.kolom].concat(r.baris);
-      var ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws['!cols'] = r.lebar.map(function (w) { return { wch: w }; });
-      ws['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: r.kolom.length - 1 } }];
-      var wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, r.sheet);
-      XLSX.writeFile(wb, r.namaBerkas);
-    });
-
-    catatRekap('✔ ' + daftar.length + ' berkas diunduh (per bidang): ' +
-      daftar.map(function (r) { return esc(r.namaBerkas); }).join(', '), '#0b6b3a');
+      var item = daftar[i++];
+      var data = XLSX.write(item[1], { bookType: 'xlsx', type: 'array' });
+      var blob = new Blob([data], { type: 'application/octet-stream' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = item[0];
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); next(); }, 500);
+    }
+    next();
   }
 
   document.getElementById('btnMuatRekap').addEventListener('click', muatRekap);
+  document.getElementById('btnResetRekap').addEventListener('click', function () {
+    dataRekap = null;
+    document.getElementById('tombolRekap').style.display = 'none';
+    document.getElementById('tabelRekap').innerHTML = '';
+    catatRekap('Tampilan direset. Tekan Muat data untuk memuat ulang.', '#475569');
+  });
   document.getElementById('tombolRekap').querySelectorAll('button[data-ekspor]').forEach(function (b) {
     b.addEventListener('click', function () { unduhRekap(b.dataset.ekspor); });
   });

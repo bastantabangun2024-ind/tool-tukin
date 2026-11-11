@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Daftar Akun — Tool Tukin</title>
+<link rel="stylesheet" href="/gaya.css">
+</head>
+<body>
+<header>
+  <strong>Tool Tukin</strong>
+  <nav>
+    <a href="/">Unggah Presensi</a>
+    <a href="/daftar.html" class="aktif">Daftar</a>
+    <a href="/masuk.html">Masuk</a>
+  </nav>
+</header>
+<main>
+  <section class="kartu">
+    <h1>Daftar Akun Pegawai</h1>
+    <p class="sub">Isi data sesuai SK. Admin akan memeriksa dan mengaktifkan akun, lalu memberikan email/password login.</p>
+
+    <label for="dNama">Nama lengkap</label>
+    <input id="dNama" autocomplete="name">
+
+    <div class="baris">
+      <div>
+        <label for="dNip">NIP</label>
+        <input id="dNip" inputmode="numeric" maxlength="18" placeholder="18 angka">
+      </div>
+      <div>
+        <label for="dGol">Pangkat / Golongan</label>
+        <input id="dGol" placeholder="mis. IV/b">
+      </div>
+    </div>
+
+    <label for="dJabatan">Jabatan</label>
+    <input id="dJabatan">
+
+    <label for="dBidang">Bidang</label>
+    <select id="dBidang">
+      <option value="">— pilih bidang —</option>
+      <option>Tata Usaha</option><option>Kanwil</option><option>PAI</option>
+      <option>Bimas Buddha</option><option>Bimas Hindu</option><option>Bimas Kristen</option>
+      <option>Bimas Katolik</option><option>PenaisZawa</option><option>Penmad</option>
+      <option>Pontren</option><option>Urais</option>
+    </select>
+
+    <label for="dEmail">Email (dipakai untuk login)</label>
+    <input id="dEmail" type="email" autocomplete="email" placeholder="nama@contoh.com">
+
+    <button class="utama" id="kirimDaftar" type="button">Kirim Pendaftaran</button>
+    <div class="pesan" id="pesanDaftar"></div>
+
+    <p class="catatan" style="margin-top:14px">
+      Setelah dikirim, admin akan memverifikasi. Jika disetujui, akun &amp; password login
+      akan diberikan admin lewat email. Simpan bukti pengiriman ini.
+    </p>
+    <div style="margin-top:10px">
+      <button class="kecil" id="unduhBuktiDaftar" type="button">Unduh bukti pendaftaran terakhir (.txt)</button>
+    </div>
+  </section>
+
+  <section class="kartu">
+    <h1>Cek Status Pendaftaran</h1>
+    <p class="sub">Masukkan NIP &amp; email yang dipakai saat mendaftar (tanpa login).</p>
+    <div class="baris">
+      <div>
+        <label for="cNip">NIP</label>
+        <input id="cNip" inputmode="numeric" maxlength="18" placeholder="18 angka">
+      </div>
+      <div>
+        <label for="cEmail">Email</label>
+        <input id="cEmail" type="email" placeholder="nama@contoh.com">
+      </div>
+    </div>
+    <button class="kecil" id="cekStatus" type="button" style="margin-top:8px">Cek Status</button>
+    <div class="pesan" id="pesanStatus"></div>
+  </section>
+</main>
+
+<script>
+(function () {
+  var BIDANG_KODE = {
+    'Tata Usaha': 'TU', 'Kanwil': 'KANWIL', 'PAI': 'PAI', 'Bimas Buddha': 'BUDDHA',
+    'Bimas Hindu': 'HINDU', 'Bimas Kristen': 'KRISTEN', 'Bimas Katolik': 'KATOLIK',
+    'PenaisZawa': 'PENAISZAWA', 'Penmad': 'PENMAD', 'Pontren': 'PONTREN', 'Urais': 'URAIS'
+  };
+  var el = function (id) { return document.getElementById(id); };
+
+  el('kirimDaftar').addEventListener('click', function () {
+    var tombol = this;
+    var p = el('pesanDaftar');
+    p.className = 'pesan'; p.textContent = '';
+    var nip = el('dNip').value.trim();
+    if (!/^[0-9]{18}$/.test(nip)) {
+      p.className = 'pesan tampil galat'; p.textContent = 'NIP harus 18 angka.'; return;
+    }
+    if (!el('dEmail').value.trim()) {
+      p.className = 'pesan tampil galat'; p.textContent = 'Email wajib diisi.'; return;
+    }
+    var data = {
+      nama: el('dNama').value.trim(),
+      nip: nip,
+      golongan: el('dGol').value.trim(),
+      jabatan: el('dJabatan').value.trim(),
+      bidang: BIDANG_KODE[el('dBidang').value] || '',
+      email: el('dEmail').value.trim()
+    };
+    tombol.disabled = true;
+    fetch('/api/daftar', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (h) {
+      p.className = 'pesan tampil ' + (h.ok ? 'info' : 'galat');
+      p.textContent = h.j.pesan || (h.ok ? 'Pendaftaran terkirim.' : 'Gagal mengirim.');
+      if (h.ok) {
+        // simpan bukti lokal (tanpa beban server)
+        try {
+          localStorage.setItem('buktiDaftar', JSON.stringify({ waktu: new Date().toISOString(), data: data }));
+        } catch (e) {}
+        el('dNama').value = el('dNip').value = el('dGol').value = '';
+        el('dJabatan').value = el('dEmail').value = '';
+      }
+    }).catch(function () {
+      p.className = 'pesan tampil galat';
+      p.textContent = 'Server tidak dapat dihubungi.';
+    }).then(function () { tombol.disabled = false; });
+  });
+
+  // Unduh bukti pendaftaran terakhir (tersimpan lokal)
+  var btnBukti = document.getElementById('unduhBuktiDaftar');
+  if (btnBukti) btnBukti.addEventListener('click', function () {
+    var raw = null;
+    try { raw = localStorage.getItem('buktiDaftar'); } catch (e) { raw = null; }
+    if (!raw) { alert('Belum ada bukti pendaftaran tersimpan di peramban ini.'); return; }
+    var d = JSON.parse(raw);
+    var data = d.data || {};
+    var teks = 'BUKTI PENDAFTARAN AKUN TOOL TUKIN\n' +
+      'Waktu kirim: ' + new Date(d.waktu).toLocaleString('id-ID') + '\n' +
+      'Nama: ' + (data.nama || '') + '\n' +
+      'NIP: ' + (data.nip || '') + '\n' +
+      'Jabatan: ' + (data.jabatan || '') + '\n' +
+      'Golongan: ' + (data.golongan || '') + '\n' +
+      'Bidang: ' + (data.bidang || '') + '\n' +
+      'Email: ' + (data.email || '') + '\n';
+    var blob = new Blob([teks], { type: 'text/plain' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bukti-pendaftaran-' + (data.nip || 'baru') + '.txt';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+
+  // Cek status pendaftaran
+  var btnCek = document.getElementById('cekStatus');
+  if (btnCek) btnCek.addEventListener('click', function () {
+    var btn = this;
+    var p = document.getElementById('pesanStatus');
+    p.className = 'pesan'; p.textContent = '';
+    var nip = document.getElementById('cNip').value.trim();
+    var email = document.getElementById('cEmail').value.trim();
+    if (!/^[0-9]{18}$/.test(nip)) { p.className='pesan tampil galat'; p.textContent='NIP harus 18 angka.'; return; }
+    if (!email) { p.className='pesan tampil galat'; p.textContent='Email wajib diisi.'; return; }
+    btn.disabled = true;
+    fetch('/api/daftar/status?nip=' + encodeURIComponent(nip) + '&email=' + encodeURIComponent(email))
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (h) {
+        if (!h.ok) {
+          p.className = 'pesan tampil galat';
+          p.textContent = h.j.pesan || 'Gagal mengecek status.';
+          return;
+        }
+        var j = h.j;
+        var label = j.status === 'menunggu' ? 'Menunggu verifikasi admin' :
+                    j.status === 'disetujui' ? 'Disetujui — akun sudah aktif' :
+                    j.status === 'ditolak' ? 'Ditolak' : j.status;
+        p.className = 'pesan tampil info';
+        p.textContent = 'Status: ' + label + (j.catatan_admin ? ' — ' + j.catatan_admin : '') +
+          ' (diajukan ' + new Date(j.diajukan_pada).toLocaleDateString('id-ID') + ').';
+      }).catch(function () {
+        p.className = 'pesan tampil galat'; p.textContent = 'Server tidak dapat dihubungi.';
+      }).then(function () { btn.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

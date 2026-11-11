@@ -11,8 +11,8 @@
   <strong>Tool Tukin</strong>
   <nav>
     <a href="/" class="aktif">Unggah Presensi</a>
-    <a href="#" id="tautanDaftar">Daftar</a>
-    <a href="/masuk.html">Masuk Admin</a>
+    <a href="/daftar.html">Daftar</a>
+    <a href="/masuk.html">Masuk</a>
   </nav>
 </header>
 
@@ -26,6 +26,7 @@
     <label for="nip">NIP</label>
     <input id="nip" inputmode="numeric" maxlength="18" placeholder="18 angka" autocomplete="off">
     <p class="catatan" id="infoNip">Nama, jabatan, dan bidang akan muncul setelah NIP dikenali.</p>
+    <p class="catatan">Privasi: hanya data dasar (nama, jabatan, bidang, status) yang ditampilkan dari NIP; tukin/gaji tidak ditampilkan.</p>
 
     <dl class="identitas tersembunyi" id="identitas">
       <dt>Nama</dt><dd id="iNama">—</dd>
@@ -70,6 +71,7 @@
     </div>
 
     <div class="sukses" id="sukses">Selamat Data Anda Sudah Terupload</div>
+    <button class="kecil" id="unduhBukti" type="button" style="margin-top:8px">Unduh bukti pengajuan (.txt)</button>
     <p class="catatan">Data tersimpan sebagai pengajuan berstatus <b>menunggu verifikasi</b>.
       Potongan HUKDIS/TB diisi admin saat verifikasi.</p>
   </section>
@@ -257,18 +259,35 @@
     el('kartuHasil').classList.remove('tersembunyi');
     el('sukses').className = 'sukses tampil';
     el('kartuHasil').scrollIntoView({ behavior: 'smooth' });
+    window.__lastHasil = { h: h, pegawai: pegawai, bulan: Number(el('bulan').value), tahun: Number(el('tahun').value) };
   }
 
-  // --- pendaftaran ---------------------------------------------------------
-  el('tautanDaftar').addEventListener('click', function (e) {
-    e.preventDefault();
-    el('kartuPresensi').classList.add('tersembunyi');
-    el('kartuHasil').classList.add('tersembunyi');
-    el('kartuDaftar').classList.remove('tersembunyi');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  var btnBukti = el('unduhBukti');
+  if (btnBukti) btnBukti.addEventListener('click', function () {
+    var d = window.__lastHasil;
+    if (!d) { alert('Belum ada data untuk diunduh.'); return; }
+    var h = d.h, p = d.pegawai;
+    var teks = 'BUKTI PENGajuan PRESENSI\n' +
+      'Nama: ' + (p && p.nama) + '\n' +
+      'NIP: ' + (p && p.nip) + '\n' +
+      'Periode: ' + BULAN[d.bulan] + ' ' + d.tahun + '\n' +
+      'Hari kerja: ' + h.kehadiran.hariKerja + '\n' +
+      'Hadir: ' + h.kehadiran.hadir + '\n' +
+      'Tukin bersih: ' + rupiah(h.tukin.bersih) + '\n' +
+      'Uang makan bersih: ' + rupiah(h.uangMakan.bersih) + '\n' +
+      'Waktu: ' + new Date().toLocaleString('id-ID') + '\n';
+    var blob = new Blob([teks], { type: 'text/plain' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bukti-pengajuan-' + (p && p.nip) + '.txt';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
   });
 
-  el('kirimDaftar').addEventListener('click', function () {
+  // pendaftaran kini di halaman terpisah: /daftar.html
+
+  var btnKirimDaftar = el('kirimDaftar');
+  if (btnKirimDaftar) btnKirimDaftar.addEventListener('click', function () {
     var tombol = this;
     var p = el('pesanDaftar');
     p.className = 'pesan'; p.textContent = '';

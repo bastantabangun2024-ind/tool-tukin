@@ -18,6 +18,7 @@
 //   GET  /*                      file statis dari public/
 
 import { readFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
 import { dirname } from 'node:path';
@@ -111,6 +112,28 @@ async function db(jalur, opsi = {}) {
   return teks ? JSON.parse(teks) : null;
 }
 
+// --- email -----------------------------------------------------------------
+async function kirimEmail({ to, subject, text, html }) {
+  const kunci = env.RESEND_API_KEY || '';
+  if (!kunci) {
+    console.warn('[email] RESEND_API_KEY belum diisi; email tidak dikirim:', subject, '->', to);
+    return { ok: false, pesan: 'RESEND_API_KEY belum diisi' };
+  }
+  const dari = env.RESEND_FROM || 'Tool Tukin <onboarding@resend.dev>';
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${kunci}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: dari, to: Array.isArray(to) ? to : [to], subject, text, html }),
+    });
+    const teks = await res.text();
+    if (!res.ok) return { ok: false, pesan: `Email gagal: HTTP ${res.status} ${teks.slice(0, 200)}` };
+    return { ok: true, id: (JSON.parse(teks || '{}').id || '') };
+  } catch (e) {
+    return { ok: false, pesan: `Email gagal: ${String(e && e.message || e)}` };
+  }
+}
+
 // --- admin -----------------------------------------------------------------
 // Token akses Supabase milik browser diverifikasi ke Supabase, lalu peran
 // dicocokkan ke tabel users. Tanpa token/peran admin -> 401.
@@ -140,6 +163,59 @@ async function wajibAdmin(req) {
     throw e;
   }
   return u;
+}
+
+// --- helper akun Supabase Auth (service role) ------------------------------
+async function cariUserAuth(email) {
+  const target = String(email || '').trim().toLowerCase();
+  if (!target) return null;
+  let page = 1;
+  for (let i = 0; i < 10; i++) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=200`, {
+      headers: { apikey: KUNCI_SERVER, Authorization: `Bearer ${KUNCI_SERVER}` },
+    });
+    if (!res.ok) break;
+    const json = await res.json().catch(() => ({}));
+    const daftar = Array.isArray(json.users) ? json.users : (Array.isArray(json) ? json : []);
+    const ketemu = daftar.find((u) => String(u.email || '').toLowerCase() === target);
+    if (ketemu) return ketemu;
+    if (daftar.length < 200) break;
+    page++;
+  }
+  return null;
+}
+
+async function buatAtauPerbaruiUserAuth({ email, nama, password }) {
+  let user = await cariUserAuth(email);
+  if (!user) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: { apikey: KUNCI_SERVER, Authorization: `Bearer ${KUNCI_SERVER}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { nama, peran: 'pegawai' } }),
+    });
+    const teks = await res.text();
+    if (!res.ok) throw new Error(`Gagal membuat akun login: HTTP ${res.status} ${teks.slice(0, 300)}`);
+    user = JSON.parse(teks || '{}');
+  } else {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user.id}`, {
+      method: 'PUT',
+      headers: { apikey: KUNCI_SERVER, Authorization: `Bearer ${KUNCI_SERVER}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password, email_confirm: true, user_metadata: { nama, peran: 'pegawai' } }),
+    });
+    if (!res.ok) {
+      const teks = await res.text();
+      throw new Error(`Gagal memperbarui akun login: HTTP ${res.status} ${teks.slice(0, 300)}`);
+    }
+    const json = await res.json().catch(() => null);
+    if (json && json.id) user = json;
+  }
+  // upsert profil public.users
+  await db('users?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify({ id: user.id, email: String(email).trim().toLowerCase(), nama, peran: 'pegawai', aktif: true }),
+  });
+  return user;
 }
 
 const STATUS_PEGAWAI = ['PNS', 'PPPK', 'CPNS', 'PPPK_PW'];
@@ -729,24 +805,169 @@ export async function handler(req, res) {
       if (!/^\d{18}$/.test(String(b.nip).trim())) return kirimJson(res, 400, { pesan: 'NIP harus 18 angka' });
       if (!String(b.email).includes('@')) return kirimJson(res, 400, { pesan: 'Email tidak valid' });
 
-      const bidang = await db(`bidang?select=id,kode&kode=eq.${encodeURIComponent(String(b.bidang).toUpperCase())}`);
+      const bidang = await db(`bidang?select=id,kode,nama&kode=eq.${encodeURIComponent(String(b.bidang).toUpperCase())}`);
       if (!bidang || !bidang.length) return kirimJson(res, 400, { pesan: 'Bidang tidak dikenal' });
 
-      const hasil = await db('pendaftaran', {
-        method: 'POST',
-        headers: { Prefer: 'return=representation' },
-        body: JSON.stringify({
-          nama: String(b.nama).trim(),
-          nip: String(b.nip).trim(),
-          pangkat: b.pangkat || null,
-          golongan: b.golongan || null,
-          jabatan: String(b.jabatan).trim(),
-          bidang_id: bidang[0].id,
-          email: String(b.email).trim().toLowerCase(),
-          status: 'menunggu',
-        }),
-      });
+      let hasil;
+      try {
+        hasil = await db('pendaftaran', {
+          method: 'POST',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({
+            nama: String(b.nama).trim(),
+            nip: String(b.nip).trim(),
+            pangkat: b.pangkat || null,
+            golongan: b.golongan || null,
+            jabatan: String(b.jabatan).trim(),
+            bidang_id: bidang[0].id,
+            email: String(b.email).trim().toLowerCase(),
+            status: 'menunggu',
+          }),
+        });
+      } catch (e) {
+        const pesan = String(e && e.message || e);
+        if (/23505|unique|duplicate/i.test(pesan)) {
+          return kirimJson(res, 409, { pesan: 'NIP ini sudah memiliki pendaftaran yang menunggu. Cek status pendaftaran.' });
+        }
+        throw e;
+      }
+
+      // Notifikasi email ke admin (best effort, tidak memblokir respons)
+      const adminEmail = env.ADMIN_EMAIL || '';
+      if (adminEmail) {
+        kirimEmail({
+          to: adminEmail,
+          subject: `Pendaftaran baru: ${String(b.nama).trim()} (${String(b.nip).trim()})`,
+          text: `Ada pendaftaran akun pegawai baru.\n\nNama: ${String(b.nama).trim()}\nNIP: ${String(b.nip).trim()}\nJabatan: ${String(b.jabatan).trim()}\nBidang: ${bidang[0].nama}\nEmail: ${String(b.email).trim()}\n\nSilakan buka tab Pendaftar di aplikasi admin untuk memutuskan.`,
+        }).catch(() => {});
+      }
+
       return kirimJson(res, 200, { pesan: 'Pendaftaran terkirim', id: hasil && hasil[0] && hasil[0].id });
+    }
+
+    // Cek status pendaftaran (ringan, tanpa login)
+    if (jalur === '/api/daftar/status' && req.method === 'GET') {
+      const nip = String(url.searchParams.get('nip') || '').replace(/\s/g, '');
+      const email = String(url.searchParams.get('email') || '').trim().toLowerCase();
+      if (!/^\d{18}$/.test(nip)) return kirimJson(res, 400, { pesan: 'NIP harus 18 angka' });
+      if (!email || !email.includes('@')) return kirimJson(res, 400, { pesan: 'Email tidak valid' });
+      const baris = await db(
+        `pendaftaran?select=id,status,catatan_admin,created_at,diputuskan_pada&nip=eq.${nip}&email=eq.${encodeURIComponent(email)}&order=created_at.desc&limit=1`,
+      );
+      if (!Array.isArray(baris) || !baris.length) {
+        return kirimJson(res, 404, { pesan: 'Pendaftaran tidak ditemukan untuk NIP & email ini' });
+      }
+      const p = baris[0];
+      return kirimJson(res, 200, {
+        id: p.id,
+        status: p.status,
+        catatan_admin: p.catatan_admin,
+        diajukan_pada: p.created_at,
+        diputuskan_pada: p.diputuskan_pada,
+      });
+    }
+
+    // Keputusan admin atas pendaftaran: setujui (buat akun) / tolak.
+    if (jalur === '/api/pendaftaran/putuskan' && req.method === 'POST') {
+      const admin = await wajibAdmin(req);
+      const b = await bacaBody(req);
+      const id = String(b.id || '').trim();
+      const aksi = String(b.aksi || '').trim().toLowerCase();
+      if (!id) return kirimJson(res, 400, { pesan: 'Pendaftaran belum dipilih' });
+      if (!['setujui', 'tolak'].includes(aksi)) return kirimJson(res, 400, { pesan: 'Aksi harus setujui atau tolak' });
+
+      const baris = await db(`pendaftaran?select=*&id=eq.${encodeURIComponent(id)}`);
+      const p = Array.isArray(baris) ? baris[0] : null;
+      if (!p) return kirimJson(res, 404, { pesan: 'Pendaftaran tidak ditemukan' });
+      if (p.status !== 'menunggu') return kirimJson(res, 409, { pesan: `Pendaftaran sudah berstatus ${p.status}` });
+
+      const catatan = b.catatan ? String(b.catatan).trim() : null;
+      const now = new Date().toISOString();
+
+      if (aksi === 'tolak') {
+        await db(`pendaftaran?id=eq.${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({ status: 'ditolak', catatan_admin: catatan, diputuskan_oleh: admin.id, diputuskan_pada: now }),
+        });
+        kirimEmail({
+          to: p.email,
+          subject: 'Pendaftaran akun Tool Tukin ditolak',
+          text: `Halo ${p.nama},\n\nPendaftaran akun Anda ditolak oleh admin.\n${catatan ? 'Catatan: ' + catatan + '\n' : ''}\nHubungi admin bila ada pertanyaan.`,
+        }).catch(() => {});
+        await db('audit_log', {
+          method: 'POST',
+          body: JSON.stringify({ aktor_id: admin.id, aksi: 'tolak_pendaftaran', tabel: 'pendaftaran', record_id: id, data_baru: { status: 'ditolak' } }),
+        }).catch(() => {});
+        return kirimJson(res, 200, { pesan: 'Pendaftaran ditolak', email: p.email });
+      }
+
+      // setujui: buat/tautkan akun login + pegawai
+      const password = randomBytes(10).toString('base64url') + '!7A';
+      let user;
+      try {
+        user = await buatAtauPerbaruiUserAuth({ email: p.email, nama: p.nama, password });
+      } catch (e) {
+        return kirimJson(res, 500, { pesan: String(e && e.message || e) });
+      }
+
+      // cari pegawai dengan NIP ini
+      const adaPegawai = await db(`pegawai?select=id,user_id&nip=eq.${encodeURIComponent(p.nip)}`);
+      let pegawaiId = (Array.isArray(adaPegawai) && adaPegawai[0]) ? adaPegawai[0].id : null;
+      if (!pegawaiId) {
+        const bidangId = p.bidang_id;
+        const hasilPegawai = await db('pegawai', {
+          method: 'POST',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({
+            user_id: user.id,
+            nip: p.nip,
+            nama: p.nama,
+            nama_key: Tukin.namaKey(p.nama),
+            pangkat: p.pangkat,
+            golongan: p.golongan,
+            jabatan: p.jabatan,
+            bidang_id: bidangId,
+            status_kepegawaian: 'PPPK',
+            tukin: 0,
+            tarif_uang_makan: 37000,
+            pph_pct: 5,
+            aktif: true,
+          }),
+        });
+        pegawaiId = hasilPegawai && hasilPegawai[0] && hasilPegawai[0].id;
+      } else {
+        await db(`pegawai?id=eq.${encodeURIComponent(pegawaiId)}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=representation' },
+          body: JSON.stringify({ user_id: user.id, aktif: true }),
+        });
+      }
+
+      await db(`pendaftaran?id=eq.${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=representation' },
+        body: JSON.stringify({ status: 'disetujui', catatan_admin: catatan, diputuskan_oleh: admin.id, diputuskan_pada: now }),
+      });
+
+      const emailHasil = await kirimEmail({
+        to: p.email,
+        subject: 'Akun Tool Tukin Anda sudah aktif',
+        text: `Halo ${p.nama},\n\nPendaftaran akun Anda disetujui.\n\nEmail login: ${p.email}\nPassword sementara: ${password}\n\nSilakan masuk di ${env.APP_BASE_URL || ''}/masuk.html dan segera ganti password.\n${catatan ? 'Catatan admin: ' + catatan : ''}`,
+      });
+
+      await db('audit_log', {
+        method: 'POST',
+        body: JSON.stringify({ aktor_id: admin.id, aksi: 'setujui_pendaftaran', tabel: 'pendaftaran', record_id: id, data_baru: { status: 'disetujui', pegawai_id: pegawaiId, user_id: user.id } }),
+      }).catch(() => {});
+
+      return kirimJson(res, 200, {
+        pesan: 'Pendaftaran disetujui dan akun dibuat',
+        email: p.email,
+        passwordSementara: password,
+        emailTerkirim: emailHasil.ok,
+        catatanEmail: emailHasil.ok ? '' : emailHasil.pesan,
+      });
     }
 
     if (jalur === '/api/proses' && req.method === 'POST') {

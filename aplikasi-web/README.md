@@ -196,8 +196,11 @@ NELLY) dilaporkan, link ngawur → HTTP 400. Data uji dihapus setelah pengujian.
 bukan array — kolom tukin di tab *Sudah Unggah* sebelumnya bisa tampil “—”. Sekarang dibaca
 lewat `satuRekap()` yang menerima keduanya.
 
-**Belum:** unggah berkas **ke** Google Drive, isi HUKDIS/TB oleh admin saat verifikasi,
-dan pembuatan akun otomatis saat pendaftaran disetujui.
+**Belum:** unggah berkas **ke** Google Drive, isi HUKDIS/TB oleh admin saat verifikasi.
+
+**Sudah (perbaikan lanjutan):** pembuatan akun otomatis saat pendaftaran disetujui,
+cek status pendaftaran tanpa login, notifikasi email (Resend, best effort), unduh bukti,
+dan catatan privasi NIP.
 
 ## Struktur kode (siap Vercel)
 
@@ -266,3 +269,52 @@ dengan kredensial hanya dari variabel lingkungan → `/api/konfigurasi` 200 dan 
 
 ### Rencana besok
 - Lanjut perbaikan lain (sesuai kebutuhan). Kode sudah di-push & di-deploy.
+
+## Catatan Hari Ini (11 November 2026) — perbaikan pendaftaran
+
+### 1. Halaman pendaftaran terpisah + bukti unduh
+- `public/daftar.html` dibuat sebagai halaman pendaftaran terpisah (bukan lagi toggle di beranda).
+- `index.html` diubah ke tautan `/daftar.html`; wording login diperbaiki.
+- Validasi dasar di klien (NIP 18 digit, email wajib) sebelum kirim.
+- Bukti pengajuan (index) dan bukti pendaftaran (daftar) dapat diunduh `.txt` (client-side).
+
+### 2. Status pendaftaran tanpa beban Supabase
+- Endpoint `GET /api/daftar/status?nip=&email=` (satu query terindeks) untuk cek status tanpa login.
+- UI "Cek Status Pendaftaran" di `daftar.html`.
+
+### 3. Persetujuan admin + akun + email
+- Endpoint `POST /api/pendaftaran/putuskan` (admin) menangani setujui/tolak.
+- Setujui: buat/aktifkan akun Supabase Auth, buat/tautkan baris `pegawai`, kirim email kredensial sementara.
+- Tolak: ubah status + kirim email penolakan (+ catatan).
+- Admin UI pendaftar diubah memakai endpoint ini; menampilkan password sementara bila email belum terkirim.
+- Notifikasi email ke admin saat pendaftaran baru dikirim (best effort).
+
+### 4. Privasi NIP
+- Lookup NIP hanya menampilkan data dasar (nama, jabatan, bidang, status); tukin/gaji tidak ditampilkan.
+- Catatan privasi ditambahkan di beranda.
+
+### 5. Email (Resend)
+- Integrasi Resend via `fetch` (tanpa dependency baru). Jika `RESEND_API_KEY` kosong, sistem tetap jalan dan hanya mencatat peringatan.
+- Variabel env baru: `RESEND_API_KEY`, `RESEND_FROM` (lihat `.env.example`).
+
+### Kekurangan / catatan
+- Email real memerlukan akun & API key Resend serta domain pengirim terverifikasi; default `onboarding@resend.dev` hanya untuk uji.
+- Akun pegawai dibuat dengan password sementara dan status kepegawaian default `PPPK`; admin dapat menyesuaikan data pegawai setelahnya.
+- Belum ada reset password mandiri / session expiry handling; pengguna mengandalkan email kredensial dari admin.
+- Status check publik hanya memerlukan NIP + email; cukup untuk kebutuhan internal, tetapi belum ada rate limit.
+- Tidak ada rollback bila pembuatan akun berhasil tetapi pembuatan baris `pegawai` gagal (jarang, perlu dicek manual).
+
+### 6. Tombol Reset di tab Sudah Unggah
+- Pada tab "Sudah Unggah", setiap penyuluh berstatus `menunggu_verifikasi` kini memiliki dua tombol: **Setujui** dan **Reset**.
+- Tombol **Reset** menghapus pengajuan tersebut (beserta presensi & rekapnya lewat cascade) dari database,
+  sehingga nama penyuluh hilang dari "Sudah Unggah" dan dari "Rekap".
+- Tombol Reset juga tersedia untuk status `ditolak`/`perlu_perbaikan` agar data lama bisa dibersihkan.
+- Rekap sudah memfilter status `ditolak`, dan setelah reset data otomatis tidak ikut rekap.
+- Perubahan: `public/admin.html` (`renderTabelSudah` + handler `data-reset`).
+
+### 7. Indikator progres saat "Proses Semua File" (Drive)
+- Saat menekan **Proses Semua File**, kini tampil bar progres (0–100%) + teks "Progres: i / N file"
+  dan nama file yang sedang diproses, plus pesan "Sedang memproses… harap tunggu".
+- Setelah selesai, bar penuh (hijau) dan ringkasan "Selesai: X pegawai tersimpan".
+- Tombol tetap nonaktif selama proses berlangsung.
+- Perubahan: `public/admin.html` (fungsi `lanjut` + `selesai` pada tab Drive).
