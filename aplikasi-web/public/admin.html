@@ -81,7 +81,7 @@
   <section class="kartu tersembunyi" id="tab-pendaftar">
     <h1>Pendaftar Baru</h1>
     <p class="sub">Pendaftaran yang menunggu keputusan admin.</p>
-    <div id="tabelPendaftar"><p class="catatan">Memuat…</p></div>
+    <div id="tabelPendaftar" class="tabel-pendaftar"><p class="catatan">Memuat…</p></div>
   </section>
 
   <section class="kartu tersembunyi" id="tab-pegawai">
@@ -627,33 +627,31 @@
 
     var latar = document.createElement('div');
     latar.id = 'modalKredensial';
-    latar.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999';
+    latar.className = 'modal-latar';
     latar.addEventListener('click', function (e) { if (e.target === latar) latar.remove(); });
 
     var kotak = document.createElement('div');
-    kotak.style.cssText = 'background:#fff;border-radius:12px;padding:20px 22px;max-width:470px;width:100%;box-shadow:0 20px 50px rgba(15,23,42,.28)';
+    kotak.className = 'modal-kotak';
 
     var judul = document.createElement('h2');
     judul.textContent = 'Akun pegawai dibuat';
-    judul.style.cssText = 'margin:0 0 2px;font-size:17px';
     kotak.appendChild(judul);
 
     var nama = document.createElement('p');
-    nama.className = 'catatan';
-    nama.style.margin = '0 0 14px';
+    nama.className = 'catatan modal-nama';
     nama.textContent = info.nama || '';
     kotak.appendChild(nama);
 
     function barisKredensial(label, nilai) {
       var wadah = document.createElement('div');
-      wadah.style.cssText = 'display:flex;gap:8px;align-items:flex-end;margin-bottom:10px';
+      wadah.className = 'kredensial';
       var isi = document.createElement('div');
-      isi.style.cssText = 'flex:1;min-width:0';
+      isi.className = 'kredensial-isi';
       var l = document.createElement('div');
-      l.style.cssText = 'font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#64748b;margin-bottom:2px';
+      l.className = 'kredensial-label';
       l.textContent = label;
       var v = document.createElement('div');
-      v.style.cssText = 'font-family:ui-monospace,Consolas,monospace;font-size:14px;word-break:break-all;user-select:all;padding:6px 8px;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px';
+      v.className = 'kredensial-nilai';
       v.textContent = nilai;
       isi.appendChild(l);
       isi.appendChild(v);
@@ -676,8 +674,7 @@
     kotak.appendChild(barisKredensial('Password sementara', info.password || ''));
 
     var ket = document.createElement('p');
-    ket.className = 'catatan';
-    ket.style.margin = '4px 0 14px';
+    ket.className = 'catatan modal-ket';
     if (info.emailTerkirim) {
       ket.textContent = 'Email kredensial juga sudah dikirim otomatis ke pegawai.';
     } else if (info.emailDinonaktifkan) {
@@ -688,7 +685,7 @@
     kotak.appendChild(ket);
 
     var aksi = document.createElement('div');
-    aksi.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap';
+    aksi.className = 'modal-aksi';
 
     var btnSemua = document.createElement('button');
     btnSemua.type = 'button';
@@ -726,11 +723,13 @@
           document.getElementById('tabelPendaftar').innerHTML = '<p class="catatan">Tidak ada pendaftaran menunggu.</p>';
           return;
         }
+        // data-label dipakai CSS layar sempit: tiap sel jadi baris berkartu
+        // dengan judul kolomnya sendiri (header tabel disembunyikan).
         var baris = d.map(function (x) {
-          return '<tr><td>' + esc(x.nama) + '<br><span class="catatan">' + esc(x.email) + '</span></td>' +
-            '<td>' + esc(x.nip) + '</td><td>' + esc(x.golongan) + '</td>' +
-            '<td>' + esc(x.jabatan) + '<br><span class="catatan">' + esc(x.bidang && x.bidang.nama) + '</span></td>' +
-            '<td><button class="kecil" data-terima="' + x.id + '" data-nama="' + esc(x.nama) + '">Setujui</button> ' +
+          return '<tr><td data-label="Nama / Email">' + esc(x.nama) + '<br><span class="catatan">' + esc(x.email) + '</span></td>' +
+            '<td data-label="NIP">' + esc(x.nip) + '</td><td data-label="Gol">' + esc(x.golongan) + '</td>' +
+            '<td data-label="Jabatan / Bidang">' + esc(x.jabatan) + '<br><span class="catatan">' + esc(x.bidang && x.bidang.nama) + '</span></td>' +
+            '<td class="aksi"><button class="kecil" data-terima="' + x.id + '" data-nama="' + esc(x.nama) + '">Setujui</button> ' +
             '<button class="kecil" data-tolakd="' + x.id + '">Tolak</button></td></tr>';
         }).join('');
         document.getElementById('tabelPendaftar').innerHTML =
