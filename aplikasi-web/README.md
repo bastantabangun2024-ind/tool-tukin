@@ -300,6 +300,14 @@ Salinan di `public/lib/` **dibuat otomatis** — jangan diedit manual; sumbernya
 4. Di Supabase → *Authentication → URL Configuration*, isi **Site URL** dengan domain Vercel.
 5. Batas waktu fungsi 60 detik (Hobby). Karena itu tab Ambil dari Drive mengirim satu file per
    permintaan; jangan mengubahnya menjadi satu permintaan untuk seluruh folder.
+6. **Deploy otomatis lewat GitHub Actions:** `.github/workflows/deploy-vercel.yml` berjalan pada
+   setiap push ke `main` (dan bisa dijalankan manual dari tab **Actions** → *Deploy ke Vercel* →
+   *Run workflow*). Workflow memakai `vercel pull` → `vercel build` → `vercel deploy --prebuilt`.
+   Yang perlu disiapkan sekali di GitHub: **Settings → Secrets and variables → Actions → New
+   repository secret** bernama `VERCEL_TOKEN` (buat di Vercel → *Account Settings → Tokens*).
+   `VERCEL_ORG_ID` dan `VERCEL_PROJECT_ID` sudah tertanam di workflow dan sama dengan
+   `aplikasi-web/.vercel/project.json`. Tanpa secret `VERCEL_TOKEN`, job deploy akan gagal
+   (build integrasi Git Vercel tetap berjalan sendiri bila integrasi itu aktif).
 
 **Diuji (tiruan Vercel):** folder tanpa `aplikasi-offline` dan tanpa `.env.local` → mesin dimuat
 `public/lib (salinan)`, `/lib/app.js` 200 (28.817 B), `/lib/pegawai.js` 200, halaman depan 200;
