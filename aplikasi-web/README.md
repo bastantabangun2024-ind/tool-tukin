@@ -103,8 +103,10 @@ node server.mjs        # http://localhost:3000/masuk.html
 ```
 
 - `public/masuk.html` — login email + password ke Supabase Auth; pesan galat Bahasa Indonesia.
-- `public/dasbor.html` — profil & peran dari `public.users`, ringkasan jumlah data untuk admin,
-  tombol keluar. Sesi hanya di `sessionStorage` (hilang saat tab ditutup).
+  Setelah masuk: admin diarahkan ke `/admin.html`, pegawai ke `/dasbor.html`.
+- `public/dasbor.html` — dasbor pegawai: profil, periode aktif, status pengajuan terakhir,
+  rekap presensi, Tukin & uang makan milik sendiri, riwayat, dan panduan. Sesi hanya di
+  `sessionStorage` (hilang saat tab ditutup).
 - `server.mjs` — server statis tanpa dependency + `/api/konfigurasi` (hanya kunci publishable).
 - `jalankan-web.cmd` — peluncur Windows (jalankan server + buka browser).
 
@@ -267,6 +269,49 @@ Semua di bawah ini sudah tayang di https://tool-tukin.vercel.app.
   Dashboard → **Usage**. Batas gratis lain: 5 GB egress/bulan, 50.000 MAU, 2 proyek aktif,
   dan proyek **dijeda bila tidak ada aktivitas ±1 minggu**.
 
+## Fase 2 — penyempurnaan grafik dasbor admin (12 November 2026)
+
+Fokus: empat grafik SVG di dasbor admin dibuat terasa seperti dashboard administrasi
+enterprise, tanpa menambah library, CDN, atau mengubah mesin hitung/database.
+
+### Berkas yang berubah
+- `public/lib/grafik.js` — mesin grafik SVG ditulis ulang: kurva *monotone cubic*, animasi
+gambar garis (`stroke-dashoffset`), batang tumbuh, donat menyapu, tooltip `position: fixed`
+yang dijepit ke dalam layar (mouse + sentuh), legenda interaktif, sorotan bulan/bidang,
+empty/error/skeleton state, dan `ResizeObserver` dengan cache tinggi agar tidak render berulang.
+- `public/admin.html` — sakelar **Jumlah / Rupiah** pada grafik tren, lencana periode per kartu,
+deduplikasi pengajuan berdasarkan `id`, cache kunci render per grafik, debounce filter 140 ms,
+dan tab yang sudah dibuka tidak mengambil ulang data.
+- `public/gaya.css` — sistem desain kartu/tiang/sakelar/legenda/tooltip, animasi batang,
+dan penyesuaian ponsel.
+
+### Perilaku grafik
+- **Tren**: mode *Jumlah* menampilkan total pengajuan per bulan; mode *Rupiah* membandingkan
+Tukin bersih vs uang makan bersih (dua kurva). Legenda bisa diklik untuk menyembunyikan seri.
+- **Perbandingan**: batang berkelompok Tukin vs uang makan per bulan; label nilai di samping
+batang (disembunyikan otomatis bila ruang per bulan terlalu sempit), label total di legenda.
+- **Status**: donat dengan total di tengah; saat segmen di-hover/disentuh, tengah berubah menjadi
+persentase segmen. Legenda menampilkan jumlah + persen. Filter status sengaja tidak diterapkan
+agar komposisi keseluruhan tetap terbaca (dinyatakan di caption kartu).
+- **Per bidang**: batang horizontal dengan label angka; bidang yang difilter disorot, bidang lain
+diredupkan. Filter bidang tidak diterapkan pada grafik ini (dinyatakan di caption).
+- Nominal hanya tampil di panel admin yang sudah digerbangi peran; RLS tetap batas utama.
+
+### Hasil uji (Chrome headless, sesi admin asli)
+- 4 grafik, 0 nilai `NaN`, 0 console error; data 30 pegawai / 6 pengajuan (3 menunggu, 3 disetujui).
+- Tooltip tampil di dalam viewport pada 1440 px dan 360 px; legenda menyembunyikan/memulihkan seri.
+- Donat: total 6 → hover 50% → kembali 6; `stroke-dasharray` terisi dan transisi 0,85 dtk aktif.
+- Filter status/bulan/bidang mengubah statistik, aktivitas, dan sorotan grafik; pindah tab tidak
+menambah request (2 → 2); tahun tanpa data menampilkan empty state.
+- Tanpa overflow horizontal pada 1440, 1366, 768, 390, dan 360 px; layout ponsel satu kolom.
+- Tangkapan layar uji (lokal, tidak di-commit karena memuat nama/NIP pegawai):
+`docs/tangkapan-layar/dasbor-admin-desktop.png` (1440 px) dan
+`docs/tangkapan-layar/dasbor-admin-ponsel.png` (390 px).
+
+### Catatan
+- Bug lama `pad.top` (seharusnya `pad.atas`) diperbaiki; bug ini membuat atribut SVG bernilai `NaN`.
+- Belum ada commit, push, atau deploy untuk fase ini.
+
 ## Struktur kode (siap Vercel)
 
 | Berkas | Peran |
@@ -411,3 +456,67 @@ dengan kredensial hanya dari variabel lingkungan → `/api/konfigurasi` 200 dan 
 - Query tab Sudah Unggah ditambah `presensi(*)`; tombol panah memakai atribut `data-rincian`
   dan fungsi `htmlRincianPotongan()` yang sudah dipakai tab Ekspor Rekap.
 - Perubahan: `public/admin.html` (`muatUnggah`, `renderTabelSudah`, handler `data-rincian`).
+
+## Perubahan 12 November 2026 (redesain UI/UX — dasbor administrasi)
+
+Tampilan dirombak menjadi dasbor administrasi kepegawaian (navy/royal blue, kartu rounded,
+sidebar, grafik). **Tidak ada** perubahan pada mesin hitung, rumus Tukin/uang makan, endpoint
+API, skema database, kredensial, atau konfigurasi rahasia. Semua fitur lama tetap ada.
+
+### Berkas yang diubah / ditambah
+
+| Berkas | Perubahan |
+|---|---|
+| `public/gaya.css` | Sistem desain baru: token warna navy/royal, sidebar + topbar, kartu statistik, grafik, skeleton, modal, tabel kartu, responsif. Semua kelas lama tetap dipertahankan. |
+| `public/lib/grafik.js` | **Baru.** Perender grafik SVG tanpa dependency: garis, batang (horizontal/vertikal), batang berkelompok, donat. Tooltip, legenda, animasi ringan, empty state, skeleton, dan gambar ulang saat lebar berubah. |
+| `public/admin.html` | Kerangka sidebar/topbar baru + tab **Dasbor**: 5 kartu statistik, 4 grafik, filter bulan/tahun/bidang/status, aktivitas terbaru dengan Detail & Verifikasi. Tab lama (Sudah Unggah, Pendaftar, Data Pegawai, Ambil dari Drive, Ekspor Rekap, Pengaturan) tidak diubah logikanya. |
+| `public/dasbor.html` | Dasbor pegawai baru: profil, periode aktif, status pengajuan terakhir, rekap presensi, Tukin & uang makan milik sendiri, riwayat, panduan. |
+| `public/masuk.html` | Tampilan login baru; pegawai diarahkan ke `/dasbor.html`, admin ke `/admin.html`. |
+| `public/index.html`, `public/daftar.html` | Navigasi menuju Dasbor + favicon. Logika unggah/pendaftaran tidak berubah. |
+| `README.md` | Catatan perubahan ini. |
+
+### Sumber data grafik
+
+Semua angka berasal dari Supabase melalui sesi pengguna (bukan dummy):
+
+- `pegawai?aktif=eq.true` → total pegawai dan daftar bidang.
+- `pengajuan_tukin?tahun=eq.<tahun>&select=...pegawai(...),rekap_tukin(...),rekap_uang_makan(...)`
+  → agregasi status, tren bulanan, nominal Tukin vs uang makan, pengajuan per bidang, dan
+  aktivitas terbaru. Filter bulan/bidang/status diterapkan di klien pada data yang sudah diambil.
+- Detail pengajuan mengambil `presensi(*)` saat dialog dibuka agar payload awal tetap ringan.
+
+Grafik **tidak memakai library baru**: proyek ini tanpa build step dan tanpa React. Perender SVG
+kecil dipilih agar tetap ringan, tanpa CDN, dan tetap jalan offline — memenuhi kebutuhan tooltip,
+legenda, animasi, empty state, dan skeleton.
+
+### Keamanan
+
+- `admin.html` sekarang memeriksa peran `users.peran`; akun non-admin dialihkan ke `/dasbor.html`.
+- RLS Supabase tetap menjadi batas utama: pegawai hanya membaca baris miliknya. Ini diuji dengan
+  token pegawai sungguhan — 1 baris `pegawai`, 1 pengajuan, 0 baris milik orang lain.
+- Anon tanpa login tidak dapat membaca `pengajuan_tukin` (hasil `[]`).
+- Tidak ada kunci rahasia di frontend; hanya kunci publishable dari `/api/konfigurasi`.
+
+### Pengujian (12 November 2026)
+
+- `node scripts/siapkan-mesin.mjs` (perintah build Vercel) berhasil; semua halaman & aset 200.
+- Login pegawai sungguhan berhasil; dasbor menampilkan nama, periode, status Disetujui, hadir 15,
+  Tukin bersih Rp2.913.360, dan uang makan; 1 baris riwayat; 4 langkah panduan.
+- Login admin lewat formulir sungguhan berhasil (diarahkan ke `/admin.html`), lalu panel diuji
+  dengan data penuh: **30 pegawai, 6 pengajuan, 3 menunggu, 3 disetujui**. Filter status dan bidang
+  mengubah angka dengan benar (contoh Bimas Katolik: 4 pegawai, 3 pengajuan), ketujuh tab berpindah
+  dan menampilkan judul masing-masing, tab **Sudah Unggah** Oktober 2026 menampilkan 6 sudah /
+  24 belum, tab **Data Pegawai** menampilkan 30 baris, dan dialog detail memuat rincian potongan.
+- Ukuran ponsel 390 px: tidak ada guliran horizontal; sidebar menjadi off-canvas; kartu 2 kolom.
+- Console bersih: tidak ada error grafik, resource, maupun exception.
+- Perhitungan Tukin/uang makan tidak diuji ulang karena `app.js`, `rekap.js`, `app.mjs`, dan
+  migrasi database tidak disentuh.
+
+### Belum / catatan
+
+- Password admin diperbarui 12 November 2026 melalui Supabase Auth Admin API. Password baru
+  disimpan di `username pasword.txt` (berkas ini di-ignore Git); nilai sandi tidak ditulis di
+  dokumentasi ini. Login admin sudah diverifikasi ulang dengan sandi tersebut.
+- Tab Data Pegawai bergantung pada endpoint server admin; tidak berubah.
+- Rekomendasi lanjutan: ekspor PDF dasbor, notifikasi dalam aplikasi, dan pagination aktivitas
+  bila pengajuan sudah ribuan.

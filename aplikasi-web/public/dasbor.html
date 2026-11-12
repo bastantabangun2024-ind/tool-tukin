@@ -3,67 +3,197 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dasbor — Tool Tukin</title>
-<style>
-  :root { --biru:#1f4e79; --garis:#d7dee7; }
-  * { box-sizing:border-box; }
-  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
-         background:#f4f6f9; color:#1f2933; }
-  header { background:#fff; border-bottom:1px solid var(--garis); padding:14px 22px;
-           display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
-  header strong { color:var(--biru); }
-  header .kanan { margin-left:auto; display:flex; align-items:center; gap:12px; font-size:13px; }
-  button { font:inherit; padding:7px 12px; border-radius:7px; border:1px solid var(--garis);
-           background:#fff; cursor:pointer; }
-  main { max-width:880px; margin:26px auto; padding:0 20px; }
-  .kartu { background:#fff; border:1px solid var(--garis); border-radius:12px; padding:20px 22px; margin-bottom:16px; }
-  h2 { margin:0 0 12px; font-size:15px; color:var(--biru); }
-  dl { display:grid; grid-template-columns:150px 1fr; gap:8px 12px; margin:0; font-size:14px; }
-  dt { color:#64748b; }
-  dd { margin:0; font-weight:600; }
-  .angka { display:flex; gap:26px; flex-wrap:wrap; }
-  .angka div { min-width:120px; }
-  .angka b { display:block; font-size:26px; color:var(--biru); }
-  .angka span { font-size:12px; color:#64748b; }
-  .catatan { font-size:12.5px; color:#64748b; line-height:1.55; }
-</style>
+<title>Dasbor Pegawai — Tool Tukin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4ed8'/%3E%3Ctext x='32' y='43' font-family='Arial,Helvetica,sans-serif' font-size='27' font-weight='700' fill='white' text-anchor='middle'%3ETT%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/gaya.css">
 </head>
 <body>
-<header>
-  <strong>Tool Tukin</strong>
-  <span id="peran" style="font-size:12px;color:#64748b"></span>
-  <div class="kanan">
-    <span id="siapa">memuat…</span>
-    <button id="keluar" type="button">Keluar</button>
-  </div>
-</header>
-
-<main>
-  <section class="kartu">
-    <h2>Akun</h2>
-    <dl>
-      <dt>Email</dt><dd id="email">—</dd>
-      <dt>Nama</dt><dd id="nama">—</dd>
-      <dt>Peran</dt><dd id="peran2">—</dd>
-      <dt>Status</dt><dd id="status">—</dd>
-    </dl>
-  </section>
-
-  <section class="kartu" id="kartuAdmin" hidden>
-    <h2>Ringkasan data</h2>
-    <div class="angka">
-      <div><b id="jmlPegawai">—</b><span>pegawai aktif</span></div>
-      <div><b id="jmlBidang">—</b><span>bidang</span></div>
-      <div><b id="jmlPengajuan">—</b><span>pengajuan</span></div>
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-merek">
+      <span class="logo">TT</span>
+      <div class="teks"><b>Tool Tukin</b><span>Rekap Kinerja &amp; Uang Makan</span></div>
     </div>
-    <p class="catatan" style="margin:16px 0 0">
-      Menu unggah presensi, verifikasi, dan rekap belum dibuat (TAHAP 3 lanjutan).
-      Halaman ini hanya memastikan login, sesi, dan RLS bekerja.
-    </p>
-  </section>
 
-  <p class="catatan">Sesi disimpan di tab ini saja (sessionStorage) dan hilang saat tab ditutup.</p>
-</main>
+    <nav class="nav-samping" aria-label="Navigasi utama">
+      <div class="label-grup">Menu Saya</div>
+      <a href="/dasbor.html" class="aktif">
+        <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1Z"/></svg></span>
+        <span class="teks-nav">Dasbor</span>
+      </a>
+      <a href="/index.html">
+        <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
+        <span class="teks-nav">Unggah Presensi</span>
+      </a>
+      <a href="#panduan">
+        <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5"/></svg></span>
+        <span class="teks-nav">Panduan</span>
+      </a>
+
+      <div class="label-grup" id="grupAdmin" style="display:none">Administrasi</div>
+      <a href="/admin.html" id="tautanAdmin" style="display:none">
+        <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 4.5 6v6c0 4.2 3.1 7.6 7.5 9 4.4-1.4 7.5-4.8 7.5-9V6Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+        <span class="teks-nav">Panel Admin</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-kaki">
+      <div class="kartu-pengguna">
+        <div class="avatar" id="avatarInisial">P</div>
+        <div class="info">
+          <b id="siapa">memuat…</b>
+          <span id="peranSaya">Pegawai</span>
+        </div>
+        <button id="keluar" type="button" title="Keluar" aria-label="Keluar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="tirai" id="tirai"></div>
+
+  <div class="shell-isi">
+    <header class="topbar">
+      <button class="tombol-ikon" id="tombolMenu" type="button" aria-label="Buka menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+      <div class="judul-halaman">
+        <h1>Dasbor Saya</h1>
+        <p>Ringkasan pengajuan presensi, Tukin, dan uang makan</p>
+      </div>
+      <div class="aksi-kanan">
+        <span class="lencana" id="lencanaPeriode"></span>
+      </div>
+    </header>
+
+    <main>
+      <section class="kartu kartu-sambutan">
+        <div class="kepala-sambutan">
+          <div>
+            <p class="eyebrow" id="sapaan">Selamat datang</p>
+            <h2 id="namaSambutan">Memuat profil…</h2>
+            <p id="jabatanSambutan">—</p>
+          </div>
+          <a class="tombol-putih" id="tombolBaru" href="/index.html">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+            Buat pengajuan baru
+          </a>
+        </div>
+      </section>
+
+      <div class="grid-statistik" id="statPegawai">
+        <article class="kartu-stat">
+          <div class="kepala-stat"><span class="label-stat">Periode aktif</span>
+            <span class="ikon-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg></span></div>
+          <div class="nilai-stat" id="statPeriode" style="font-size:19px"><span class="rangka" style="display:inline-block;height:22px;width:70%"></span></div>
+          <div class="ket-stat">bulan berjalan</div>
+        </article>
+        <article class="kartu-stat">
+          <div class="kepala-stat"><span class="label-stat">Pengajuan periode ini</span>
+            <span class="ikon-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h9L20 9.5v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/><path d="M14 4v6h6"/></svg></span></div>
+          <div class="nilai-stat" id="statPeriodeIni"><span class="rangka" style="display:inline-block;height:26px;width:62%"></span></div>
+          <div class="ket-stat" id="ketPeriodeIni">memuat…</div>
+        </article>
+        <article class="kartu-stat is-kuning">
+          <div class="kepala-stat"><span class="label-stat">Menunggu verifikasi</span>
+            <span class="ikon-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span></div>
+          <div class="nilai-stat" id="statMenunggu"><span class="rangka" style="display:inline-block;height:26px;width:62%"></span></div>
+          <div class="ket-stat">dari seluruh riwayat</div>
+        </article>
+        <article class="kartu-stat is-hijau">
+          <div class="kepala-stat"><span class="label-stat">Disetujui</span>
+            <span class="ikon-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.4 2.6 2.6 5-5.4"/></svg></span></div>
+          <div class="nilai-stat" id="statDisetujui"><span class="rangka" style="display:inline-block;height:26px;width:62%"></span></div>
+          <div class="ket-stat">sudah diverifikasi</div>
+        </article>
+      </div>
+
+      <div class="grid-dua">
+        <section class="kartu">
+          <div class="kartu-kepala"><div><h2>Profil pegawai</h2><p>Data identitas sesuai database kepegawaian.</p></div></div>
+          <dl class="identitas" id="profilPegawai" style="margin-top:0">
+            <dt>Nama</dt><dd>—</dd><dt>NIP</dt><dd>—</dd>
+            <dt>Jabatan</dt><dd>—</dd><dt>Golongan</dt><dd>—</dd>
+            <dt>Bidang</dt><dd>—</dd><dt>Status</dt><dd>—</dd>
+          </dl>
+          <p class="catatan" id="catatanProfil"></p>
+        </section>
+
+        <section class="kartu">
+          <div class="kartu-kepala">
+            <div><h2>Status pengajuan terakhir</h2><p id="ketTerakhir">Memuat…</p></div>
+          </div>
+          <div id="statusTerakhir">
+            <div class="rangka rangka-lencana"></div>
+            <div class="rangka rangka-angka"></div>
+            <div class="rangka rangka-baris"></div>
+          </div>
+        </section>
+      </div>
+
+      <div class="grid-dua">
+        <section class="kartu">
+          <div class="kartu-kepala"><div><h2>Rekap presensi</h2><p id="ketPresensi">Periode pengajuan terakhir.</p></div></div>
+          <div id="rekapPresensi">
+            <div class="rangka rangka-baris"></div>
+            <div class="rangka rangka-baris" style="margin-top:8px"></div>
+            <div class="rangka rangka-baris" style="margin-top:8px"></div>
+          </div>
+        </section>
+
+        <section class="kartu">
+          <div class="kartu-kepala"><div><h2>Tukin &amp; uang makan</h2><p>Nominal untuk pengajuan terakhir Anda.</p></div></div>
+          <div id="rekapNilai">
+            <div class="rangka rangka-baris"></div>
+            <div class="rangka rangka-baris" style="margin-top:8px"></div>
+            <div class="rangka rangka-baris" style="margin-top:8px"></div>
+          </div>
+          <p class="catatan">Potongan HUKDIS/TB diisi admin saat verifikasi. Nominal hanya terlihat oleh Anda dan admin.</p>
+        </section>
+      </div>
+
+      <section class="kartu">
+        <div class="kartu-kepala">
+          <div><h2>Riwayat pengajuan</h2><p>Hanya pengajuan milik akun Anda yang ditampilkan (aturan RLS Supabase).</p></div>
+          <span class="lencana" id="jumlahRiwayat"></span>
+        </div>
+        <div class="tabel-kartu" id="tabelRiwayat">
+          <div class="rangka rangka-tabel"></div>
+          <div class="rangka rangka-tabel"></div>
+          <div class="rangka rangka-tabel"></div>
+        </div>
+      </section>
+
+      <section class="kartu" id="panduan">
+        <div class="kartu-kepala"><div><h2>Panduan penggunaan</h2><p>Empat langkah dari unduh presensi sampai verifikasi admin.</p></div></div>
+        <div class="langkah-panduan">
+          <div class="langkah">
+            <span class="nomor-langkah">1</span>
+            <b>Unduh presensi</b>
+            <p>Masuk ke <b>absensi.kemenag.go.id</b>, unduh rekap presensi bulanan dalam format <b>.xlsx</b>.</p>
+          </div>
+          <div class="langkah">
+            <span class="nomor-langkah">2</span>
+            <b>Unggah berkas</b>
+            <p>Buka menu <b>Unggah Presensi</b>, isi NIP Anda, pilih berkas, lalu tentukan bulan dan tahun.</p>
+          </div>
+          <div class="langkah">
+            <span class="nomor-langkah">3</span>
+            <b>Proses &amp; periksa</b>
+            <p>Tekan <b>Proses</b>. Rekap kehadiran, Tukin, dan uang makan akan dihitung otomatis. Data tersimpan menunggu verifikasi.</p>
+          </div>
+          <div class="langkah">
+            <span class="nomor-langkah">4</span>
+            <b>Tunggu verifikasi</b>
+            <p>Admin memeriksa dan menyetujui. Status pada dasbor ini akan berubah menjadi <b>Disetujui</b>.</p>
+          </div>
+        </div>
+        <p class="catatan">Butuh bantuan? Hubungi admin kepegawaian. Jangan membagikan password kepada siapa pun.</p>
+      </section>
+    </main>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -71,51 +201,263 @@
   try { sesi = JSON.parse(sessionStorage.getItem('sesi') || 'null'); } catch (e) { sesi = null; }
   if (!sesi || !sesi.access_token) { location.replace('/masuk.html'); return; }
 
-  var isi = document.getElementById('siapa');
-  isi.textContent = sesi.email || 'masuk';
+  var NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+    'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+  var BULAN_SINGKAT = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-  document.getElementById('keluar').addEventListener('click', function () {
+  var el = function (id) { return document.getElementById(id); };
+  var kini = new Date();
+  var k = null;
+
+  el('siapa').textContent = sesi.email || '';
+  el('lencanaPeriode').textContent = NAMA_BULAN[kini.getMonth()] + ' ' + kini.getFullYear();
+  el('statPeriode').textContent = BULAN_SINGKAT[kini.getMonth()] + ' ' + kini.getFullYear();
+  el('sapaan').textContent = 'Selamat datang, ' + (kini.getHours() < 11 ? 'selamat pagi' : kini.getHours() < 15 ? 'selamat siang' : kini.getHours() < 18 ? 'selamat sore' : 'selamat malam');
+
+  el('keluar').addEventListener('click', function () {
     sessionStorage.removeItem('sesi');
     location.href = '/masuk.html';
   });
 
-  fetch('/api/konfigurasi').then(function (r) { return r.json(); }).then(function (k) {
-    var kepala = { apikey: k.kunci, Authorization: 'Bearer ' + sesi.access_token };
-
-    function ambil(jalur, opsi) {
-      return fetch(k.url + '/rest/v1/' + jalur, { headers: kepala, ...(opsi || {}) })
-        .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j, r: r }; }); });
-    }
-
-    return ambil('users?select=email,nama,peran,aktif&id=eq.' + encodeURIComponent(sesi.id))
-      .then(function (h) {
-        var u = (h.j && h.j[0]) || {};
-        document.getElementById('email').textContent = u.email || sesi.email || '—';
-        document.getElementById('nama').textContent = u.nama || '—';
-        document.getElementById('peran').textContent = u.peran ? '(' + u.peran + ')' : '';
-        document.getElementById('peran2').textContent = u.peran || '— (profil belum ada)';
-        document.getElementById('status').textContent = u.aktif === false ? 'tidak aktif' : 'aktif';
-        if (u.peran !== 'admin') return;
-
-        document.getElementById('kartuAdmin').hidden = false;
-        return Promise.all([
-          ambil('pegawai?select=id&aktif=is.true', { headers: { ...kepala, Prefer: 'count=exact', Range: '0-0' } }),
-          ambil('bidang?select=id&aktif=is.true', { headers: { ...kepala, Prefer: 'count=exact', Range: '0-0' } }),
-          ambil('pengajuan_tukin?select=id', { headers: { ...kepala, Prefer: 'count=exact', Range: '0-0' } })
-        ]).then(function (hasil) {
-          function jumlah(h) {
-            var cr = h.r.headers.get('content-range') || '';
-            return cr.indexOf('/') >= 0 ? cr.split('/')[1] : '—';
-          }
-          document.getElementById('jmlPegawai').textContent = jumlah(hasil[0]);
-          document.getElementById('jmlBidang').textContent = jumlah(hasil[1]);
-          document.getElementById('jmlPengajuan').textContent = jumlah(hasil[2]);
-        });
-      });
-  }).catch(function () {
-    document.getElementById('peran2').textContent = 'gagal memuat profil';
+  el('tombolMenu').addEventListener('click', function () {
+    document.body.classList.toggle('sidebar-terbuka');
+  });
+  el('tirai').addEventListener('click', function () {
+    document.body.classList.remove('sidebar-terbuka');
   });
 
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function rupiah(n) { return 'Rp' + Math.round(Number(n) || 0).toLocaleString('id-ID'); }
+  function satuRekap(v) { return Array.isArray(v) ? v[0] : v; }
+  function inisial(nama) {
+    return String(nama || 'P').split(/[\s.,]+/).filter(Boolean).slice(0, 2)
+      .map(function (x) { return x.charAt(0).toUpperCase(); }).join('') || 'P';
+  }
+  function tanggal(iso) {
+    if (!iso) return '—';
+    var t = new Date(iso);
+    if (isNaN(t.getTime())) return '—';
+    return t.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  function labelBulan(n) { return NAMA_BULAN[Number(n) - 1] || '—'; }
+  function labelStatus(s) {
+    return {
+      menunggu_verifikasi: 'Menunggu verifikasi',
+      disetujui: 'Disetujui',
+      ditolak: 'Ditolak',
+      perlu_perbaikan: 'Perlu perbaikan',
+      draft: 'Draft'
+    }[s] || String(s || '—').replace(/_/g, ' ');
+  }
+
+  function tampilkanProfil(u, p) {
+    var nama = (p && p.nama) || (u && u.nama) || sesi.email || 'Pengguna';
+    el('siapa').textContent = nama;
+    el('avatarInisial').textContent = inisial(nama);
+    el('peranSaya').textContent = u && u.peran === 'admin' ? 'Administrator' : 'Pegawai';
+    el('namaSambutan').textContent = nama;
+
+    if (p) {
+      el('jabatanSambutan').textContent = [p.jabatan, (p.bidang && p.bidang.nama)].filter(Boolean).join(' · ') || 'Pegawai';
+      var gol = p.golongan ? p.golongan + (p.ruang ? '/' + p.ruang : '') : '—';
+      el('profilPegawai').innerHTML =
+        '<dt>Nama</dt><dd>' + esc(p.nama) + '</dd>' +
+        '<dt>NIP</dt><dd>' + esc(p.nip || '—') + '</dd>' +
+        '<dt>Jabatan</dt><dd>' + esc(p.jabatan || '—') + '</dd>' +
+        '<dt>Golongan</dt><dd>' + esc(gol) + '</dd>' +
+        '<dt>Bidang</dt><dd>' + esc((p.bidang && p.bidang.nama) || '—') + '</dd>' +
+        '<dt>Status</dt><dd>' + esc(String(p.status_kepegawaian || '—').replace(/_/g, ' ')) + '</dd>';
+    } else {
+      el('jabatanSambutan').textContent = u && u.peran === 'admin'
+        ? 'Administrator — kelola data melalui panel admin' : 'Data pegawai belum tertaut ke akun ini.';
+      el('profilPegawai').innerHTML =
+        '<dt>Nama</dt><dd>' + esc(nama) + '</dd>' +
+        '<dt>Email</dt><dd>' + esc((u && u.email) || sesi.email || '—') + '</dd>';
+      el('catatanProfil').textContent = u && u.peran === 'admin'
+        ? 'Akun admin tidak memiliki data pegawai. Gunakan Panel Admin untuk mengelola pengajuan.'
+        : 'Akun ini belum ditautkan ke baris pegawai. Hubungi admin kepegawaian.';
+    }
+
+    if (u && u.peran === 'admin') {
+      el('grupAdmin').style.display = '';
+      el('tautanAdmin').style.display = '';
+      if (!p) {
+        el('tombolBaru').style.display = 'none';
+        el('catatanProfil').textContent = 'Anda masuk sebagai admin. Buka Panel Admin untuk melihat seluruh pengajuan.';
+      }
+    }
+  }
+
+  function kartuKosong(judul, pesan) {
+    return '<div class="keadaan-kosong"><div class="ikon-kosong">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">' +
+      '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h9L20 9.5v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/>' +
+      '<path d="M14 4v6h6"/></svg></div><b>' + esc(judul) + '</b><span>' + pesan + '</span></div>';
+  }
+
+  function renderStatusTerakhir(riwayat) {
+    var wadah = el('statusTerakhir');
+    var terakhir = riwayat[0];
+    if (!terakhir) {
+      el('ketTerakhir').textContent = 'Belum ada pengajuan.';
+      wadah.innerHTML = kartuKosong('Belum ada pengajuan',
+        'Klik <b>Buat pengajuan baru</b> setelah mengunduh berkas presensi.');
+      return;
+    }
+    var rk = satuRekap(terakhir.rekap_kehadiran) || {};
+    el('ketTerakhir').textContent = 'Periode ' + labelBulan(terakhir.bulan) + ' ' + terakhir.tahun +
+      ' · dikirim ' + tanggal(terakhir.dikirim_pada);
+
+    wadah.innerHTML =
+      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">' +
+        '<span class="status ' + esc(terakhir.status) + '" style="font-size:12.5px;padding:5px 12px">' +
+          esc(labelStatus(terakhir.status)) + '</span>' +
+        '<span class="catatan" style="margin:0">' + labelBulan(terakhir.bulan) + ' ' + terakhir.tahun + '</span>' +
+      '</div>' +
+      '<dl class="identitas" style="margin-top:0">' +
+        '<dt>Dikirim</dt><dd>' + tanggal(terakhir.dikirim_pada) + '</dd>' +
+        '<dt>Diverifikasi</dt><dd>' + tanggal(terakhir.diverifikasi_pada) + '</dd>' +
+        '<dt>Hadir</dt><dd>' + (rk.hadir != null ? rk.hadir + ' hari' : '—') + '</dd>' +
+        '<dt>Catatan admin</dt><dd>' + esc(terakhir.catatan_admin || '—') + '</dd>' +
+      '</dl>' +
+      (terakhir.status === 'menunggu_verifikasi'
+        ? '<p class="catatan">Pengajuan sedang menunggu pemeriksaan admin. Tidak perlu mengunggah ulang.</p>'
+        : '');
+  }
+
+  function renderRekapPresensi(riwayat) {
+    var wadah = el('rekapPresensi');
+    var terakhir = riwayat[0];
+    var rk = terakhir ? satuRekap(terakhir.rekap_kehadiran) : null;
+    if (!rk) {
+      el('ketPresensi').textContent = 'Belum ada rekap presensi.';
+      wadah.innerHTML = kartuKosong('Rekap belum tersedia',
+        'Rekap presensi muncul setelah pengajuan pertama diproses.');
+      return;
+    }
+    el('ketPresensi').textContent = 'Periode ' + labelBulan(terakhir.bulan) + ' ' + terakhir.tahun + '.';
+    var butir = [
+      ['Hari kerja', rk.hari_kerja],
+      ['Hadir', rk.hadir],
+      ['Terlambat', rk.telat],
+      ['Pulang awal', rk.pulang_awal],
+      ['Tanpa presensi masuk', rk.tidak_presensi_masuk],
+      ['Tanpa presensi pulang', rk.tidak_presensi_pulang],
+      ['Tanpa keterangan', rk.tk],
+      ['Cuti / sakit / dinas', (Number(rk.cuti) || 0) + (Number(rk.sakit) || 0) + (Number(rk.dinas_luar) || 0)]
+    ];
+    wadah.innerHTML = '<div class="mini-stat">' + butir.map(function (b) {
+      return '<div><b>' + (b[1] != null ? b[1] : '—') + '</b><span>' + esc(b[0]) + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  function renderNilai(riwayat) {
+    var wadah = el('rekapNilai');
+    var terakhir = riwayat[0];
+    var rt = terakhir ? satuRekap(terakhir.rekap_tukin) : null;
+    var rm = terakhir ? satuRekap(terakhir.rekap_uang_makan) : null;
+    if (!rt && !rm) {
+      wadah.innerHTML = kartuKosong('Nominal belum tersedia',
+        'Tukin dan uang makan muncul setelah pengajuan diproses.');
+      return;
+    }
+    rt = rt || {};
+    rm = rm || {};
+    wadah.innerHTML =
+      '<div class="kotak-dua" style="gap:12px">' +
+        '<div><h3>Tukin</h3><dl>' +
+          '<dt>Bruto</dt><dd>' + rupiah(rt.tukin_bruto) + '</dd>' +
+          '<dt>Potongan</dt><dd>' + (Number(rt.total_persen) || 0) + '%</dd>' +
+          '<dt class="total">Bersih</dt><dd class="total">' + rupiah(rt.tukin_bersih) + '</dd>' +
+        '</dl></div>' +
+        '<div><h3>Uang makan</h3><dl>' +
+          '<dt>Hari hadir</dt><dd>' + (rm.hari_hadir != null ? rm.hari_hadir : '—') + '</dd>' +
+          '<dt>PPh</dt><dd>' + rupiah(rm.pph) + '</dd>' +
+          '<dt class="total">Bersih</dt><dd class="total">' + rupiah(rm.bersih) + '</dd>' +
+        '</dl></div>' +
+      '</div>';
+  }
+
+  function renderRiwayat(riwayat) {
+    var wadah = el('tabelRiwayat');
+    el('jumlahRiwayat').textContent = riwayat.length ? riwayat.length + ' pengajuan' : '';
+    if (!riwayat.length) {
+      wadah.innerHTML = '<p class="catatan">Belum ada riwayat pengajuan.</p>';
+      return;
+    }
+    wadah.innerHTML =
+      '<table><thead><tr><th>Periode</th><th>Dikirim</th><th>Status</th>' +
+      '<th class="num">Hadir</th><th class="num">Tukin bersih</th><th class="num">Uang makan</th></tr></thead><tbody>' +
+      riwayat.map(function (x) {
+        var rk = satuRekap(x.rekap_kehadiran) || {};
+        var rt = satuRekap(x.rekap_tukin) || {};
+        var rm = satuRekap(x.rekap_uang_makan) || {};
+        return '<tr>' +
+          '<td data-label="Periode"><b>' + labelBulan(x.bulan) + ' ' + x.tahun + '</b></td>' +
+          '<td data-label="Dikirim">' + tanggal(x.dikirim_pada) + '</td>' +
+          '<td data-label="Status"><span class="status ' + esc(x.status) + '">' + esc(labelStatus(x.status)) + '</span></td>' +
+          '<td class="num" data-label="Hadir">' + (rk.hadir != null ? rk.hadir : '—') + '</td>' +
+          '<td class="num" data-label="Tukin bersih">' + (rt.tukin_bersih != null ? rupiah(rt.tukin_bersih) : '—') + '</td>' +
+          '<td class="num" data-label="Uang makan">' + (rm.bersih != null ? rupiah(rm.bersih) : '—') + '</td>' +
+          '</tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function renderStatistik(riwayat) {
+    var periodeIni = riwayat.filter(function (x) {
+      return Number(x.bulan) === kini.getMonth() + 1 && Number(x.tahun) === kini.getFullYear();
+    });
+    var menunggu = riwayat.filter(function (x) { return x.status === 'menunggu_verifikasi'; }).length;
+    var disetujui = riwayat.filter(function (x) { return x.status === 'disetujui'; }).length;
+
+    el('statPeriodeIni').textContent = periodeIni.length ? 'Sudah' : 'Belum';
+    el('ketPeriodeIni').textContent = periodeIni.length
+      ? labelStatus(periodeIni[0].status) : 'belum ada pengajuan';
+    el('statMenunggu').textContent = String(menunggu);
+    el('statDisetujui').textContent = String(disetujui);
+  }
+
+  function gagal(e) {
+    var pesan = String(e && e.message ? e.message : 'Tidak dapat menghubungi server.');
+    el('statusTerakhir').innerHTML = kartuKosong('Gagal memuat data', esc(pesan));
+    el('rekapPresensi').innerHTML = '';
+    el('rekapNilai').innerHTML = '';
+    el('tabelRiwayat').innerHTML = '<p class="catatan">' + esc(pesan) + '</p>';
+  }
+
+  fetch('/api/konfigurasi').then(function (r) { return r.json(); }).then(function (cfg) {
+    k = cfg;
+    var kepala = { apikey: k.kunci, Authorization: 'Bearer ' + sesi.access_token };
+    function ambil(jalur) {
+      return fetch(k.url + '/rest/v1/' + jalur, { headers: kepala }).then(function (r) {
+        if (!r.ok) throw new Error('Data tidak dapat dimuat (HTTP ' + r.status + ').');
+        return r.json();
+      });
+    }
+
+    return Promise.all([
+      ambil('users?select=nama,email,peran,aktif&id=eq.' + encodeURIComponent(sesi.id)),
+      ambil('pegawai?select=id,nama,nip,jabatan,golongan,ruang,status_kepegawaian,bidang:bidang_id(nama)&user_id=eq.' + encodeURIComponent(sesi.id)),
+      ambil('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,diverifikasi_pada,catatan_admin,' +
+        'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*)' +
+        '&order=tahun.desc,bulan.desc&limit=24')
+    ]).then(function (hasil) {
+      var u = (hasil[0] && hasil[0][0]) || null;
+      var p = (hasil[1] && hasil[1][0]) || null;
+      var riwayat = Array.isArray(hasil[2]) ? hasil[2] : [];
+
+      tampilkanProfil(u, p);
+      renderStatistik(riwayat);
+      renderStatusTerakhir(riwayat);
+      renderRekapPresensi(riwayat);
+      renderNilai(riwayat);
+      renderRiwayat(riwayat);
+    });
+  }).catch(gagal);
 })();
 </script>
 </body>

@@ -4,25 +4,222 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin — Tool Tukin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4ed8'/%3E%3Ctext x='32' y='43' font-family='Arial,Helvetica,sans-serif' font-size='27' font-weight='700' fill='white' text-anchor='middle'%3ETT%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="/gaya.css">
 </head>
 <body>
-<header>
-  <strong>Tool Tukin — Admin</strong>
-  <nav>
-    <button data-tab="unggah" class="aktif">Sudah Unggah</button>
-    <button data-tab="pendaftar">Pendaftar</button>
-    <button data-tab="pegawai">Data Pegawai</button>
-    <button data-tab="drive">Ambil dari Drive</button>
-    <button data-tab="rekap">Ekspor Rekap</button>
-    <button data-tab="pengaturan">Pengaturan Potongan</button>
-    <span id="siapa" style="color:#64748b;margin-left:10px"></span>
-    <button id="keluar">Keluar</button>
+<div class="shell">
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-merek">
+    <span class="logo">TT</span>
+    <div class="teks"><b>Tool Tukin</b><span>Administrasi Kepegawaian</span></div>
+  </div>
+
+  <nav class="nav-samping" aria-label="Navigasi utama">
+    <div class="label-grup">Ringkasan</div>
+    <button data-tab="dasbor" class="aktif" type="button">
+      <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg></span>
+      <span class="teks-nav">Dasbor</span>
+    </button>
+
+    <div class="label-grup">Operasional</div>
+    <button data-tab="unggah" type="button">
+      <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h9L20 9.5v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/><path d="M14 4v6h6M8 14l2.5 2.5L15 12"/></svg></span>
+      <span class="teks-nav">Sudah Unggah</span>
+      <span class="lencana-nav" id="lencanaMenunggu"></span>
+    </button>
+    <button data-tab="pendaftar" type="button">
+      <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3 2.5-5.2 5.5-5.2s5.5 2.2 5.5 5.2M17 8h4M19 6v4M17.5 20c0-2.2-1-4-2.6-5"/></svg></span>
+      <span class="teks-nav">Pendaftar</span>
+    </button>
+    <button data-tab="pegawai" type="button">
+      <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.4 3-5.8 7-5.8s7 2.4 7 5.8"/></svg></span>
+      <span class="teks-nav">Data Pegawai</span>
+    </button>
+    <button data-tab="drive" type="button">
+      <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
+      <span class="teks-nav">Ambil dari Drive</span>
+    </button>
+    <button data-tab="rekap" type="button">
+      <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h4"/></svg></span>
+      <span class="teks-nav">Ekspor Rekap</span>
+    </button>
+
+    <div class="label-grup">Pengaturan</div>
+    <button data-tab="pengaturan" type="button">
+      <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.38.44.7.82.9.3.15.63.23.96.23H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51.87Z"/></svg></span>
+      <span class="teks-nav">Pengaturan Potongan</span>
+    </button>
   </nav>
+
+  <div class="sidebar-kaki">
+    <div class="kartu-pengguna">
+      <div class="avatar" id="avatarInisial">A</div>
+      <div class="info">
+        <b id="siapa">memuat…</b>
+        <span>Administrator</span>
+      </div>
+      <button id="keluar" type="button" title="Keluar" aria-label="Keluar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/></svg>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<div class="tirai" id="tirai"></div>
+
+<div class="shell-isi">
+<header class="topbar">
+  <button class="tombol-ikon" id="tombolMenu" type="button" aria-label="Buka menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+  </button>
+  <button class="tombol-ikon" id="tombolCiut" type="button" aria-label="Ciutkan menu samping" title="Ciutkan menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h16M18 9l-3 3 3 3"/></svg>
+  </button>
+  <div class="judul-halaman">
+    <h1 id="judulHalaman">Dasbor</h1>
+    <p id="subJudulHalaman">Ringkasan administrasi kepegawaian</p>
+  </div>
+  <div class="aksi-kanan">
+    <span class="lencana" id="lencanaPeriode"></span>
+  </div>
 </header>
 
 <main>
-  <section class="kartu" id="tab-unggah">
+  <!-- 0. DASBOR ------------------------------------------------------------- -->
+  <section id="tab-dasbor">
+    <div class="saringan" id="saringDasbor">
+      <div>
+        <label for="bulanDasbor">Bulan</label>
+        <select id="bulanDasbor"><option value="">Semua bulan</option></select>
+      </div>
+      <div>
+        <label for="tahunDasbor">Tahun</label>
+        <input type="number" id="tahunDasbor" min="2020" max="2100">
+      </div>
+      <div>
+        <label for="bidangDasbor">Bidang</label>
+        <select id="bidangDasbor"><option value="">Semua bidang</option></select>
+      </div>
+      <div>
+        <label for="statusDasbor">Status</label>
+        <select id="statusDasbor">
+          <option value="">Semua status</option>
+          <option value="menunggu_verifikasi">Menunggu verifikasi</option>
+          <option value="disetujui">Disetujui</option>
+          <option value="ditolak">Ditolak</option>
+        </select>
+      </div>
+      <div class="saringan-aksi">
+        <button class="kecil" id="btnResetDasbor" type="button">Reset filter</button>
+        <button class="kecil" id="btnMuatDasbor" type="button">Muat ulang</button>
+      </div>
+    </div>
+
+    <div class="grid-statistik" id="statDasbor">
+      <article class="kartu-stat is-gelap">
+        <div class="kepala-stat">
+          <span class="label-stat">Total pegawai</span>
+          <span class="ikon-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3 2.5-5.2 5.5-5.2s5.5 2.2 5.5 5.2M17 8h4M19 6v4"/></svg></span>
+        </div>
+        <div class="nilai-stat" id="statPegawai"><span class="rangka" style="display:inline-block;height:26px;width:62%"></span></div>
+        <div class="ket-stat">pegawai aktif terdaftar</div>
+      </article>
+
+      <article class="kartu-stat">
+        <div class="kepala-stat">
+          <span class="label-stat">Total pengajuan</span>
+          <span class="ikon-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h9L20 9.5v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/><path d="M14 4v6h6M8 13h8M8 16.5h5"/></svg></span>
+        </div>
+        <div class="nilai-stat" id="statPengajuan"><span class="rangka" style="display:inline-block;height:26px;width:62%"></span></div>
+        <div class="ket-stat" id="ketPengajuan">sesuai filter</div>
+      </article>
+
+      <article class="kartu-stat is-kuning">
+        <div class="kepala-stat">
+          <span class="label-stat">Menunggu verifikasi</span>
+          <span class="ikon-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></span>
+        </div>
+        <div class="nilai-stat" id="statMenunggu"><span class="rangka" style="display:inline-block;height:26px;width:62%"></span></div>
+        <div class="ket-stat">perlu ditindaklanjuti</div>
+      </article>
+
+      <article class="kartu-stat is-hijau">
+        <div class="kepala-stat">
+          <span class="label-stat">Disetujui</span>
+          <span class="ikon-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.4 2.6 2.6 5-5.4"/></svg></span>
+        </div>
+        <div class="nilai-stat" id="statDisetujui"><span class="rangka" style="display:inline-block;height:26px;width:62%"></span></div>
+        <div class="ket-stat">pengajuan terverifikasi</div>
+      </article>
+
+      <article class="kartu-stat is-merah">
+        <div class="kepala-stat">
+          <span class="label-stat">Ditolak</span>
+          <span class="ikon-stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6m0-6-6 6"/></svg></span>
+        </div>
+        <div class="nilai-stat" id="statDitolak"><span class="rangka" style="display:inline-block;height:26px;width:62%"></span></div>
+        <div class="ket-stat">tidak masuk rekap</div>
+      </article>
+    </div>
+
+    <div class="grid-grafik">
+      <div class="kartu-grafik">
+        <div class="kepala-grafik">
+          <div><h3 id="judulTren">Tren pengajuan bulanan</h3><p id="ketTren">Memuat data…</p></div>
+          <div class="aksi-grafik">
+            <span class="lencana" id="lencanaTren"></span>
+            <div class="sakelar" role="group" aria-label="Tampilan grafik tren">
+              <button type="button" data-mode="jumlah" class="aktif" aria-pressed="true">Jumlah</button>
+              <button type="button" data-mode="nilai" aria-pressed="false">Rupiah</button>
+            </div>
+          </div>
+        </div>
+        <div class="isi-grafik" id="grafikTren"></div>
+      </div>
+
+      <div class="kartu-grafik">
+        <div class="kepala-grafik">
+          <div><h3>Perbandingan Tukin &amp; Uang Makan</h3><p id="ketBanding">Nilai bersih per bulan</p></div>
+          <div class="aksi-grafik"><span class="lencana" id="lencanaBanding"></span></div>
+        </div>
+        <div class="isi-grafik" id="grafikBanding"></div>
+      </div>
+
+      <div class="kartu-grafik">
+        <div class="kepala-grafik">
+          <div><h3>Status pengajuan</h3><p id="ketStatus">Komposisi status pada filter aktif</p></div>
+          <div class="aksi-grafik"><span class="lencana" id="lencanaStatus"></span></div>
+        </div>
+        <div class="isi-grafik" id="grafikStatus"></div>
+      </div>
+
+      <div class="kartu-grafik">
+        <div class="kepala-grafik">
+          <div><h3>Pengajuan per bidang</h3><p id="ketBidang">Jumlah pengajuan tiap bidang</p></div>
+          <div class="aksi-grafik"><span class="lencana" id="lencanaBidang"></span></div>
+        </div>
+        <div class="isi-grafik" id="grafikBidang"></div>
+      </div>
+    </div>
+
+    <section class="kartu">
+      <div class="kartu-kepala">
+        <div>
+          <h2>Aktivitas terbaru</h2>
+          <p id="ketAktivitas">Pengajuan yang masuk sesuai filter aktif.</p>
+        </div>
+        <button class="kecil" id="btnKeUnggah" type="button">Lihat semua pengajuan</button>
+      </div>
+      <div class="daftar-aktivitas" id="daftarAktivitas">
+        <div class="rangka rangka-tabel"></div>
+        <div class="rangka rangka-tabel"></div>
+        <div class="rangka rangka-tabel"></div>
+      </div>
+    </section>
+  </section>
+
+  <section class="kartu tersembunyi" id="tab-unggah">
     <h1>Status Presensi &amp; Pengajuan Pegawai</h1>
     <p class="sub">Pantau siapa saja yang sudah mengunggah dan siapa yang belum mengunggah presensi bulanan.</p>
 
@@ -261,9 +458,12 @@
     <div id="tabelRekap" class="tabel-kartu"></div>
   </section>
 </main>
+</div>
+</div>
 
 <script src="/lib/app.js"></script>
 <script src="/rekap.js"></script>
+<script src="/lib/grafik.js"></script>
 <script>
 (function () {
   var sesi = null;
@@ -310,15 +510,63 @@
     return ['', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][b] || b;
   }
 
-  // --- tab -----------------------------------------------------------------
+  // --- kerangka: sidebar, tab, judul ---------------------------------------
+  var JUDUL_TAB = {
+    dasbor: ['Dasbor', 'Ringkasan administrasi kepegawaian'],
+    unggah: ['Status Presensi & Pengajuan', 'Pantau pengajuan dan verifikasi pegawai'],
+    pendaftar: ['Pendaftar Baru', 'Pendaftaran yang menunggu keputusan admin'],
+    pegawai: ['Data Pegawai', 'Kelola data kepegawaian'],
+    drive: ['Ambil dari Drive', 'Impor presensi dari folder Google Drive'],
+    rekap: ['Ekspor Rekap', 'Unduh rekap bulanan per bidang'],
+    pengaturan: ['Pengaturan Potongan', 'Aturan yang dipakai mesin hitung']
+  };
+  var URUTAN_TAB = ['dasbor', 'unggah', 'pendaftar', 'pegawai', 'drive', 'rekap', 'pengaturan'];
+
+  function tutupMenuPonsel() {
+    document.body.classList.remove('sidebar-terbuka');
+  }
+
+  (function siapkanKerangka() {
+    var nama = (sesi.email || 'A').split('@')[0];
+    var inisial = nama.split(/[.\s_-]+/).filter(Boolean).slice(0, 2).map(function (x) {
+      return x.charAt(0).toUpperCase();
+    }).join('') || 'A';
+    document.getElementById('avatarInisial').textContent = inisial;
+
+    var tombolMenu = document.getElementById('tombolMenu');
+    if (tombolMenu) tombolMenu.addEventListener('click', function () {
+      document.body.classList.toggle('sidebar-terbuka');
+    });
+    var tirai = document.getElementById('tirai');
+    if (tirai) tirai.addEventListener('click', tutupMenuPonsel);
+
+    // Ciutkan sidebar di desktop; pilihan diingat di peramban.
+    var ciut = null;
+    try { ciut = localStorage.getItem('sidebarCiut'); } catch (e) { ciut = null; }
+    if (ciut === '1') document.body.classList.add('sidebar-ciut');
+    var tombolCiut = document.getElementById('tombolCiut');
+    if (tombolCiut) tombolCiut.addEventListener('click', function () {
+      var jadiCiut = !document.body.classList.contains('sidebar-ciut');
+      document.body.classList.toggle('sidebar-ciut', jadiCiut);
+      try { localStorage.setItem('sidebarCiut', jadiCiut ? '1' : '0'); } catch (e) { /* diabaikan */ }
+    });
+  })();
+
   var tombolTab = document.querySelectorAll('nav button[data-tab]');
   Array.prototype.forEach.call(tombolTab, function (b) {
     b.addEventListener('click', function () {
       Array.prototype.forEach.call(tombolTab, function (x) { x.classList.remove('aktif'); });
       b.classList.add('aktif');
-      ['unggah', 'pendaftar', 'pegawai', 'drive', 'rekap', 'pengaturan'].forEach(function (t) {
+      URUTAN_TAB.forEach(function (t) {
         document.getElementById('tab-' + t).classList.toggle('tersembunyi', t !== b.dataset.tab);
       });
+      var judul = JUDUL_TAB[b.dataset.tab] || ['Dasbor', ''];
+      document.getElementById('judulHalaman').textContent = judul[0];
+      document.getElementById('subJudulHalaman').textContent = judul[1];
+      tutupMenuPonsel();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      if (b.dataset.tab === 'dasbor') muatDasbor();
       if (b.dataset.tab === 'pendaftar') muatPendaftar();
       if (b.dataset.tab === 'pegawai') muatPegawai();
       if (b.dataset.tab === 'drive' && !document.getElementById('bulanDrive').options.length) siapkanDrive();
@@ -1765,11 +2013,595 @@
       });
   }
 
+  // --- 0. dasbor ------------------------------------------------------------
+  var DASBOR = {
+    semua: [], pegawai: [], bidang: [], tahun: 0,
+    siap: false, dimuat: false, modeTren: 'jumlah', muatId: 0
+  };
+  var jadwalDasbor = null;
+
+  function bidangDari(x) {
+    return (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
+  }
+
+  function inisialNama(nama) {
+    return String(nama || '?').split(/[\s.,]+/).filter(Boolean).slice(0, 2).map(function (kata) {
+      return kata.charAt(0).toUpperCase();
+    }).join('') || '?';
+  }
+
+  function isiRangkaStat(id) {
+    var e = document.getElementById(id);
+    if (e) e.innerHTML = '<span class="rangka" style="display:inline-block;height:26px;width:62%"></span>';
+  }
+
+  function formatTanggal(iso) {
+    if (!iso) return '—';
+    var t = new Date(iso);
+    if (isNaN(t.getTime())) return '—';
+    return t.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function labelStatus(s) {
+    var map = {
+      menunggu_verifikasi: 'Menunggu verifikasi',
+      disetujui: 'Disetujui',
+      ditolak: 'Ditolak',
+      perlu_perbaikan: 'Perlu perbaikan',
+      draft: 'Draft'
+    };
+    return map[s] || String(s || '—').replace(/_/g, ' ');
+  }
+
+  function fmtRupiahGrafik(v, sumbu, legenda) {
+    if (sumbu || legenda) return 'Rp' + Grafik.ringkas(v);
+    return 'Rp' + Grafik.angka(v);
+  }
+
+  function siapkanDasbor() {
+    if (DASBOR.siap) return;
+    DASBOR.siap = true;
+
+    var selBulan = document.getElementById('bulanDasbor');
+    selBulan.innerHTML = '<option value="">Semua bulan</option>' +
+      NAMA_BULAN.map(function (nama, i) {
+        return '<option value="' + (i + 1) + '">' + nama + '</option>';
+      }).join('');
+
+    var kini = new Date();
+    document.getElementById('tahunDasbor').value = kini.getFullYear();
+    document.getElementById('lencanaPeriode').textContent =
+      NAMA_BULAN[kini.getMonth()] + ' ' + kini.getFullYear();
+
+    // Filter: perubahan kecil di-debounce agar grafik tidak digambar berulang.
+    ['bulanDasbor', 'bidangDasbor', 'statusDasbor'].forEach(function (id) {
+      document.getElementById(id).addEventListener('change', function () {
+        clearTimeout(jadwalDasbor);
+        jadwalDasbor = setTimeout(renderDasbor, 140);
+      });
+    });
+    document.getElementById('tahunDasbor').addEventListener('change', function () {
+      clearTimeout(jadwalDasbor);
+      muatDasbor(true);
+    });
+
+    // Sakelar mode grafik tren: jumlah pengajuan atau nominal Rupiah.
+    Array.prototype.forEach.call(
+      document.querySelectorAll('.sakelar button[data-mode]'),
+      function (b) {
+        b.addEventListener('click', function () {
+          DASBOR.modeTren = b.dataset.mode === 'nilai' ? 'nilai' : 'jumlah';
+          Array.prototype.forEach.call(
+            document.querySelectorAll('.sakelar button[data-mode]'),
+            function (x) {
+              var aktif = x === b;
+              x.classList.toggle('aktif', aktif);
+              x.setAttribute('aria-pressed', aktif ? 'true' : 'false');
+            }
+          );
+          renderDasbor();
+        });
+      }
+    );
+
+    document.getElementById('btnResetDasbor').addEventListener('click', function () {
+      var n = new Date();
+      document.getElementById('bulanDasbor').value = '';
+      document.getElementById('statusDasbor').value = '';
+      document.getElementById('bidangDasbor').value = '';
+      document.getElementById('tahunDasbor').value = n.getFullYear();
+      muatDasbor(true);
+    });
+    document.getElementById('btnMuatDasbor').addEventListener('click', function () {
+      muatDasbor(true);
+    });
+    document.getElementById('btnKeUnggah').addEventListener('click', function () {
+      document.querySelector('nav button[data-tab="unggah"]').click();
+    });
+  }
+
+  function isiBidangDasbor() {
+    var sel = document.getElementById('bidangDasbor');
+    var lama = sel.value;
+    var set = new Set();
+    DASBOR.pegawai.forEach(function (p) {
+      if (p.bidang && p.bidang.nama) set.add(p.bidang.nama);
+    });
+    DASBOR.semua.forEach(function (x) {
+      if (bidangDari(x)) set.add(bidangDari(x));
+    });
+    var daftar = Array.from(set).sort();
+    sel.innerHTML = '<option value="">Semua bidang</option>' + daftar.map(function (b) {
+      return '<option value="' + esc(b) + '">' + esc(b) + '</option>';
+    }).join('');
+    sel.value = set.has(lama) ? lama : '';
+    DASBOR.bidang = daftar;
+  }
+
+  // Hindari menggambar ulang grafik bila data & filter belum berubah.
+  function gambarGrafik(id, kunci, fn) {
+    var wadah = document.getElementById(id);
+    if (!wadah) return;
+    if (wadah.dataset.kunci === kunci) return;
+    wadah.dataset.kunci = kunci;
+    fn(wadah);
+  }
+
+  function bersihkanKunciGrafik() {
+    ['grafikTren', 'grafikBanding', 'grafikStatus', 'grafikBidang'].forEach(function (id) {
+      var e = document.getElementById(id);
+      if (e) e.dataset.kunci = '';
+    });
+  }
+
+  function muatDasbor(paksa) {
+    siapkanDasbor();
+    if (!k) return;
+
+    var tahun = Number(document.getElementById('tahunDasbor').value) || new Date().getFullYear();
+    // Buka tab kembali tidak perlu mengambil ulang data yang sama.
+    if (!paksa && DASBOR.dimuat && DASBOR.tahun === tahun) {
+      renderDasbor();
+      return;
+    }
+
+    DASBOR.tahun = tahun;
+    DASBOR.dimuat = false;
+    var permintaan = ++DASBOR.muatId;
+
+    ['statPegawai', 'statPengajuan', 'statMenunggu', 'statDisetujui', 'statDitolak'].forEach(isiRangkaStat);
+    bersihkanKunciGrafik();
+    Grafik.rangka(document.getElementById('grafikTren'), 220);
+    Grafik.rangka(document.getElementById('grafikBanding'), 220);
+    Grafik.rangka(document.getElementById('grafikStatus'), 210);
+    Grafik.rangka(document.getElementById('grafikBidang'), 220);
+    document.getElementById('ketTren').textContent = 'Memuat data…';
+    document.getElementById('ketBanding').textContent = 'Memuat data…';
+    document.getElementById('ketStatus').textContent = 'Memuat data…';
+    document.getElementById('ketBidang').textContent = 'Memuat data…';
+    document.getElementById('daftarAktivitas').innerHTML =
+      '<div class="rangka rangka-tabel"></div><div class="rangka rangka-tabel"></div><div class="rangka rangka-tabel"></div>';
+
+    Promise.all([
+      api('pegawai?select=id,nama,bidang:bidang_id(nama)&aktif=eq.true&order=nama.asc'),
+      api('pengajuan_tukin?select=id,pegawai_id,tahun,bulan,status,dikirim_pada,diverifikasi_pada,catatan_admin,' +
+        'pegawai(id,nama,nip,bidang:bidang_id(nama)),' +
+        'rekap_tukin(tukin_bersih,total_persen),rekap_uang_makan(bersih)' +
+        '&tahun=eq.' + tahun + '&order=dikirim_pada.desc')
+    ]).then(function (res) {
+      return Promise.all([res[0].json(), res[1].json()]);
+    }).then(function (hasil) {
+      if (permintaan !== DASBOR.muatId) return; // jawaban usang diabaikan
+
+      // Deduplikasi per id: pengajuan_tukin unik per pegawai+periode, tetapi
+      // ini menjaga agregasi tetap benar bila respons memuat baris ganda.
+      var pegawaiUnik = {};
+      (Array.isArray(hasil[0]) ? hasil[0] : []).forEach(function (p) {
+        if (p && p.id) pegawaiUnik[p.id] = p;
+      });
+      var pengajuanUnik = {};
+      (Array.isArray(hasil[1]) ? hasil[1] : []).forEach(function (x) {
+        if (x && x.id) pengajuanUnik[x.id] = x;
+      });
+
+      DASBOR.pegawai = Object.keys(pegawaiUnik).map(function (id) { return pegawaiUnik[id]; });
+      DASBOR.semua = Object.keys(pengajuanUnik).map(function (id) { return pengajuanUnik[id]; });
+      DASBOR.dimuat = true;
+      isiBidangDasbor();
+      renderDasbor();
+    }).catch(function (e) {
+      if (permintaan !== DASBOR.muatId) return;
+      ['statPegawai', 'statPengajuan', 'statMenunggu', 'statDisetujui', 'statDitolak'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = '—';
+      });
+      var pesan = String(e && e.message ? e.message : 'Tidak dapat menghubungi server.');
+      ['grafikTren', 'grafikBanding', 'grafikStatus', 'grafikBidang'].forEach(function (id) {
+        bersihkanKunciGrafik();
+        Grafik.galat(document.getElementById(id), pesan);
+      });
+      document.getElementById('daftarAktivitas').innerHTML =
+        '<div class="keadaan-kosong"><p><b>Gagal memuat aktivitas</b><br>' + esc(pesan) + '</p></div>';
+    });
+  }
+
+  // Filter aktif; tiap grafik boleh mengabaikan satu dimensi agar tetap informatif.
+  function saringDasbor(opsi) {
+    opsi = opsi || {};
+    var bulan = document.getElementById('bulanDasbor').value;
+    var bidang = document.getElementById('bidangDasbor').value;
+    var status = document.getElementById('statusDasbor').value;
+    return DASBOR.semua.filter(function (x) {
+      if (!opsi.tanpaBulan && bulan && String(x.bulan) !== String(bulan)) return false;
+      if (!opsi.tanpaBidang && bidang && bidangDari(x) !== bidang) return false;
+      if (!opsi.tanpaStatus && status && x.status !== status) return false;
+      return true;
+    });
+  }
+
+  function renderDasbor() {
+    if (!DASBOR.tahun) return;
+    var tahun = DASBOR.tahun;
+    var bulan = document.getElementById('bulanDasbor').value;
+    var bidang = document.getElementById('bidangDasbor').value;
+    var status = document.getElementById('statusDasbor').value;
+    var aktif = saringDasbor();
+    var teksBulan = bulan ? NAMA_BULAN[Number(bulan) - 1] : 'semua bulan';
+    var teksStatus = status ? labelStatus(status) : 'semua status';
+    var teksPeriode = bulan ? labelBulan(Number(bulan)) + ' ' + tahun : 'Tahun ' + tahun;
+
+    if (document.getElementById('lencanaPeriode')) {
+      document.getElementById('lencanaPeriode').textContent = teksPeriode;
+    }
+
+    var jmlMenunggu = aktif.filter(function (x) { return x.status === 'menunggu_verifikasi'; }).length;
+    var jmlDisetujui = aktif.filter(function (x) { return x.status === 'disetujui'; }).length;
+    var jmlDitolak = aktif.filter(function (x) { return x.status === 'ditolak'; }).length;
+    var jmlPegawai = bidang
+      ? DASBOR.pegawai.filter(function (p) { return p.bidang && p.bidang.nama === bidang; }).length
+      : DASBOR.pegawai.length;
+
+    document.getElementById('statPegawai').textContent = jmlPegawai.toLocaleString('id-ID');
+    document.getElementById('statPengajuan').textContent = aktif.length.toLocaleString('id-ID');
+    document.getElementById('statMenunggu').textContent = jmlMenunggu.toLocaleString('id-ID');
+    document.getElementById('statDisetujui').textContent = jmlDisetujui.toLocaleString('id-ID');
+    document.getElementById('statDitolak').textContent = jmlDitolak.toLocaleString('id-ID');
+    document.getElementById('ketPengajuan').textContent =
+      (bulan ? NAMA_BULAN[Number(bulan) - 1] : 'semua bulan') + ' ' + tahun;
+
+    // Lencana jumlah menunggu verifikasi di sidebar.
+    var lencana = document.getElementById('lencanaMenunggu');
+    if (lencana) lencana.textContent = jmlMenunggu ? String(jmlMenunggu) : '';
+
+    // 1. Tren 12 bulan: jumlah pengajuan atau nominal Tukin vs uang makan.
+    var basisTren = saringDasbor({ tanpaBulan: true });
+    var sorotBulan = bulan ? Number(bulan) - 1 : -1;
+    var modeNilai = DASBOR.modeTren === 'nilai';
+    var judulTren = document.getElementById('judulTren');
+    if (judulTren) {
+      judulTren.textContent = modeNilai ? 'Tren nilai Tukin & uang makan' : 'Tren pengajuan bulanan';
+    }
+
+    if (modeNilai) {
+      var tukinTren = new Array(12).fill(0);
+      var makanTren = new Array(12).fill(0);
+      basisTren.filter(function (x) { return x.status !== 'ditolak'; }).forEach(function (x) {
+        var i = Number(x.bulan) - 1;
+        if (i < 0 || i > 11) return;
+        var rk = satuRekap(x.rekap_tukin) || {};
+        var rm = satuRekap(x.rekap_uang_makan) || {};
+        tukinTren[i] += Number(rk.tukin_bersih) || 0;
+        makanTren[i] += Number(rm.bersih) || 0;
+      });
+      gambarGrafik('grafikTren', 'nilai|' + tukinTren.join(',') + '|' + makanTren.join(',') + '|' + sorotBulan, function (wadah) {
+        Grafik.garis(wadah, {
+          labels: NAMA_BULAN.map(function (n) { return n.slice(0, 3); }),
+          series: [
+            { nama: 'Tukin bersih', nilai: tukinTren, warna: Grafik.warna.biru },
+            { nama: 'Uang makan', nilai: makanTren, warna: Grafik.warna.teal }
+          ],
+          format: fmtRupiahGrafik,
+          sorot: sorotBulan,
+          aria: 'Tren nilai Tukin dan uang makan per bulan',
+          pesanKosong: 'Belum ada nilai Tukin/uang makan pada tahun ' + tahun + '.'
+        });
+      });
+      document.getElementById('ketTren').textContent =
+        'Nilai bersih per bulan · ' + (bidang || 'semua bidang') + ' · tanpa ditolak';
+    } else {
+      var perBulan = new Array(12).fill(0);
+      basisTren.forEach(function (x) {
+        var i = Number(x.bulan) - 1;
+        if (i >= 0 && i < 12) perBulan[i] += 1;
+      });
+      gambarGrafik('grafikTren', 'jumlah|' + perBulan.join(',') + '|' + sorotBulan, function (wadah) {
+        Grafik.garis(wadah, {
+          labels: NAMA_BULAN.map(function (n) { return n.slice(0, 3); }),
+          series: [{ nama: 'Pengajuan', nilai: perBulan, warna: Grafik.warna.biru }],
+          format: Grafik.angka,
+          sorot: sorotBulan,
+          aria: 'Tren jumlah pengajuan per bulan',
+          pesanKosong: 'Belum ada pengajuan pada tahun ' + tahun + '.'
+        });
+      });
+      document.getElementById('ketTren').textContent =
+        'Jumlah pengajuan per bulan · ' + (bidang || 'semua bidang') + ' · ' + teksStatus;
+    }
+    document.getElementById('lencanaTren').textContent = teksPeriode;
+
+    // 2. Batang berkelompok: perbandingan nilai Tukin vs uang makan per bulan.
+    var basisNilai = saringDasbor({ tanpaBulan: true }).filter(function (x) { return x.status !== 'ditolak'; });
+    var tukinBulan = new Array(12).fill(0);
+    var makanBulan = new Array(12).fill(0);
+    basisNilai.forEach(function (x) {
+      var i = Number(x.bulan) - 1;
+      if (i < 0 || i > 11) return;
+      var rk = satuRekap(x.rekap_tukin) || {};
+      var rm = satuRekap(x.rekap_uang_makan) || {};
+      tukinBulan[i] += Number(rk.tukin_bersih) || 0;
+      makanBulan[i] += Number(rm.bersih) || 0;
+    });
+    gambarGrafik('grafikBanding', tukinBulan.join(',') + '|' + makanBulan.join(',') + '|' + sorotBulan, function (wadah) {
+      Grafik.batangKelompok(wadah, {
+        labels: NAMA_BULAN.map(function (n) { return n.slice(0, 3); }),
+        series: [
+          { nama: 'Tukin bersih', nilai: tukinBulan, warna: Grafik.warna.biru },
+          { nama: 'Uang makan bersih', nilai: makanBulan, warna: Grafik.warna.teal }
+        ],
+        format: fmtRupiahGrafik,
+        sorot: sorotBulan,
+        aria: 'Perbandingan nilai Tukin dan Uang Makan per bulan',
+        pesanKosong: 'Belum ada nilai Tukin/uang makan pada tahun ' + tahun + '.'
+      });
+    });
+    document.getElementById('ketBanding').textContent =
+      'Nilai bersih per bulan (Rupiah) · ' + (bidang || 'semua bidang') + ' · tanpa ditolak';
+    document.getElementById('lencanaBanding').textContent = teksPeriode;
+
+    // 3. Donat status (bulan & bidang; filter status sengaja tidak diterapkan
+    //    agar komposisi tetap terbaca).
+    var basisStatus = saringDasbor({ tanpaStatus: true });
+    var hitungStatus = { menunggu_verifikasi: 0, disetujui: 0, ditolak: 0 };
+    var lain = 0;
+    basisStatus.forEach(function (x) {
+      if (x.status in hitungStatus) hitungStatus[x.status] += 1;
+      else lain += 1;
+    });
+    var dataDonat = [
+      { label: 'Menunggu', nilai: hitungStatus.menunggu_verifikasi, warna: Grafik.warna.kuning },
+      { label: 'Disetujui', nilai: hitungStatus.disetujui, warna: Grafik.warna.hijau },
+      { label: 'Ditolak', nilai: hitungStatus.ditolak, warna: Grafik.warna.merah }
+    ];
+    if (lain) dataDonat.push({ label: 'Lainnya', nilai: lain, warna: Grafik.warna.abu });
+    var kunciDonat = dataDonat.map(function (d) { return d.nilai; }).join(',');
+    gambarGrafik('grafikStatus', kunciDonat, function (wadah) {
+      Grafik.donat(wadah, {
+        data: dataDonat,
+        labelTotal: 'Pengajuan',
+        format: Grafik.angka,
+        aria: 'Komposisi status pengajuan',
+        pesanKosong: 'Belum ada pengajuan untuk komposisi ini.'
+      });
+    });
+    document.getElementById('ketStatus').textContent =
+      'Bulan: ' + teksBulan + ' · Bidang: ' + (bidang || 'semua') + ' · filter status tidak diterapkan';
+    document.getElementById('lencanaStatus').textContent = teksPeriode;
+
+    // 4. Batang per bidang (bulan & status; bidang terpilih disorot).
+    var basisBidang = saringDasbor({ tanpaBidang: true });
+    var perBidang = {};
+    basisBidang.forEach(function (x) {
+      var nama = bidangDari(x) || '(tanpa bidang)';
+      perBidang[nama] = (perBidang[nama] || 0) + 1;
+    });
+    var urutBidang = Object.keys(perBidang).sort(function (a, b) { return perBidang[b] - perBidang[a]; });
+    var nilaiBidang = urutBidang.map(function (b) { return perBidang[b]; });
+    gambarGrafik('grafikBidang', urutBidang.join(',') + '|' + nilaiBidang.join(',') + '|' + (bidang || ''), function (wadah) {
+      Grafik.batang(wadah, {
+        labels: urutBidang,
+        nilai: nilaiBidang,
+        warna: Grafik.warna.biru,
+        sorot: bidang || '',
+        namaSeri: 'Pengajuan',
+        format: Grafik.angka,
+        aria: 'Jumlah pengajuan per bidang',
+        pesanKosong: 'Belum ada pengajuan pada periode ini.'
+      });
+    });
+    document.getElementById('ketBidang').textContent =
+      'Bulan: ' + teksBulan + ' · Status: ' + teksStatus + ' · filter bidang tidak diterapkan';
+    document.getElementById('lencanaBidang').textContent = teksPeriode;
+
+    renderAktivitas(aktif);
+  }
+
+  function renderAktivitas(daftar) {
+    var wadah = document.getElementById('daftarAktivitas');
+    var urut = daftar.slice().sort(function (a, b) {
+      return String(b.dikirim_pada || '').localeCompare(String(a.dikirim_pada || ''));
+    }).slice(0, 6);
+
+    document.getElementById('ketAktivitas').textContent =
+      urut.length + ' pengajuan terbaru dari ' + daftar.length + ' pengajuan sesuai filter.';
+
+    if (!urut.length) {
+      wadah.innerHTML = '<div class="keadaan-kosong"><div class="ikon-kosong">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round">' +
+        '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4h9L20 9.5v9A1.5 1.5 0 0 1 18.5 20h-13A1.5 1.5 0 0 1 4 18.5Z"/>' +
+        '<path d="M14 4v6h6"/></svg></div><b>Belum ada pengajuan</b>' +
+        '<span>Pengajuan yang masuk akan muncul di sini.</span></div>';
+      return;
+    }
+
+    wadah.innerHTML = urut.map(function (x) {
+      var p = x.pegawai || {};
+      var nama = p.nama || '(pegawai tidak dikenal)';
+      var aksi = '<button class="kecil" data-detail="' + x.id + '" type="button">Detail</button>';
+      if (x.status === 'menunggu_verifikasi') {
+        aksi += '<button class="kecil isi" data-verif="' + x.id + '" type="button">Verifikasi</button>';
+      }
+      return '<div class="aktivitas">' +
+        '<div class="avatar">' + esc(inisialNama(nama)) + '</div>' +
+        '<div class="isi"><b>' + esc(nama) + '</b><span>' + esc(p.nip || '—') +
+          (bidangDari(x) ? ' • ' + esc(bidangDari(x)) : '') + '</span></div>' +
+        '<div class="isi" style="flex:0 0 auto;min-width:0"><b style="font-weight:500;font-size:12.5px;color:#3d4c66">' +
+          labelBulan(x.bulan) + ' ' + x.tahun + '</b><span>Dikirim ' + formatTanggal(x.dikirim_pada) + '</span></div>' +
+        '<div class="kanan"><span class="status ' + esc(x.status) + '">' + esc(labelStatus(x.status)) + '</span>' + aksi + '</div>' +
+        '</div>';
+    }).join('');
+
+    wadah.querySelectorAll('button[data-detail]').forEach(function (b) {
+      b.addEventListener('click', function () { bukaDetailPengajuan(b.dataset.detail); });
+    });
+    wadah.querySelectorAll('button[data-verif]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (!confirm('Setujui pengajuan ini? Nominal yang sudah disetujui dikunci.')) return;
+        verifikasiPengajuan(b.dataset.verif, null);
+      });
+    });
+  }
+
+  function verifikasiPengajuan(id, latar) {
+    return api('pengajuan_tukin?id=eq.' + encodeURIComponent(id), {
+      method: 'PATCH',
+      body: {
+        status: 'disetujui',
+        diverifikasi_oleh: sesi.id,
+        diverifikasi_pada: new Date().toISOString()
+      }
+    }).then(function (r) {
+      if (!r.ok) throw new Error('Gagal menyimpan verifikasi (HTTP ' + r.status + ').');
+      if (latar) latar.remove();
+      muatDasbor(true);
+    }).catch(function (e) {
+      alert(String(e.message || e));
+    });
+  }
+
+  // Detail pengajuan: diambil saat diklik, termasuk rincian presensi & potongan.
+  function bukaDetailPengajuan(id) {
+    var lama = document.getElementById('modalDetail');
+    if (lama) lama.remove();
+
+    var latar = document.createElement('div');
+    latar.id = 'modalDetail';
+    latar.className = 'modal-latar';
+    latar.addEventListener('click', function (e) { if (e.target === latar) latar.remove(); });
+
+    var kotak = document.createElement('div');
+    kotak.className = 'modal-kotak';
+    kotak.innerHTML = '<h2>Detail pengajuan</h2><p class="catatan">Memuat data…</p>';
+    latar.appendChild(kotak);
+    document.body.appendChild(latar);
+
+    api('pengajuan_tukin?id=eq.' + encodeURIComponent(id) +
+      '&select=id,tahun,bulan,status,dikirim_pada,catatan_admin,' +
+      'pegawai(nama,nip,jabatan,bidang:bidang_id(nama)),' +
+      'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*),presensi(*)')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var x = Array.isArray(d) ? d[0] : null;
+        if (!x) throw new Error('Pengajuan tidak ditemukan atau bukan hak akses Anda.');
+        var p = x.pegawai || {};
+        var rk = satuRekap(x.rekap_kehadiran) || {};
+        var rt = satuRekap(x.rekap_tukin) || {};
+        var rm = satuRekap(x.rekap_uang_makan) || {};
+
+        var isi =
+          '<h2>' + esc(p.nama || 'Pengajuan') + '</h2>' +
+          '<p class="catatan modal-nama">' + esc(p.nip || '') +
+            (p.jabatan ? ' · ' + esc(p.jabatan) : '') +
+            (p.bidang && p.bidang.nama ? ' · ' + esc(p.bidang.nama) : '') + '</p>' +
+          '<div class="baris" style="gap:10px;margin-bottom:12px">' +
+            '<div class="statistik" style="flex:1 1 auto">' +
+              '<div><b>' + labelBulan(x.bulan) + ' ' + x.tahun + '</b><span>periode</span></div>' +
+              '<div><b style="font-size:18px"><span class="status ' + esc(x.status) + '">' +
+                esc(labelStatus(x.status)) + '</span></b><span>status</span></div>' +
+              '<div><b>' + formatTanggal(x.dikirim_pada) + '</b><span>dikirim</span></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="kotak-dua">' +
+            '<div><h3>Rekap kehadiran</h3><dl>' +
+              '<dt>Hari kerja</dt><dd>' + (rk.hari_kerja != null ? rk.hari_kerja : '—') + '</dd>' +
+              '<dt>Hadir</dt><dd>' + (rk.hadir != null ? rk.hadir : '—') + '</dd>' +
+              '<dt>Telat</dt><dd>' + (rk.telat != null ? rk.telat : '—') + '</dd>' +
+              '<dt>Pulang awal</dt><dd>' + (rk.pulang_awal != null ? rk.pulang_awal : '—') + '</dd>' +
+              '<dt>Tanpa keterangan</dt><dd>' + (rk.tk != null ? rk.tk : '—') + '</dd>' +
+            '</dl></div>' +
+            '<div><h3>Tukin</h3><dl>' +
+              '<dt>Bruto</dt><dd>' + rupiah(rt.tukin_bruto) + '</dd>' +
+              '<dt>Total potongan</dt><dd>' + (Number(rt.total_persen) || 0) + '%</dd>' +
+              '<dt>Nilai potongan</dt><dd>' + rupiah(rt.total_potongan) + '</dd>' +
+              '<dt class="total">Tukin bersih</dt><dd class="total">' + rupiah(rt.tukin_bersih) + '</dd>' +
+            '</dl></div>' +
+          '</div>' +
+          '<div class="kotak-dua" style="margin-top:12px"><div><h3>Uang makan</h3><dl>' +
+              '<dt>Hari hadir</dt><dd>' + (rm.hari_hadir != null ? rm.hari_hadir : '—') + '</dd>' +
+              '<dt>Bruto</dt><dd>' + rupiah(rm.bruto) + '</dd>' +
+              '<dt>PPh</dt><dd>' + rupiah(rm.pph) + '</dd>' +
+              '<dt class="total">Bersih</dt><dd class="total">' + rupiah(rm.bersih) + '</dd>' +
+            '</dl></div><div><h3>Catatan admin</h3><p class="catatan" style="margin-top:0">' +
+              esc(x.catatan_admin || 'Tidak ada catatan.') + '</p></div></div>' +
+          '<div style="margin-top:16px;padding:12px 14px;background:#f8fafc;border:1px solid var(--garis);border-radius:10px;max-height:220px;overflow:auto">' +
+            htmlRincianPotongan({ presensi: x.presensi || [] }) + '</div>' +
+          '<div class="modal-aksi" style="margin-top:16px">' +
+            (x.status === 'menunggu_verifikasi'
+              ? '<button class="utama" type="button" id="btnVerifDetail">Setujui pengajuan</button>' : '') +
+            '<button class="kecil" type="button" id="btnTutupDetail">Tutup</button>' +
+          '</div>';
+        kotak.innerHTML = isi;
+
+        var tutup = document.getElementById('btnTutupDetail');
+        if (tutup) tutup.addEventListener('click', function () { latar.remove(); });
+        var verif = document.getElementById('btnVerifDetail');
+        if (verif) verif.addEventListener('click', function () {
+          verif.disabled = true;
+          verif.textContent = 'Menyimpan…';
+          verifikasiPengajuan(x.id, latar);
+        });
+      })
+      .catch(function (e) {
+        kotak.innerHTML = '<h2>Detail pengajuan</h2><p class="pesan galat tampil">' +
+          esc(String(e.message || e)) + '</p><div class="modal-aksi">' +
+          '<button class="kecil" type="button" id="btnTutupDetail2">Tutup</button></div>';
+        var t = document.getElementById('btnTutupDetail2');
+        if (t) t.addEventListener('click', function () { latar.remove(); });
+      });
+  }
+
   fetch('/api/konfigurasi').then(function (r) { return r.json(); }).then(function (cfg) {
     k = cfg;
-    muatUnggah();
+
+    function jalankanPanel(u) {
+      if (u) {
+        var tampil = u.nama || u.email || sesi.email || '';
+        document.getElementById('siapa').textContent = tampil;
+        document.getElementById('siapa').title = tampil;
+        document.getElementById('avatarInisial').textContent = inisialNama(tampil);
+        var peranEl = document.querySelector('.kartu-pengguna .info span');
+        if (peranEl) peranEl.textContent = 'Administrator';
+      }
+      siapkanDasbor();
+      muatDasbor();
+      muatUnggah();
+    }
+
+    // Pisahkan peran: hanya admin yang boleh memakai panel ini. Bila gagal memeriksa,
+    // panel tetap dimuat — RLS Supabase tetap membatasi data yang dapat dibaca.
+    return api('users?select=nama,email,peran&id=eq.' + encodeURIComponent(sesi.id))
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var u = Array.isArray(d) ? d[0] : null;
+        if (u && u.peran && u.peran !== 'admin') {
+          location.replace('/dasbor.html');
+          return;
+        }
+        jalankanPanel(u);
+      })
+      .catch(function () { jalankanPanel(null); });
   }).catch(function () {
     document.getElementById('tabelUnggah').innerHTML = '<p class="catatan">Server tidak dapat dihubungi.</p>';
+    Grafik.galat(document.getElementById('grafikTren'), 'Server tidak dapat dihubungi.');
   });
 })();
 </script>
