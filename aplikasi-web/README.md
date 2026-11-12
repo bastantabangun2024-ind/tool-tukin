@@ -310,7 +310,9 @@ menambah request (2 → 2); tahun tanpa data menampilkan empty state.
 
 ### Catatan
 - Bug lama `pad.top` (seharusnya `pad.atas`) diperbaiki; bug ini membuat atribut SVG bernilai `NaN`.
-- Belum ada commit, push, atau deploy untuk fase ini.
+- Sudah di-commit (`e37c3c8`) dan di-push ke `main`. Deploy produksi 12 November 2026
+berhasil lewat Vercel REST API; alias `tool-tukin.vercel.app` menyajikan `grafik.js`
+yang sama persis dengan berkas di repositori (SHA-1 identik).
 
 ## Struktur kode (siap Vercel)
 
