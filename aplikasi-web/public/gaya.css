@@ -490,6 +490,20 @@ button.kecil:disabled { opacity: .6; cursor: progress; }
 button.kecil.isi { background: var(--royal); border-color: var(--royal); color: #fff; }
 button.kecil.isi:hover { filter: brightness(1.07); color: #fff; }
 
+a.tombol-wa {
+  display: inline-block;
+  padding: 5px 10px;
+  border: 1px solid #b7e4c8;
+  border-radius: 8px;
+  background: #e9f9ef;
+  color: #0f7a3d;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+a.tombol-wa:hover { background: #d7f3e2; border-color: #8fd4aa; color: #0b5f2f; }
+
 /* Tombol utama tanpa margin (di toolbar) */
 .saringan button.utama, .topbar button.utama { margin-top: 0; }
 

@@ -71,6 +71,19 @@ function kirimJson(res, kode, data) {
   res.end(JSON.stringify(data));
 }
 
+// 0812… / +62 812… / 62 0812… -> 62812… (format wa.me, tanpa tanda +).
+function nomorWaInternasional(nilai) {
+  let d = String(nilai || '').replace(/\D/g, '');
+  if (!d) return '';
+  if (d.startsWith('0062')) d = d.slice(2);
+  if (d.startsWith('0')) d = '62' + d.slice(1);
+  else if (d.startsWith('8')) d = '62' + d;
+  else if (d.startsWith('620')) d = '62' + d.slice(3);
+  if (!d.startsWith('62')) return '';
+  const nomor = '62' + d.slice(2).replace(/^0+/, '');
+  return /^62\d{8,13}$/.test(nomor) ? nomor : '';
+}
+
 function bacaBody(req, batas = 8 * 1024 * 1024) {
   return new Promise((selesai, gagal) => {
     let ukuran = 0;
@@ -1003,11 +1016,13 @@ export async function handler(req, res) {
 
     if (jalur === '/api/daftar' && req.method === 'POST') {
       const b = await bacaBody(req);
-      const wajib = ['nama', 'nip', 'jabatan', 'golongan', 'bidang', 'email'];
+      const wajib = ['nama', 'nip', 'jabatan', 'golongan', 'bidang', 'email', 'no_wa'];
       const kurang = wajib.filter((k) => !b[k] || !String(b[k]).trim());
       if (kurang.length) return kirimJson(res, 400, { pesan: `Belum diisi: ${kurang.join(', ')}` });
       if (!/^\d{18}$/.test(String(b.nip).trim())) return kirimJson(res, 400, { pesan: 'NIP harus 18 angka' });
       if (!String(b.email).includes('@')) return kirimJson(res, 400, { pesan: 'Email tidak valid' });
+      const noWa = nomorWaInternasional(b.no_wa);
+      if (!noWa) return kirimJson(res, 400, { pesan: 'Nomor WhatsApp tidak valid (contoh 081234567890)' });
 
       const bidang = await db(`bidang?select=id,kode,nama&kode=eq.${encodeURIComponent(String(b.bidang).toUpperCase())}`);
       if (!bidang || !bidang.length) return kirimJson(res, 400, { pesan: 'Bidang tidak dikenal' });
@@ -1025,6 +1040,7 @@ export async function handler(req, res) {
             jabatan: String(b.jabatan).trim(),
             bidang_id: bidang[0].id,
             email: String(b.email).trim().toLowerCase(),
+            no_wa: noWa,
             status: 'menunggu',
           }),
         });
@@ -1042,7 +1058,7 @@ export async function handler(req, res) {
         kirimEmail({
           to: adminEmail,
           subject: `Pendaftaran baru: ${String(b.nama).trim()} (${String(b.nip).trim()})`,
-          text: `Ada pendaftaran akun pegawai baru.\n\nNama: ${String(b.nama).trim()}\nNIP: ${String(b.nip).trim()}\nJabatan: ${String(b.jabatan).trim()}\nBidang: ${bidang[0].nama}\nEmail: ${String(b.email).trim()}\n\nSilakan buka tab Pendaftar di aplikasi admin untuk memutuskan.`,
+          text: `Ada pendaftaran akun pegawai baru.\n\nNama: ${String(b.nama).trim()}\nNIP: ${String(b.nip).trim()}\nJabatan: ${String(b.jabatan).trim()}\nBidang: ${bidang[0].nama}\nEmail: ${String(b.email).trim()}\nNo. WhatsApp: ${noWa}\n\nSilakan buka tab Pendaftar di aplikasi admin untuk memutuskan.`,
         }).catch(() => {});
       }
 

@@ -32,7 +32,7 @@
 
     <div class="baris">
       <div>
-        <label for="dNip">NIP</label>
+        <label for="dNip">NIP (dipakai untuk login)</label>
         <input id="dNip" inputmode="numeric" maxlength="18" placeholder="18 angka">
       </div>
       <div>
@@ -53,8 +53,16 @@
       <option>Pontren</option><option>Urais</option>
     </select>
 
-    <label for="dEmail">Email (dipakai untuk login)</label>
-    <input id="dEmail" type="email" autocomplete="email" placeholder="nama@contoh.com">
+    <div class="baris">
+      <div>
+        <label for="dEmail">Email</label>
+        <input id="dEmail" type="email" autocomplete="email" placeholder="nama@contoh.com">
+      </div>
+      <div>
+        <label for="dWa">No. WhatsApp</label>
+        <input id="dWa" type="tel" inputmode="tel" autocomplete="tel" placeholder="08xx xxxx xxxx">
+      </div>
+    </div>
 
     <button class="utama" id="kirimDaftar" type="button">Kirim Pendaftaran</button>
     <div class="pesan" id="pesanDaftar"></div>
@@ -110,13 +118,21 @@
     if (!el('dEmail').value.trim()) {
       p.className = 'pesan tampil galat'; p.textContent = 'Email wajib diisi.'; return;
     }
+    var wa = el('dWa').value.trim();
+    if (!wa) {
+      p.className = 'pesan tampil galat'; p.textContent = 'Nomor WhatsApp wajib diisi.'; return;
+    }
+    if (wa.replace(/\D/g, '').length < 10) {
+      p.className = 'pesan tampil galat'; p.textContent = 'Nomor WhatsApp tidak valid.'; return;
+    }
     var data = {
       nama: el('dNama').value.trim(),
       nip: nip,
       golongan: el('dGol').value.trim(),
       jabatan: el('dJabatan').value.trim(),
       bidang: BIDANG_KODE[el('dBidang').value] || '',
-      email: el('dEmail').value.trim()
+      email: el('dEmail').value.trim(),
+      no_wa: wa
     };
     tombol.disabled = true;
     fetch('/api/daftar', {
@@ -132,7 +148,7 @@
           localStorage.setItem('buktiDaftar', JSON.stringify({ waktu: new Date().toISOString(), data: data }));
         } catch (e) {}
         el('dNama').value = el('dNip').value = el('dGol').value = '';
-        el('dJabatan').value = el('dEmail').value = '';
+        el('dJabatan').value = el('dEmail').value = el('dWa').value = '';
       }
     }).catch(function () {
       p.className = 'pesan tampil galat';
@@ -155,7 +171,8 @@
       'Jabatan: ' + (data.jabatan || '') + '\n' +
       'Golongan: ' + (data.golongan || '') + '\n' +
       'Bidang: ' + (data.bidang || '') + '\n' +
-      'Email: ' + (data.email || '') + '\n';
+      'Email: ' + (data.email || '') + '\n' +
+      'No. WhatsApp: ' + (data.no_wa || '') + '\n';
     var blob = new Blob([teks], { type: 'text/plain' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

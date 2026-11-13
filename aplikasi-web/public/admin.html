@@ -1046,8 +1046,12 @@
     document.body.appendChild(latar);
   }
 
+  function tautanWa(no) {
+    return 'https://wa.me/' + String(no || '').replace(/\D/g, '');
+  }
+
   function muatPendaftar() {
-    api('pendaftaran?select=id,nama,nip,golongan,jabatan,email,created_at,bidang:bidang_id(nama)&status=eq.menunggu&order=created_at.desc')
+    api('pendaftaran?select=id,nama,nip,golongan,jabatan,email,no_wa,created_at,bidang:bidang_id(nama)&status=eq.menunggu&order=created_at.desc')
       .then(function (r) { return r.json(); })
       .then(function (d) {
         if (!Array.isArray(d) || !d.length) {
@@ -1057,14 +1061,19 @@
         // data-label dipakai CSS layar sempit: tiap sel jadi baris berkartu
         // dengan judul kolomnya sendiri (header tabel disembunyikan).
         var baris = d.map(function (x) {
+          var wa = x.no_wa
+            ? '<a class="tombol-wa" href="' + esc(tautanWa(x.no_wa)) + '" target="_blank" rel="noopener">WhatsApp</a>' +
+              '<br><span class="catatan">+' + esc(x.no_wa) + '</span>'
+            : '<span class="catatan">—</span>';
           return '<tr><td data-label="Nama / Email">' + esc(x.nama) + '<br><span class="catatan">' + esc(x.email) + '</span></td>' +
-            '<td data-label="NIP">' + esc(x.nip) + '</td><td data-label="Gol">' + esc(x.golongan) + '</td>' +
+            '<td data-label="NIP">' + esc(x.nip) + '</td><td data-label="WhatsApp">' + wa + '</td>' +
+            '<td data-label="Gol">' + esc(x.golongan) + '</td>' +
             '<td data-label="Jabatan / Bidang">' + esc(x.jabatan) + '<br><span class="catatan">' + esc(x.bidang && x.bidang.nama) + '</span></td>' +
             '<td class="aksi"><button class="kecil" data-terima="' + x.id + '" data-nama="' + esc(x.nama) + '">Setujui</button> ' +
             '<button class="kecil" data-tolakd="' + x.id + '">Tolak</button></td></tr>';
         }).join('');
         document.getElementById('tabelPendaftar').innerHTML =
-          '<table><thead><tr><th>Nama / Email</th><th>NIP</th><th>Gol</th><th>Jabatan / Bidang</th><th></th></tr></thead><tbody>' +
+          '<table><thead><tr><th>Nama / Email</th><th>NIP</th><th>WhatsApp</th><th>Gol</th><th>Jabatan / Bidang</th><th></th></tr></thead><tbody>' +
           baris + '</tbody></table>';
 
         document.getElementById('tabelPendaftar').querySelectorAll('button').forEach(function (b) {
