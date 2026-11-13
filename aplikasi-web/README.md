@@ -102,8 +102,9 @@ secara berurutan. Tanpa token, `terapkan-migrasi.mjs` mencetak daftar file yang 
 node server.mjs        # http://localhost:3000/masuk.html
 ```
 
-- `public/masuk.html` — login email + password ke Supabase Auth; pesan galat Bahasa Indonesia.
-  Setelah masuk: admin diarahkan ke `/admin.html`, pegawai ke `/dasbor.html`.
+- `public/masuk.html` — login **NIP / Email** + password ke Supabase Auth; pegawai cukup mengetik
+  18 angka NIP (otomatis dipetakan ke `<NIP>@pegawai.tooltukin.id`), admin tetap memakai email.
+  Pesan galat Bahasa Indonesia. Setelah masuk: admin diarahkan ke `/admin.html`, pegawai ke `/dasbor.html`.
 - `public/dasbor.html` — dasbor pegawai: profil, periode aktif, status pengajuan terakhir,
   rekap presensi, Tukin & uang makan milik sendiri, riwayat, dan panduan. Sesi hanya di
   `sessionStorage` (hilang saat tab ditutup).
@@ -135,7 +136,9 @@ Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.ht
    Drive tetap sama; NIP ganda ditolak (409). Tiap baris punya tombol **Ubah**,
    **Nonaktifkan/Aktifkan** (baris nonaktif ditampilkan redup; riwayat pengajuan tetap utuh),
    dan **Hapus** — hapus permanen ditolak (409) bila pegawai sudah punya pengajuan, karena
-   foreign key akan ikut menghapus riwayat presensi & rekapnya.
+   foreign key akan ikut menghapus riwayat presensi & rekapnya. Form punya kolom **Password akun**
+   berikon mata, tiap baris punya tombol **Reset sandi** (kembali ke `12345678`), dan kolom
+   **Status sandi** menunjukkan apakah pegawai masih memakai password awal.
 4. **Ambil dari Drive** — tempel link folder Drive publik + bulan/tahun, **Baca Folder**
    (menampilkan file yang ketemu & yang dilewati), lalu **Proses Semua File**: presensi diunduh,
    nama file/folder dicocokkan dengan daftar pegawai, dihitung, dan disimpan `menunggu_verifikasi`.
@@ -167,6 +170,8 @@ Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.ht
 - `GET /api/pegawai/daftar` — **[admin]** daftar pegawai untuk tab Data Pegawai.
 - `POST /api/pegawai/simpan` — **[admin]** tambah (`id` kosong) atau ubah (`id` diisi) pegawai.
 - `POST /api/pegawai/aktif` — **[admin]** `{ id, aktif }` menonaktifkan/mengaktifkan pegawai.
+- `POST /api/pegawai/password` — **[admin]** `{ id, reset: true }` mengembalikan password ke
+  `12345678`, atau `{ id, password }` untuk password tertentu; akun memakai username NIP.
 - `POST /api/pegawai/hapus` — **[admin]** hapus permanen; 409 bila sudah punya pengajuan.
   Semua endpoint admin memverifikasi token Supabase ke `/auth/v1/user` lalu mencocokkan
   peran `admin` di tabel `users`; tanpa itu → 401.
@@ -212,8 +217,9 @@ Semua di bawah ini sudah tayang di https://tool-tukin.vercel.app.
 ### Notifikasi email dinonaktifkan sementara
 - `kirimEmail()` hanya menghubungi Resend bila `EMAIL_NOTIFIKASI=aktif`. Tanpa itu tidak ada
   email ke admin maupun ke pegawai, dan tidak ada panggilan keluar ke Resend.
-- Kredensial akun diberikan manual: dialog **Setujui** di tab *Pendaftar* menampilkan email +
-  password sementara dengan tombol **Salin** per nilai dan **Salin Semua** (siap ditempel ke WhatsApp).
+- Kredensial akun diberikan manual: dialog **Setujui** di tab *Pendaftar* menampilkan
+  **username (NIP)** + password dengan tombol **Salin** per nilai dan **Salin Semua**
+  (siap ditempel ke WhatsApp).
 - `daftar.html` menjelaskan bahwa email & password diberikan admin setelah disetujui, bukan
   dikirim otomatis lewat email.
 - Kode email tetap utuh; aktifkan lagi dengan `EMAIL_NOTIFIKASI=aktif` + domain pengirim yang
@@ -314,6 +320,50 @@ menambah request (2 → 2); tahun tanpa data menampilkan empty state.
 berhasil lewat Vercel REST API; alias `tool-tukin.vercel.app` menyajikan `grafik.js`
 yang sama persis dengan berkas di repositori (SHA-1 identik).
 
+### Selesai 13 November 2026 (login NIP, reset & status sandi)
+
+**Login pegawai memakai NIP**
+- Supabase Auth memakai email sebagai username, jadi akun pegawai disimpan sebagai
+  `<NIP>@pegawai.tooltukin.id`. Halaman masuk hanya meminta **NIP / Email**; NIP 18 angka
+  otomatis dipetakan ke alamat internal tersebut.
+- Semua **30 pegawai** sudah dimigrasikan ke username NIP dengan password awal `12345678`.
+  Daftar kredensial hasil migrasi ada di `../userpaswordpegawai.md` (di-ignore Git — jangan di-commit).
+- Pegawai baru dari tab **Data Pegawai** dan pendaftar yang disetujui otomatis dibuatkan akun
+  login dengan username NIP; password memakai isian admin atau `12345678`.
+
+**Wajib ganti password**
+- Akun baru/reset diberi metadata `harus_ganti_password: true` di Supabase Auth.
+- Saat pegawai masuk, dasbor menampilkan kartu **Ganti password** (dua kolom berikon mata).
+  Setelah berhasil, flag di-set `false` sehingga prompt tidak muncul lagi.
+- Halaman mandiri **`/ganti-password.html`** memakai sesi login yang aktif — pegawai tidak perlu
+  memasukkan password lama atau login ulang. Halaman ini ditautkan dari sidebar dasbor pegawai
+  dan panel admin.
+- Reset oleh admin mengembalikan password ke `12345678` **dan** menyalakan flag lagi, sehingga
+  pegawai diminta mengganti password pada login berikutnya.
+
+**Admin melihat status sandi**
+- Kolom **Status sandi** di tabel Data Pegawai: **Password awal** (flag aktif),
+  **Sudah diganti** (flag `false`), atau **Belum ada akun** (belum tertaut ke Auth).
+- Status dibaca dari metadata akun Supabase Auth lewat `GET /api/pegawai/daftar`; tabel dimuat
+  ulang otomatis setelah simpan/reset sehingga status langsung berubah.
+
+**Verifikasi**
+- `node --check app.mjs` + seluruh skrip inline HTML valid.
+- Pemetaan status diuji ke Supabase: 30 pegawai, 30 akun, semuanya berstatus **Password awal**.
+- Login nyata NIP `198810312025211009` + `12345678` → HTTP 200 dengan
+  `harus_ganti_password: true`; ganti password lewat `PUT /auth/v1/user` diuji berhasil.
+- Produksi `https://tool-tukin.vercel.app`: `/masuk.html`, `/ganti-password.html`,
+  `/lib/sandi.js`, `/api/konfigurasi` semuanya 200; halaman masuk sudah memakai NIP.
+
+**Deploy**
+- Commit `a9ea0fc` di-push ke `main`; workflow **Deploy ke Vercel** selesai **success**
+  (run `43451627800`). Sebelumnya `cf3738a` juga sudah tayang.
+- Secret `VERCEL_TOKEN` (scope **Full Account**) sudah disimpan di GitHub, jadi deploy
+  berikutnya cukup `git push` ke `main` — tidak perlu token di chat atau CLI lagi.
+- **Penting:** token Vercel yang pernah ditempel di chat harus dicabut di
+  https://vercel.com/account/tokens lalu diganti dengan token baru; perbarui secret GitHub
+  setelahnya. Jangan pernah menempel token di chat lagi.
+
 ## Struktur kode (siap Vercel)
 
 | Berkas | Peran |
@@ -355,6 +405,8 @@ Salinan di `public/lib/` **dibuat otomatis** — jangan diedit manual; sumbernya
    `VERCEL_ORG_ID` dan `VERCEL_PROJECT_ID` sudah tertanam di workflow dan sama dengan
    `aplikasi-web/.vercel/project.json`. Tanpa secret `VERCEL_TOKEN`, job deploy akan gagal
    (build integrasi Git Vercel tetap berjalan sendiri bila integrasi itu aktif).
+   **Setelah secret tersimpan, deploy berikutnya cukup `git push` ke `main`** — workflow membaca
+   secret itu sendiri, jadi tidak ada permintaan token lagi dan token tidak perlu ditempel di chat.
 
 **Diuji (tiruan Vercel):** folder tanpa `aplikasi-offline` dan tanpa `.env.local` → mesin dimuat
 `public/lib (salinan)`, `/lib/app.js` 200 (28.817 B), `/lib/pegawai.js` 200, halaman depan 200;
