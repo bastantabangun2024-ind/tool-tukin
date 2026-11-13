@@ -448,8 +448,9 @@
     <div id="kotakEkspor" style="display:none;margin:16px 0">
       <h2>Pilih yang akan diekspor</h2>
       <p class="sub" style="margin-bottom:10px">Rekap dibuat <b>terpisah per bidang</b> — tiap bidang menghasilkan
-        berkas sendiri (nama berkas sudah memuat nama bidang). Centang bidang dan pegawai yang ingin diunduh.</p>
-      <div class="baris">
+        berkas sendiri (nama berkas sudah memuat nama bidang). Centang bidang yang ingin diunduh;
+        daftar pegawai di bawahnya hanya menampilkan pegawai dari bidang yang dicentang.</p>
+      <div class="pilihan-ekspor">
         <div>
           <label>Bidang
             <span class="catatan" style="font-weight:400;display:inline">(<a href="#" id="linkBidangSemua">semua</a>
@@ -458,7 +459,7 @@
           <div class="cek-daftar" id="cekEksporBidang"></div>
         </div>
         <div>
-          <label for="cariPegawaiEkspor">Pegawai
+          <label for="cariPegawaiEkspor">Pegawai pada bidang terpilih
             <span class="catatan" style="font-weight:400;display:inline">(<a href="#" id="linkPegawaiSemua">semua</a>
               &middot; <a href="#" id="linkPegawaiKosong">kosongkan</a>)</span>
           </label>

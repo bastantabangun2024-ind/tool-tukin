@@ -853,6 +853,10 @@ button.item-legenda:focus-visible { outline: 2px solid rgba(37, 99, 235, .45); o
    Pemilihan ekspor
    -------------------------------------------------------------------------- */
 
+.pilihan-ekspor { display: flex; flex-direction: column; gap: 16px; }
+.pilihan-ekspor > div { min-width: 0; }
+.pilihan-ekspor #cekEksporPegawai { max-height: 260px; }
+
 .cek-daftar {
   border: 1px solid var(--garis);
   border-radius: 9px;
