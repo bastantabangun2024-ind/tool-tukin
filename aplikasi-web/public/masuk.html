@@ -18,13 +18,16 @@
   </div>
 
   <h1>Masuk ke akun</h1>
-  <p class="sub">Gunakan email &amp; password yang diberikan admin kepegawaian.</p>
+  <p class="sub">Pegawai: masuk dengan <b>NIP</b> &amp; password. Admin: gunakan email &amp; password.</p>
 
-  <label for="email">Email</label>
-  <input id="email" type="email" autocomplete="username" required placeholder="nama@contoh.com">
+  <label for="email">NIP / Email</label>
+  <input id="email" type="text" autocomplete="username" required placeholder="18 angka NIP atau email">
 
   <label for="password">Password</label>
-  <input id="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+  <div class="kolom-sandi">
+    <input id="password" type="password" autocomplete="current-password" required placeholder="••••••••">
+    <button class="lihat-sandi" data-target="password" type="button"></button>
+  </div>
 
   <button class="utama" id="tombol" type="submit" style="width:100%;margin-top:20px">Masuk</button>
 
@@ -34,6 +37,7 @@
     Jangan bagikan password ke siapa pun.</p>
 </form>
 
+<script src="/lib/sandi.js"></script>
 <script>
 (function () {
   var form = document.getElementById('form');
@@ -67,9 +71,12 @@
     e.preventDefault();
     if (!konfigurasi) { tampilkan('Konfigurasi belum siap, muat ulang halaman.'); return; }
 
-    var email = document.getElementById('email').value.trim();
+    var masuk = document.getElementById('email').value.trim();
     var password = document.getElementById('password').value;
-    if (!email || !password) { tampilkan('Email dan password wajib diisi.'); return; }
+    if (!masuk || !password) { tampilkan('NIP/email dan password wajib diisi.'); return; }
+    // Username pegawai = NIP; Supabase Auth menyimpannya sebagai <NIP>@domain internal.
+    var nip = masuk.replace(/\s/g, '');
+    var email = /^\d{18}$/.test(nip) ? nip + '@pegawai.tooltukin.id' : masuk;
 
     tombol.disabled = true;
     tombol.textContent = 'Memeriksa…';
@@ -86,11 +93,14 @@
         tampilkan(pesanGalat[kunci] || ('Gagal masuk: ' + (kunci || 'kesalahan tidak dikenal')));
         return;
       }
+      var meta = (h.j.user && h.j.user.user_metadata) || {};
       sessionStorage.setItem('sesi', JSON.stringify({
         access_token: h.j.access_token,
         refresh_token: h.j.refresh_token,
         email: (h.j.user && h.j.user.email) || email,
-        id: (h.j.user && h.j.user.id) || ''
+        id: (h.j.user && h.j.user.id) || '',
+        metadata: meta,
+        harusGanti: !!meta.harus_ganti_password
       }));
       tampilkan('Berhasil. Mengalihkan…', 'info');
       // admin -> panel admin, pegawai -> dasbor pegawai

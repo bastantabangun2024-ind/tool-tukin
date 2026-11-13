@@ -1,16 +1,15 @@
-// Membuat / menyegarkan akun login pegawai di Supabase Auth, menautkannya ke
-// baris `pegawai`, lalu menulis daftar kredensial ke ../userpaswordpegawai.md.
+// Menyamakan akun login SEMUA pegawai:
+//   username = NIP  (di Supabase Auth disimpan sebagai <NIP>@pegawai.tooltukin.id)
+//   password awal = 12345678
+// Akun yang sudah ada diperbarui, yang belum ada dibuat, lalu ditautkan ke
+// baris `pegawai` dan profil `users`. Sifatnya idempoten — aman dijalankan ulang.
 //
-// Jalankan ulang kapan saja (mis. ada pegawai baru atau password ingin diganti):
+// Jalankan:
 //   cd aplikasi-web && node scripts/buat-akun-pegawai.mjs
-//
-// Sifatnya idempoten: email yang sudah ada akan diperbarui passwordnya,
-// jadi file kredensial selalu berisi password yang berlaku.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { randomInt } from 'node:crypto';
 
 const DOMAIN = 'pegawai.tooltukin.id';
-const HURUF = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+const SANDI_AWAL = '12345678';
 
 const env = {};
 for (const baris of readFileSync('.env.local', 'utf8').split(/\r?\n/)) {
@@ -30,26 +29,6 @@ const kepalaServer = {
   'Content-Type': 'application/json',
 };
 
-function sandi(panjang = 12) {
-  let s = '';
-  for (let i = 0; i < panjang; i++) s += HURUF[randomInt(HURUF.length)];
-  return s;
-}
-
-// "Dr. SAMAREL TELAUM BANUA, S PAK, M.Pd." -> "samarel.telaum"
-function slugNama(nama) {
-  const dasar = String(nama || '')
-    .split(',')[0]
-    .replace(/\b(Dr|Drs|Dra|H|Hj)\.?\s+/gi, '');
-  const kata = dasar
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z\s]/g, ' ')
-    .split(/\s+/)
-    .filter((k) => k && !['br', 'bin', 'binti'].includes(k));
-  return kata.slice(0, 2).join('.') || 'pegawai';
-}
-
 async function json(url, opsi) {
   const r = await fetch(url, opsi);
   const t = await r.text();
@@ -58,44 +37,49 @@ async function json(url, opsi) {
   return { ok: r.ok, status: r.status, j, t };
 }
 
-async function cariUser(email) {
-  const r = await json(`${URL_DB}/auth/v1/admin/users?per_page=200`, { headers: kepalaServer });
-  if (!r.ok || !r.j) return null;
-  const daftar = Array.isArray(r.j.users) ? r.j.users : [];
-  return daftar.find((u) => String(u.email || '').toLowerCase() === email.toLowerCase()) || null;
+async function userAuthById(id) {
+  if (!id) return null;
+  const r = await json(`${URL_DB}/auth/v1/admin/users/${encodeURIComponent(id)}`, { headers: kepalaServer });
+  return r.ok && r.j && r.j.id ? r.j : null;
 }
 
-async function buatAtauPerbarui({ email, nama, password }) {
-  const ada = await cariUser(email);
-  if (!ada) {
-    const r = await json(`${URL_DB}/auth/v1/admin/users`, {
-      method: 'POST',
-      headers: kepalaServer,
-      body: JSON.stringify({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { nama, peran: 'pegawai' },
-      }),
-    });
-    if (!r.ok) throw new Error(`buat akun HTTP ${r.status} ${r.t.slice(0, 200)}`);
-    return { user: r.j, baru: true };
+async function daftarUserAuth() {
+  const semua = [];
+  for (let page = 1; page <= 10; page++) {
+    const r = await json(`${URL_DB}/auth/v1/admin/users?page=${page}&per_page=200`, { headers: kepalaServer });
+    if (!r.ok) break;
+    const daftar = Array.isArray(r.j?.users) ? r.j.users : Array.isArray(r.j) ? r.j : [];
+    semua.push(...daftar);
+    if (daftar.length < 200) break;
   }
-  const r = await json(`${URL_DB}/auth/v1/admin/users/${ada.id}`, {
-    method: 'PUT',
-    headers: kepalaServer,
-    body: JSON.stringify({
-      password,
-      email_confirm: true,
-      user_metadata: { nama, peran: 'pegawai' },
-    }),
-  });
-  if (!r.ok) throw new Error(`perbarui akun HTTP ${r.status} ${r.t.slice(0, 200)}`);
-  return { user: { ...ada, ...(r.j || {}) }, baru: false };
+  return semua;
 }
 
-const hasil = [];
-const dipakai = new Set();
+function cariEmail(daftar, email) {
+  const target = String(email || '').toLowerCase();
+  return daftar.find((u) => String(u.email || '').toLowerCase() === target) || null;
+}
+
+async function simpanAkun({ email, nama, password, user }) {
+  const badan = {
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { nama, peran: 'pegawai', harus_ganti_password: true },
+  };
+  if (user) {
+    const r = await json(`${URL_DB}/auth/v1/admin/users/${user.id}`, {
+      method: 'PUT', headers: kepalaServer, body: JSON.stringify(badan),
+    });
+    if (!r.ok) throw new Error(`perbarui akun HTTP ${r.status} ${r.t.slice(0, 200)}`);
+    return { user: { ...user, ...(r.j || {}) }, baru: false };
+  }
+  const r = await json(`${URL_DB}/auth/v1/admin/users`, {
+    method: 'POST', headers: kepalaServer, body: JSON.stringify(badan),
+  });
+  if (!r.ok) throw new Error(`buat akun HTTP ${r.status} ${r.t.slice(0, 200)}`);
+  return { user: r.j, baru: true };
+}
 
 const daftarPegawai = await json(
   `${URL_DB}/rest/v1/pegawai?select=id,nip,nama,status_kepegawaian,user_id,bidang:bidang_id(nama)&order=nama`,
@@ -106,39 +90,50 @@ if (!daftarPegawai.ok) {
   process.exit(1);
 }
 
+const semuaAuth = await daftarUserAuth();
+const hasil = [];
+
 for (const p of daftarPegawai.j) {
-  let lokal = slugNama(p.nama);
-  if (dipakai.has(lokal)) {
-    let n = 2;
-    while (dipakai.has(lokal + n)) n++;
-    lokal = lokal + n;
-  }
-  dipakai.add(lokal);
-  const email = `${lokal}@${DOMAIN}`;
-  const password = sandi();
+  const nip = String(p.nip || '').replace(/\s/g, '');
+  const email = `${nip}@${DOMAIN}`;
   const bidang = (p.bidang && p.bidang.nama) || '';
 
   try {
-    const { user, baru } = await buatAtauPerbarui({ email, nama: p.nama, password });
+    if (!/^\d{18}$/.test(nip)) throw new Error('NIP bukan 18 angka');
+
+    let user = await userAuthById(p.user_id);
+    if (!user) user = cariEmail(semuaAuth, email);
+
+    // Akun lama (email berbasis nama) mungkin belum tertaut di pegawai.user_id.
+    if (!user) {
+      const profil = await json(
+        `${URL_DB}/rest/v1/users?select=id,email&nama=eq.${encodeURIComponent(p.nama)}&peran=eq.pegawai&limit=1`,
+        { headers: kepalaServer },
+      );
+      const akunLama = profil.ok && Array.isArray(profil.j) ? profil.j[0] : null;
+      if (akunLama) user = cariEmail(semuaAuth, akunLama.email) || (await userAuthById(akunLama.id));
+    }
+
+    const { user: akun, baru } = await simpanAkun({ email, nama: p.nama, password: SANDI_AWAL, user });
 
     await json(`${URL_DB}/rest/v1/users?on_conflict=id`, {
       method: 'POST',
       headers: { ...kepalaServer, Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({ id: user.id, email, nama: p.nama, peran: 'pegawai', aktif: true }),
+      body: JSON.stringify({ id: akun.id, email, nama: p.nama, peran: 'pegawai', aktif: true }),
     });
 
     const taut = await json(`${URL_DB}/rest/v1/pegawai?id=eq.${encodeURIComponent(p.id)}`, {
       method: 'PATCH',
       headers: { ...kepalaServer, Prefer: 'return=minimal' },
-      body: JSON.stringify({ user_id: user.id }),
+      body: JSON.stringify({ user_id: akun.id }),
     });
     if (!taut.ok) throw new Error(`taut pegawai HTTP ${taut.status} ${taut.t.slice(0, 200)}`);
 
-    hasil.push({ ...p, email, password, baru });
-    console.log(`${baru ? 'BARU ' : 'PERBARUI'} ${email.padEnd(34)} ${p.nama}`);
+    hasil.push({ ...p, nip, email, password: SANDI_AWAL, baru });
+    console.log(`${baru ? 'BARU ' : 'PERBARUI'} NIP ${nip.padEnd(18)} ${p.nama}`);
   } catch (e) {
-    hasil.push({ ...p, email, password: '', galat: String(e.message || e) });
-    console.error('GAGAL', email, '|', String(e.message || e));
+    hasil.push({ ...p, nip, email, password: '', galat: String(e.message || e) });
+    console.error('GAGAL', nip, p.nama, '|', String(e.message || e));
   }
 }
 
@@ -154,27 +149,27 @@ Halaman login: https://tool-tukin.vercel.app/masuk.html
 > **RAHASIA — jangan di-commit ke Git dan jangan dibagikan ke grup umum.**
 > File ini sudah masuk \`.gitignore\`. Bagikan kredensial satu per satu ke pegawai
 > yang bersangkutan (WhatsApp pribadi), lalu minta segera ganti password.
-> Password di sini adalah password sementara yang berlaku saat file ini dibuat.
+>
+> Semua akun memakai **username = NIP** dan **password awal = ${SANDI_AWAL}**.
+> Saat masuk pertama kali, aplikasi otomatis menampilkan pilihan ganti password.
+> Jika pegawai lupa password, admin cukup klik **Reset sandi** di menu Data Pegawai.
 
-| No | Nama | NIP | Bidang | Username (email) | Password |
-|---:|---|---|---|---|---|
+| No | Nama | NIP (username) | Bidang | Password awal |
+|---:|---|---|---|---|
 ${sukses
   .map(
     (h, i) =>
-      `| ${i + 1} | ${h.nama} | ${h.nip} | ${(h.bidang && h.bidang.nama) || '-'} | ${h.email} | ${h.password} |`,
+      `| ${i + 1} | ${h.nama} | ${h.nip} | ${(h.bidang && h.bidang.nama) || '-'} | ${SANDI_AWAL} |`,
   )
   .join('\n')}
-${hasil.some((h) => h.galat) ? `\n## Gagal dibuat\n\n${hasil.filter((h) => h.galat).map((h) => `- ${h.nama} (${h.nip}) — ${h.galat}`).join('\n')}\n` : ''}
-## Catatan
+${hasil.some((h) => h.galat) ? `\n## Gagal dibuat\n\n${hasil.filter((h) => h.galat).map((h) => `- ${h.nama} (${h.nip}) — ${h.galat}`).join('\n')}\n` : ''}## Catatan
 
-- Username memakai **email** karena aplikasi login dengan email + password.
-- Password boleh diganti kapan saja oleh pegawai di aplikasi; kalau perlu
-  dibuat ulang seluruhnya, jalankan \`cd aplikasi-web && node scripts/buat-akun-pegawai.mjs\`
-  (password lama otomatis diganti dan file ini ditimpa).
-- Pegawai baru yang masuk lewat pendaftaran akan otomatis mendapat akun saat
-  pendaftarannya disetujui admin — tidak perlu dijalankan ulang, kecuali ingin
-  menyamakan format.
+- Supabase Auth memakai email sebagai username, jadi NIP disimpan sebagai
+  \`<NIP>@${DOMAIN}\`. Pegawai cukup mengetik NIP di halaman masuk.
+- Setelah pegawai mengganti password, password di file ini tidak lagi berlaku.
+  Untuk mengembalikan ke password awal, gunakan tombol **Reset sandi** di
+  menu Data Pegawai atau jalankan ulang script ini.
 `;
 
 writeFileSync('../userpaswordpegawai.md', markdown, 'utf8');
-console.log(`\nSelesai: ${sukses.length} akun siap. File: userpaswordpegawai.md`);
+console.log(`\nSelesai: ${sukses.length} akun siap. Password awal: ${SANDI_AWAL}. File: userpaswordpegawai.md`);

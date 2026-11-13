@@ -25,6 +25,10 @@
         <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
         <span class="teks-nav">Unggah Presensi</span>
       </a>
+      <a href="#kartuGantiSandi" id="tautanGantiSandi">
+        <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
+        <span class="teks-nav">Ganti Password</span>
+      </a>
       <a href="#panduan">
         <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5Z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v3H6.5"/></svg></span>
         <span class="teks-nav">Panduan</span>
@@ -68,6 +72,34 @@
     </header>
 
     <main>
+      <section class="kartu tersembunyi" id="kartuGantiSandi" style="border-color:#efc36b;background:#fffbf2">
+        <div class="kartu-kepala">
+          <div><h2>Ganti password</h2>
+            <p id="ketGantiSandi">Anda masih memakai password awal dari admin. Buat password baru agar akun aman.</p></div>
+        </div>
+        <div class="baris">
+          <div>
+            <label for="sandiBaru">Password baru (minimal 8 karakter)</label>
+            <div class="kolom-sandi">
+              <input id="sandiBaru" type="password" autocomplete="new-password">
+              <button class="lihat-sandi" data-target="sandiBaru" type="button"></button>
+            </div>
+          </div>
+          <div>
+            <label for="sandiUlang">Ulangi password baru</label>
+            <div class="kolom-sandi">
+              <input id="sandiUlang" type="password" autocomplete="new-password">
+              <button class="lihat-sandi" data-target="sandiUlang" type="button"></button>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <button class="utama" id="btnGantiSandi" type="button" style="margin-top:0">Simpan password baru</button>
+          <button class="kecil" id="btnNantiSandi" type="button" style="margin-left:8px">Nanti saja</button>
+        </div>
+        <div class="pesan" id="pesanSandi" role="alert"></div>
+      </section>
+
       <section class="kartu kartu-sambutan">
         <div class="kepala-sambutan">
           <div>
@@ -195,11 +227,13 @@
   </div>
 </div>
 
+<script src="/lib/sandi.js"></script>
 <script>
 (function () {
   var sesi = null;
   try { sesi = JSON.parse(sessionStorage.getItem('sesi') || 'null'); } catch (e) { sesi = null; }
   if (!sesi || !sesi.access_token) { location.replace('/masuk.html'); return; }
+  var perluGantiSandi = !!sesi.harusGanti;
 
   var NAMA_BULAN = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
     'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -209,7 +243,8 @@
   var kini = new Date();
   var k = null;
 
-  el('siapa').textContent = sesi.email || '';
+  el('siapa').textContent = /@pegawai\.tooltukin\.id$/i.test(sesi.email || '')
+    ? String(sesi.email).split('@')[0] : (sesi.email || '');
   el('lencanaPeriode').textContent = NAMA_BULAN[kini.getMonth()] + ' ' + kini.getFullYear();
   el('statPeriode').textContent = BULAN_SINGKAT[kini.getMonth()] + ' ' + kini.getFullYear();
   el('sapaan').textContent = 'Selamat datang, ' + (kini.getHours() < 11 ? 'selamat pagi' : kini.getHours() < 15 ? 'selamat siang' : kini.getHours() < 18 ? 'selamat sore' : 'selamat malam');
@@ -217,6 +252,67 @@
   el('keluar').addEventListener('click', function () {
     sessionStorage.removeItem('sesi');
     location.href = '/masuk.html';
+  });
+
+  // --- ganti password ------------------------------------------------------
+  function pesanSandi(teks, jenis) {
+    var p = el('pesanSandi');
+    if (!teks) { p.className = 'pesan'; p.textContent = ''; return; }
+    p.textContent = teks;
+    p.className = 'pesan tampil ' + (jenis || 'galat');
+  }
+
+  function tampilkanKartuSandi(keterangan) {
+    var kartu = el('kartuGantiSandi');
+    if (keterangan) el('ketGantiSandi').textContent = keterangan;
+    kartu.classList.remove('tersembunyi');
+  }
+
+  el('tautanGantiSandi').addEventListener('click', function (e) {
+    e.preventDefault();
+    tampilkanKartuSandi('Masukkan password baru, lalu simpan. Password lama tidak perlu dimasukkan.');
+    el('kartuGantiSandi').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    el('sandiBaru').focus();
+  });
+
+  el('btnNantiSandi').addEventListener('click', function () {
+    el('kartuGantiSandi').classList.add('tersembunyi');
+    sesi.harusGanti = false;
+    sessionStorage.setItem('sesi', JSON.stringify(sesi));
+  });
+
+  el('btnGantiSandi').addEventListener('click', function () {
+    var btn = this;
+    var baru = el('sandiBaru').value;
+    var ulang = el('sandiUlang').value;
+    if (baru.length < 8) { pesanSandi('Password baru minimal 8 karakter.'); return; }
+    if (baru !== ulang) { pesanSandi('Ulangi password belum sama.'); return; }
+    if (!k) { pesanSandi('Konfigurasi server belum siap. Muat ulang halaman.'); return; }
+
+    btn.disabled = true;
+    pesanSandi('Menyimpan password baru…', 'info');
+    var meta = Object.assign({}, sesi.metadata || {}, { harus_ganti_password: false });
+    fetch(k.url + '/auth/v1/user', {
+      method: 'PUT',
+      headers: { apikey: k.kunci, Authorization: 'Bearer ' + sesi.access_token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: baru, data: meta })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (h) {
+      if (!h.ok) {
+        pesanSandi('Gagal: ' + (h.j.msg || h.j.error_description || h.j.error || ('HTTP ' + h.status)));
+        return;
+      }
+      sesi.metadata = meta;
+      sesi.harusGanti = false;
+      sessionStorage.setItem('sesi', JSON.stringify(sesi));
+      el('sandiBaru').value = '';
+      el('sandiUlang').value = '';
+      pesanSandi('✔ Password berhasil diganti. Gunakan password baru saat masuk berikutnya.', 'info');
+      setTimeout(function () { el('kartuGantiSandi').classList.add('tersembunyi'); pesanSandi(''); }, 4000);
+    }).catch(function () {
+      pesanSandi('Tidak bisa menghubungi server. Periksa koneksi internet.');
+    }).then(function () { btn.disabled = false; });
   });
 
   el('tombolMenu').addEventListener('click', function () {
@@ -451,6 +547,7 @@
       var riwayat = Array.isArray(hasil[2]) ? hasil[2] : [];
 
       tampilkanProfil(u, p);
+      if (perluGantiSandi && (!u || u.peran !== 'admin')) tampilkanKartuSandi();
       renderStatistik(riwayat);
       renderStatusTerakhir(riwayat);
       renderRekapPresensi(riwayat);

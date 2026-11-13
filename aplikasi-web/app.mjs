@@ -18,7 +18,6 @@
 //   GET  /*                      file statis dari public/
 
 import { readFileSync } from 'node:fs';
-import { randomBytes } from 'node:crypto';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
 import { dirname } from 'node:path';
@@ -197,13 +196,14 @@ async function cariUserAuth(email) {
   return null;
 }
 
-async function buatAtauPerbaruiUserAuth({ email, nama, password }) {
+async function buatAtauPerbaruiUserAuth({ email, nama, password, harusGanti = false }) {
+  const metadata = { nama, peran: 'pegawai', harus_ganti_password: !!harusGanti };
   let user = await cariUserAuth(email);
   if (!user) {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
       method: 'POST',
       headers: { apikey: KUNCI_SERVER, Authorization: `Bearer ${KUNCI_SERVER}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { nama, peran: 'pegawai' } }),
+      body: JSON.stringify({ email, password, email_confirm: true, user_metadata: metadata }),
     });
     const teks = await res.text();
     if (!res.ok) throw new Error(`Gagal membuat akun login: HTTP ${res.status} ${teks.slice(0, 300)}`);
@@ -212,7 +212,7 @@ async function buatAtauPerbaruiUserAuth({ email, nama, password }) {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user.id}`, {
       method: 'PUT',
       headers: { apikey: KUNCI_SERVER, Authorization: `Bearer ${KUNCI_SERVER}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password, email_confirm: true, user_metadata: { nama, peran: 'pegawai' } }),
+      body: JSON.stringify({ password, email_confirm: true, user_metadata: metadata }),
     });
     if (!res.ok) {
       const teks = await res.text();
@@ -228,6 +228,92 @@ async function buatAtauPerbaruiUserAuth({ email, nama, password }) {
     body: JSON.stringify({ id: user.id, email: String(email).trim().toLowerCase(), nama, peran: 'pegawai', aktif: true }),
   });
   return user;
+}
+
+// --- akun pegawai: username = NIP -----------------------------------------
+// Supabase Auth memakai email sebagai username, jadi akun pegawai memakai
+// alamat internal <NIP>@pegawai.tooltukin.id. Pengguna cukup mengetik NIP di
+// halaman masuk; halaman itu yang menambahkan domainnya.
+const DOMAIN_AKUN = 'pegawai.tooltukin.id';
+const SANDI_AWAL = '12345678';
+
+function emailAkunPegawai(nip) {
+  return `${String(nip || '').replace(/\s/g, '')}@${DOMAIN_AKUN}`;
+}
+
+async function ambilUserAuthById(id) {
+  if (!id) return null;
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(id)}`, {
+    headers: { apikey: KUNCI_SERVER, Authorization: `Bearer ${KUNCI_SERVER}` },
+  });
+  if (!res.ok) return null;
+  const json = await res.json().catch(() => null);
+  return json && json.id ? json : null;
+}
+
+// Buat/perbarui akun login pegawai, tautkan ke baris pegawai, dan tandai agar
+// pegawai mengganti password saat masuk berikutnya.
+async function simpanAkunPegawai({ pegawaiId, nip, nama, password }) {
+  const sandi = String(password || '');
+  if (sandi.length < 8) {
+    const e = new Error('Password akun minimal 8 karakter');
+    e.status = 400;
+    throw e;
+  }
+
+  const baris = await db(
+    `pegawai?select=id,user_id,nip,nama&id=eq.${encodeURIComponent(String(pegawaiId))}`,
+  );
+  const p = baris && baris[0];
+  if (!p) {
+    const e = new Error('Pegawai tidak ditemukan');
+    e.status = 404;
+    throw e;
+  }
+
+  const email = emailAkunPegawai(p.nip);
+  let user = await ambilUserAuthById(p.user_id);
+  if (!user) user = await cariUserAuth(email);
+
+  const metadata = { nama: p.nama || nama || '', peran: 'pegawai', harus_ganti_password: true };
+  const badan = { email, password: sandi, email_confirm: true, user_metadata: metadata };
+
+  if (user) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${encodeURIComponent(user.id)}`, {
+      method: 'PUT',
+      headers: { apikey: KUNCI_SERVER, Authorization: `Bearer ${KUNCI_SERVER}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(badan),
+    });
+    const teks = await res.text();
+    if (!res.ok) throw new Error(`Gagal memperbarui akun login: HTTP ${res.status} ${teks.slice(0, 300)}`);
+    const json = JSON.parse(teks || '{}');
+    if (json && json.id) user = json;
+  } else {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+      method: 'POST',
+      headers: { apikey: KUNCI_SERVER, Authorization: `Bearer ${KUNCI_SERVER}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(badan),
+    });
+    const teks = await res.text();
+    if (!res.ok) throw new Error(`Gagal membuat akun login: HTTP ${res.status} ${teks.slice(0, 300)}`);
+    user = JSON.parse(teks || '{}');
+  }
+
+  await db('users?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ id: user.id, email, nama: p.nama || nama || '', peran: 'pegawai', aktif: true }),
+  });
+
+  if (p.user_id !== user.id) {
+    await db(`pegawai?id=eq.${encodeURIComponent(p.id)}`, {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ user_id: user.id }),
+    });
+  }
+
+  return { user, email, username: p.nip, password: sandi };
 }
 
 const STATUS_PEGAWAI = ['PNS', 'PPPK', 'CPNS', 'PPPK_PW'];
@@ -756,6 +842,11 @@ export async function handler(req, res) {
       }
       if (salah.length) return kirimJson(res, 400, { pesan: salah.join('; ') });
 
+      const passwordBaru = b.password ? String(b.password) : '';
+      if (passwordBaru && passwordBaru.length < 8) {
+        return kirimJson(res, 400, { pesan: 'Password akun minimal 8 karakter' });
+      }
+
       const id = b.id ? String(b.id) : null;
       try {
         if (id) {
@@ -765,7 +856,16 @@ export async function handler(req, res) {
             body: JSON.stringify(data),
           });
           if (!hasil || !hasil.length) return kirimJson(res, 404, { pesan: 'Pegawai tidak ditemukan' });
-          return kirimJson(res, 200, { pesan: `Data ${nama} diperbarui`, id: hasil[0].id });
+          let catatanAkun = '';
+          if (passwordBaru) {
+            try {
+              await simpanAkunPegawai({ pegawaiId: hasil[0].id, nip, nama, password: passwordBaru });
+              catatanAkun = ` Akun login (username NIP ${nip}) memakai password baru; pegawai diminta menggantinya saat masuk.`;
+            } catch (e) {
+              catatanAkun = ` Data tersimpan, tetapi password akun gagal diubah: ${String(e.message || e)}`;
+            }
+          }
+          return kirimJson(res, 200, { pesan: `Data ${nama} diperbarui.${catatanAkun}`, id: hasil[0].id });
         }
 
         data.created_at = new Date().toISOString();
@@ -774,7 +874,15 @@ export async function handler(req, res) {
           headers: { Prefer: 'return=representation' },
           body: JSON.stringify(data),
         });
-        return kirimJson(res, 200, { pesan: `${nama} ditambahkan ke daftar pegawai`, id: hasil[0].id });
+        let catatanAkun = '';
+        const sandiAwal = passwordBaru || SANDI_AWAL;
+        try {
+          await simpanAkunPegawai({ pegawaiId: hasil[0].id, nip, nama, password: sandiAwal });
+          catatanAkun = ` Akun login memakai username NIP ${nip} dan password ${passwordBaru ? 'sesuai yang diisi' : 'awal ' + SANDI_AWAL}; pegawai diminta menggantinya saat masuk.`;
+        } catch (e) {
+          catatanAkun = ` Pegawai tersimpan, tetapi akun login gagal dibuat: ${String(e.message || e)}`;
+        }
+        return kirimJson(res, 200, { pesan: `${nama} ditambahkan ke daftar pegawai.${catatanAkun}`, id: hasil[0].id });
       } catch (e) {
         const pesan = String(e.message || e);
         if (/duplicate key|uniq|23505/i.test(pesan)) {
@@ -799,6 +907,38 @@ export async function handler(req, res) {
         pesan: `${hasil[0].nama} ${hasil[0].aktif ? 'diaktifkan' : 'dinonaktifkan'}`,
         aktif: hasil[0].aktif,
       });
+    }
+
+    // Atur / reset password akun pegawai. `reset: true` mengembalikan ke
+    // password awal 12345678; selain itu pakai `password` yang dikirim admin.
+    if (jalur === '/api/pegawai/password' && req.method === 'POST') {
+      await wajibAdmin(req);
+      const b = await bacaBody(req);
+      const id = b.id ? String(b.id) : '';
+      if (!id) return kirimJson(res, 400, { pesan: 'Pegawai belum dipilih' });
+
+      const baris = await db(`pegawai?select=id,nip,nama&id=eq.${encodeURIComponent(id)}`);
+      const p = baris && baris[0];
+      if (!p) return kirimJson(res, 404, { pesan: 'Pegawai tidak ditemukan' });
+
+      const reset = !!b.reset;
+      const password = reset ? SANDI_AWAL : String(b.password || '');
+      if (!reset && password.length < 8) {
+        return kirimJson(res, 400, { pesan: 'Password akun minimal 8 karakter' });
+      }
+
+      try {
+        const akun = await simpanAkunPegawai({ pegawaiId: p.id, nip: p.nip, nama: p.nama, password });
+        return kirimJson(res, 200, {
+          pesan: reset
+            ? `Password ${p.nama} direset ke password awal ${SANDI_AWAL}. Username: NIP ${p.nip}. Pegawai diminta menggantinya saat masuk.`
+            : `Password ${p.nama} diperbarui. Username: NIP ${p.nip}.`,
+          username: p.nip,
+          password: akun.password,
+        });
+      } catch (e) {
+        return kirimJson(res, e.status || 500, { pesan: String(e.message || e) });
+      }
     }
 
     // Hapus permanen. Ditolak bila pegawai sudah punya pengajuan, karena
@@ -928,11 +1068,12 @@ export async function handler(req, res) {
         return kirimJson(res, 200, { pesan: 'Pendaftaran ditolak', email: p.email });
       }
 
-      // setujui: buat/tautkan akun login + pegawai
-      const password = randomBytes(10).toString('base64url') + '!7A';
+      // setujui: buat/tautkan akun login + pegawai. Username memakai NIP.
+      const password = SANDI_AWAL;
+      const username = emailAkunPegawai(p.nip);
       let user;
       try {
-        user = await buatAtauPerbaruiUserAuth({ email: p.email, nama: p.nama, password });
+        user = await buatAtauPerbaruiUserAuth({ email: username, nama: p.nama, password, harusGanti: true });
       } catch (e) {
         return kirimJson(res, 500, { pesan: String(e && e.message || e) });
       }
@@ -979,7 +1120,7 @@ export async function handler(req, res) {
       const emailHasil = await kirimEmail({
         to: p.email,
         subject: 'Akun Tool Tukin Anda sudah aktif',
-        text: `Halo ${p.nama},\n\nPendaftaran akun Anda disetujui.\n\nEmail login: ${p.email}\nPassword sementara: ${password}\n\nSilakan masuk di ${env.APP_BASE_URL || ''}/masuk.html dan segera ganti password.\n${catatan ? 'Catatan admin: ' + catatan : ''}`,
+        text: `Halo ${p.nama},\n\nPendaftaran akun Anda disetujui.\n\nUsername: NIP ${p.nip}\nPassword awal: ${password}\n\nSilakan masuk di ${env.APP_BASE_URL || ''}/masuk.html dengan NIP dan password tersebut, lalu segera ganti password.\n${catatan ? 'Catatan admin: ' + catatan : ''}`,
       });
 
       await db('audit_log', {
@@ -989,6 +1130,7 @@ export async function handler(req, res) {
 
       return kirimJson(res, 200, {
         pesan: 'Pendaftaran disetujui dan akun dibuat',
+        username: p.nip,
         email: p.email,
         passwordSementara: password,
         emailTerkirim: emailHasil.ok,

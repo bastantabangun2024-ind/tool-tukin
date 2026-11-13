@@ -310,6 +310,17 @@
       <div><label>PPh (%)</label><br><input type="number" id="pPph" min="0" max="100" step="0.5" value="5" style="width:100px"></div>
       <div><label>Satker 2</label><br><input id="pSatker" placeholder="(opsional)"></div>
     </div>
+    <div class="baris" style="align-items:flex-end">
+      <div style="flex:1 1 260px">
+        <label for="pPassword">Password akun (username = NIP)</label>
+        <div class="kolom-sandi">
+          <input id="pPassword" type="password" autocomplete="new-password" placeholder="Kosongkan = tidak diubah">
+          <button class="lihat-sandi" data-target="pPassword" type="button"></button>
+        </div>
+      </div>
+    </div>
+    <p class="catatan" style="margin-top:6px">Password awal semua pegawai: <b>12345678</b>. Pegawai otomatis
+      diminta mengganti password saat masuk. Untuk pegawai yang lupa password, pakai tombol <b>Reset sandi</b> di tabel.</p>
     <div class="baris" style="margin-top:14px">
       <div><button id="btnSimpanPegawai">Simpan pegawai</button></div>
       <div><button id="btnBaruPegawai">Kosongkan form</button></div>
@@ -464,6 +475,7 @@
 <script src="/lib/app.js"></script>
 <script src="/rekap.js"></script>
 <script src="/lib/grafik.js"></script>
+<script src="/lib/sandi.js"></script>
 <script>
 (function () {
   var sesi = null;
@@ -979,7 +991,7 @@
       return wadah;
     }
 
-    kotak.appendChild(barisKredensial('Email login', info.email || ''));
+    kotak.appendChild(barisKredensial('Username (NIP)', info.username || ''));
     kotak.appendChild(barisKredensial('Password sementara', info.password || ''));
 
     var ket = document.createElement('p');
@@ -987,7 +999,7 @@
     if (info.emailTerkirim) {
       ket.textContent = 'Email kredensial juga sudah dikirim otomatis ke pegawai.';
     } else if (info.emailDinonaktifkan) {
-      ket.textContent = 'Notifikasi email sedang dinonaktifkan — kirim email & password ini ke pegawai lewat WhatsApp/telepon. Minta pegawai segera mengganti password setelah masuk.';
+      ket.textContent = 'Notifikasi email sedang dinonaktifkan — kirim username NIP & password ini ke pegawai lewat WhatsApp/telepon. Minta pegawai segera mengganti password setelah masuk.';
     } else {
       ket.textContent = 'Email belum terkirim: ' + (info.catatanEmail || 'RESEND_API_KEY belum diisi') + '. Sampaikan kredensial ini secara manual.';
     }
@@ -1002,7 +1014,7 @@
     btnSemua.textContent = '📋 Salin Semua';
     btnSemua.addEventListener('click', function () {
       var teks = 'Akun Tool Tukin' + (info.nama ? '\nNama: ' + info.nama : '') +
-        '\nEmail: ' + (info.email || '') +
+        '\nUsername (NIP): ' + (info.username || '') +
         '\nPassword sementara: ' + (info.password || '') +
         '\n\nMasuk di ' + location.origin + '/masuk.html lalu segera ganti password Anda.';
       salinKeClipboard(teks).then(function () {
@@ -1062,6 +1074,7 @@
               if (aksi === 'setujui' && h.j.passwordSementara) {
                 tampilkanKredensial({
                   nama: b.dataset.nama || '',
+                  username: h.j.username || '',
                   email: h.j.email || '',
                   password: h.j.passwordSementara,
                   emailTerkirim: !!h.j.emailTerkirim,
@@ -1091,7 +1104,7 @@
   function isiNilai(id, v) { document.getElementById(id).value = v == null ? '' : v; }
 
   function kosongkanForm() {
-    ['pId', 'pNama', 'pNip', 'pPangkat', 'pGol', 'pRuang', 'pKelas', 'pJabatan', 'pSatker'].forEach(function (id) {
+    ['pId', 'pNama', 'pNip', 'pPangkat', 'pGol', 'pRuang', 'pKelas', 'pJabatan', 'pSatker', 'pPassword'].forEach(function (id) {
       isiNilai(id, '');
     });
     isiNilai('pTukin', '');
@@ -1128,6 +1141,7 @@
     isiNilai('pTukin', p.tukin == null ? '' : Number(p.tukin));
     isiNilai('pTarif', p.tarif_uang_makan == null ? '37000' : Number(p.tarif_uang_makan));
     isiNilai('pPph', p.pph_pct == null ? '5' : Number(p.pph_pct));
+    isiNilai('pPassword', '');
     document.getElementById('pStatus').value = p.status_kepegawaian || 'PPPK';
     if (p.bidang_id) document.getElementById('pBidang').value = p.bidang_id;
     catatPegawai('Mengubah data <b>' + esc(p.nama) + '</b>. Klik Simpan pegawai bila selesai.', '#0b6b3a');
@@ -1192,6 +1206,7 @@
             '<td class="num" data-label="Tukin">' + rupiah(p.tukin) + '</td>' +
             '<td class="num" data-label="Uang makan">' + rupiah(p.tarif_uang_makan) + '</td>' +
             '<td class="aksi"><button class="kecil" data-ubah="' + i + '">Ubah</button> ' +
+            '<button class="kecil" data-sandi="' + i + '">Reset sandi</button> ' +
             '<button class="kecil" data-aktif="' + i + '">' + (p.aktif ? 'Nonaktifkan' : 'Aktifkan') + '</button> ' +
             '<button class="kecil" data-hapus="' + i + '">Hapus</button></td></tr>';
         }).join('') + '</tbody></table>';
@@ -1199,6 +1214,24 @@
       var tabel = tabelPegawai;
       tabel.querySelectorAll('button[data-ubah]').forEach(function (b) {
         b.addEventListener('click', function () { isiForm(d[Number(b.dataset.ubah)]); });
+      });
+
+      tabel.querySelectorAll('button[data-sandi]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var p = d[Number(b.dataset.sandi)];
+          if (!confirm('Reset password ' + p.nama + ' ke password awal 12345678?\n\n' +
+            'Username login: NIP ' + p.nip + '\nPegawai akan diminta mengganti password saat masuk.')) return;
+          b.disabled = true;
+          catatPegawai('Mereset password…', '#475569');
+          adminApi('/api/pegawai/password', { method: 'POST', body: { id: p.id, reset: true } }).then(function (h) {
+            if (!h.ok) { catatPegawai('Gagal: ' + esc(h.j.pesan || ('HTTP ' + h.status)), '#b42318'); b.disabled = false; return; }
+            catatPegawai('✔ ' + esc(h.j.pesan), '#0b6b3a');
+            b.disabled = false;
+          }).catch(function (e) {
+            catatPegawai('Gagal: ' + esc(e.message), '#b42318');
+            b.disabled = false;
+          });
+        });
       });
 
       tabel.querySelectorAll('button[data-aktif]').forEach(function (b) {
@@ -1288,6 +1321,7 @@
     };
     var id = nilai('pId');
     if (id) data.id = id;
+    if (nilai('pPassword')) data.password = nilai('pPassword');
 
     btn.disabled = true;
     catatPegawai('Menyimpan…', '#475569');
