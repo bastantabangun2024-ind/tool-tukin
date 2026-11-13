@@ -25,7 +25,7 @@
         <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
         <span class="teks-nav">Unggah Presensi</span>
       </a>
-      <a href="#kartuGantiSandi" id="tautanGantiSandi">
+      <a href="/ganti-password.html" id="tautanGantiSandi">
         <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
         <span class="teks-nav">Ganti Password</span>
       </a>
@@ -268,13 +268,7 @@
     kartu.classList.remove('tersembunyi');
   }
 
-  el('tautanGantiSandi').addEventListener('click', function (e) {
-    e.preventDefault();
-    tampilkanKartuSandi('Masukkan password baru, lalu simpan. Password lama tidak perlu dimasukkan.');
-    el('kartuGantiSandi').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    el('sandiBaru').focus();
-  });
-
+  el('tautanGantiSandi').title = 'Buka halaman ganti password';
   el('btnNantiSandi').addEventListener('click', function () {
     el('kartuGantiSandi').classList.add('tersembunyi');
     sesi.harusGanti = false;

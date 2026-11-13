@@ -50,6 +50,10 @@
       <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 1.56V21a2 2 0 1 1-4 0v-.09A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.56V3a2 2 0 1 1 4 0v.09A1.7 1.7 0 0 0 15 4.6a1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.14.38.44.7.82.9.3.15.63.23.96.23H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51.87Z"/></svg></span>
       <span class="teks-nav">Pengaturan Potongan</span>
     </button>
+    <a href="/ganti-password.html">
+      <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2"/></svg></span>
+      <span class="teks-nav">Ganti Password</span>
+    </a>
   </nav>
 
   <div class="sidebar-kaki">
@@ -320,7 +324,8 @@
       </div>
     </div>
     <p class="catatan" style="margin-top:6px">Password awal semua pegawai: <b>12345678</b>. Pegawai otomatis
-      diminta mengganti password saat masuk. Untuk pegawai yang lupa password, pakai tombol <b>Reset sandi</b> di tabel.</p>
+      diminta mengganti password saat masuk. Kolom <b>Status sandi</b> di tabel menunjukkan siapa yang masih
+      memakai password awal. Untuk pegawai yang lupa password, pakai tombol <b>Reset sandi</b>.</p>
     <div class="baris" style="margin-top:14px">
       <div><button id="btnSimpanPegawai">Simpan pegawai</button></div>
       <div><button id="btnBaruPegawai">Kosongkan form</button></div>
@@ -1177,6 +1182,12 @@
     });
   }
 
+  function lencanaSandi(p) {
+    if (p.status_sandi === 'diganti') return '<span class="lencana hijau">Sudah diganti</span>';
+    if (p.status_sandi === 'awal') return '<span class="lencana">Password awal</span>';
+    return '<span class="lencana abu">Belum ada akun</span>';
+  }
+
   function renderPegawai() {
       var tabelPegawai = document.getElementById('tabelPegawai');
       var jumlah = document.getElementById('jumlahPegawai');
@@ -1196,13 +1207,14 @@
       var d = pegawaiTampil;
       tabelPegawai.innerHTML =
         '<table><thead><tr><th>Pegawai</th><th>Jabatan / Bidang</th><th>Gol</th>' +
-        '<th class="num">Tukin</th><th class="num">Uang makan</th><th></th></tr></thead><tbody>' +
+        '<th>Status sandi</th><th class="num">Tukin</th><th class="num">Uang makan</th><th></th></tr></thead><tbody>' +
         d.map(function (p, i) {
           return '<tr' + (p.aktif ? '' : ' style="opacity:.55"') + '><td>' + esc(p.nama) +
             (p.aktif ? '' : ' <span class="catatan">(nonaktif)</span>') +
             '<br><span class="catatan">' + esc(p.nip) + ' · ' + esc(p.status_kepegawaian) + '</span></td>' +
             '<td data-label="Jabatan / Bidang">' + esc(p.jabatan) + '<br><span class="catatan">' + esc(p.bidang && p.bidang.nama) + '</span></td>' +
             '<td data-label="Gol">' + esc(p.golongan || '') + (p.ruang ? '/' + esc(p.ruang) : '') + '</td>' +
+            '<td data-label="Status sandi">' + lencanaSandi(p) + '</td>' +
             '<td class="num" data-label="Tukin">' + rupiah(p.tukin) + '</td>' +
             '<td class="num" data-label="Uang makan">' + rupiah(p.tarif_uang_makan) + '</td>' +
             '<td class="aksi"><button class="kecil" data-ubah="' + i + '">Ubah</button> ' +
@@ -1226,7 +1238,7 @@
           adminApi('/api/pegawai/password', { method: 'POST', body: { id: p.id, reset: true } }).then(function (h) {
             if (!h.ok) { catatPegawai('Gagal: ' + esc(h.j.pesan || ('HTTP ' + h.status)), '#b42318'); b.disabled = false; return; }
             catatPegawai('✔ ' + esc(h.j.pesan), '#0b6b3a');
-            b.disabled = false;
+            muatPegawai();
           }).catch(function (e) {
             catatPegawai('Gagal: ' + esc(e.message), '#b42318');
             b.disabled = false;

@@ -544,6 +544,8 @@ button.kecil.isi:hover { filter: brightness(1.07); color: #fff; }
   background: var(--biru-muda);
   color: var(--royal);
 }
+.lencana.hijau { background: var(--hijau-muda); color: var(--hijau); }
+.lencana.abu { background: #eef2f7; color: #526078; }
 
 .catatan { font-size: 12px; color: var(--abu); line-height: 1.55; margin-top: 12px; }
 .catatan button { margin-top: 6px; }

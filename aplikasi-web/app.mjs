@@ -196,6 +196,28 @@ async function cariUserAuth(email) {
   return null;
 }
 
+// Ambil seluruh akun Auth sekali jalan untuk keperluan daftar admin.
+async function daftarUserAuth() {
+  const byId = new Map();
+  const byEmail = new Map();
+  let page = 1;
+  for (let i = 0; i < 10; i++) {
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?page=${page}&per_page=200`, {
+      headers: { apikey: KUNCI_SERVER, Authorization: `Bearer ${KUNCI_SERVER}` },
+    });
+    if (!res.ok) break;
+    const json = await res.json().catch(() => ({}));
+    const daftar = Array.isArray(json.users) ? json.users : (Array.isArray(json) ? json : []);
+    for (const u of daftar) {
+      if (u.id) byId.set(u.id, u);
+      if (u.email) byEmail.set(String(u.email).toLowerCase(), u);
+    }
+    if (daftar.length < 200) break;
+    page++;
+  }
+  return { byId, byEmail };
+}
+
 async function buatAtauPerbaruiUserAuth({ email, nama, password, harusGanti = false }) {
   const metadata = { nama, peran: 'pegawai', harus_ganti_password: !!harusGanti };
   let user = await cariUserAuth(email);
@@ -795,10 +817,25 @@ export async function handler(req, res) {
     if (jalur === '/api/pegawai/daftar' && req.method === 'GET') {
       await wajibAdmin(req);
       const baris = await db(
-        'pegawai?select=id,nip,nama,pangkat,golongan,ruang,jabatan,kelas_jabatan,status_kepegawaian,' +
+        'pegawai?select=id,user_id,nip,nama,pangkat,golongan,ruang,jabatan,kelas_jabatan,status_kepegawaian,' +
           'tukin,tarif_uang_makan,pph_pct,satker_2,aktif,bidang_id,bidang:bidang_id(nama,kode)&order=aktif.desc,nama',
       );
-      return kirimJson(res, 200, { pegawai: Array.isArray(baris) ? baris : [] });
+      // Status sandi: apakah pegawai masih memakai password awal (flag di
+      // user_metadata Supabase Auth) atau sudah menggantinya sendiri.
+      const akun = await daftarUserAuth();
+      const pegawai = (Array.isArray(baris) ? baris : []).map((p) => {
+        const u =
+          (p.user_id && akun.byId.get(p.user_id)) ||
+          akun.byEmail.get(emailAkunPegawai(p.nip).toLowerCase()) ||
+          null;
+        return {
+          ...p,
+          status_sandi: !u
+            ? 'tanpa-akun'
+            : (u.user_metadata && u.user_metadata.harus_ganti_password ? 'awal' : 'diganti'),
+        };
+      });
+      return kirimJson(res, 200, { pegawai });
     }
 
     if (jalur === '/api/pegawai/simpan' && req.method === 'POST') {
