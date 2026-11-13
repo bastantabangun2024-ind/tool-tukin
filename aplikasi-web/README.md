@@ -372,6 +372,29 @@ yang sama persis dengan berkas di repositori (SHA-1 identik).
   https://vercel.com/account/tokens lalu diganti dengan token baru; perbarui secret GitHub
   setelahnya. Jangan pernah menempel token di chat lagi.
 
+## Aplikasi PWA (13 November 2026)
+
+Situs bisa dipasang sebagai aplikasi Android langsung dari Chrome — **tanpa membuat APK**.
+Aplikasi tetap memakai halaman dan API yang sama; pembaruan situs otomatis terbawa.
+
+- `public/manifest.webmanifest` — nama **Tool Tukin**, `start_url` `/masuk.html`,
+  mode `standalone`, warna tema `#1d4ed8`.
+- `public/ikon/tt-192.png`, `tt-512.png`, `tt-180.png` — ikon bawaan bertuliskan **TT**.
+- `public/sw.js` — service worker ringan: hanya menyimpan aset statis (`gaya.css`, ikon,
+  `lib/`). HTML, `/api/*`, dan Supabase **tidak pernah di-cache** agar data tidak basi.
+- `public/lib/pwa.js` — mendaftarkan service worker; dimuat di enam halaman publik/admin.
+- `vercel.json` — header `application/manifest+json` untuk manifest dan `no-cache` untuk `sw.js`.
+- Teks kecil **created: Bastanta Bangun with Freebuff** di sudut kanan bawah lewat
+  `body::after` di `public/gaya.css`.
+
+**Cara memasang:** buka https://tool-tukin.vercel.app/masuk.html di Chrome Android → menu ⋮ →
+**Instal aplikasi / Tambahkan ke layar utama**. Ikon TT muncul di layar utama dan aplikasi
+terbuka tanpa address bar.
+
+**Beban sistem:** PWA tidak menambah beban server. Jumlah request ke Vercel/Supabase sama
+seperti membuka situs di browser; service worker justru menghemat unduhan aset statis pada
+kunjungan berikutnya. Ukuran aplikasi hanya ikon + cache beberapa ratus KB, tanpa runtime baru.
+
 ## Struktur kode (siap Vercel)
 
 | Berkas | Peran |

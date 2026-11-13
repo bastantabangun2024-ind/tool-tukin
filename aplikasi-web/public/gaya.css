@@ -1110,3 +1110,23 @@ nav:not(.nav-samping) a:hover, nav:not(.nav-samping) button:hover { background: 
 nav:not(.nav-samping) .aktif { background: var(--biru-muda); font-weight: 600; }
 
 .tersembunyi { display: none !important; }
+
+/* Kredit pembuat, kecil di sudut kanan bawah. */
+body::after {
+  content: "created: Bastanta Bangun with Freebuff";
+  position: fixed;
+  right: 12px;
+  bottom: 8px;
+  z-index: 60;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, .72);
+  color: #64748b;
+  font-size: 9.5px;
+  letter-spacing: .01em;
+  line-height: 1.4;
+  pointer-events: none;
+}
+@media (max-width: 480px) {
+  body::after { right: 8px; bottom: 5px; font-size: 8.5px; }
+}
