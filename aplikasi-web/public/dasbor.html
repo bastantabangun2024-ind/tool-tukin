@@ -243,7 +243,7 @@
   var kini = new Date();
   var k = null;
 
-  el('siapa').textContent = /@pegawai\.tooltukin\.id$/i.test(sesi.email || '')
+  el('siapa').textContent = /@(pegawai|admin)\.tooltukin\.id$/i.test(sesi.email || '')
     ? String(sesi.email).split('@')[0] : (sesi.email || '');
   el('lencanaPeriode').textContent = NAMA_BULAN[kini.getMonth()] + ' ' + kini.getFullYear();
   el('statPeriode').textContent = BULAN_SINGKAT[kini.getMonth()] + ' ' + kini.getFullYear();

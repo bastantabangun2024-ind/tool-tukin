@@ -18,10 +18,10 @@
   </div>
 
   <h1>Masuk ke akun</h1>
-  <p class="sub">Pegawai: masuk dengan <b>NIP</b> &amp; password. Admin: gunakan email &amp; password.</p>
+  <p class="sub">Pegawai: masuk dengan <b>NIP</b> &amp; password. Admin: gunakan <b>username</b> atau email.</p>
 
-  <label for="email">NIP / Email</label>
-  <input id="email" type="text" autocomplete="username" required placeholder="18 angka NIP atau email">
+  <label for="email">NIP / Username / Email</label>
+  <input id="email" type="text" autocomplete="username" required placeholder="NIP, username admin, atau email">
 
   <label for="password">Password</label>
   <div class="kolom-sandi">
@@ -62,7 +62,7 @@
   });
 
   var pesanGalat = {
-    'Invalid login credentials': 'Email atau password salah.',
+    'Invalid login credentials': 'NIP/username atau password salah.',
     'Email not confirmed': 'Email belum dikonfirmasi admin.',
     'Too many requests': 'Terlalu banyak percobaan. Tunggu beberapa menit.'
   };
@@ -74,9 +74,12 @@
     var masuk = document.getElementById('email').value.trim();
     var password = document.getElementById('password').value;
     if (!masuk || !password) { tampilkan('NIP/email dan password wajib diisi.'); return; }
-    // Username pegawai = NIP; Supabase Auth menyimpannya sebagai <NIP>@domain internal.
-    var nip = masuk.replace(/\s/g, '');
-    var email = /^\d{18}$/.test(nip) ? nip + '@pegawai.tooltukin.id' : masuk;
+    // Supabase Auth memakai email: pegawai = <NIP>@pegawai..., admin = <username>@admin...
+    var bersih = masuk.replace(/\s/g, '');
+    var email;
+    if (/^\d{18}$/.test(bersih)) email = bersih + '@pegawai.tooltukin.id';
+    else if (bersih.indexOf('@') > -1) email = bersih;
+    else email = bersih.toLowerCase() + '@admin.tooltukin.id';
 
     tombol.disabled = true;
     tombol.textContent = 'Memeriksa…';

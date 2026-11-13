@@ -102,8 +102,9 @@ secara berurutan. Tanpa token, `terapkan-migrasi.mjs` mencetak daftar file yang 
 node server.mjs        # http://localhost:3000/masuk.html
 ```
 
-- `public/masuk.html` — login **NIP / Email** + password ke Supabase Auth; pegawai cukup mengetik
-  18 angka NIP (otomatis dipetakan ke `<NIP>@pegawai.tooltukin.id`), admin tetap memakai email.
+- `public/masuk.html` — login **NIP / Username / Email** + password ke Supabase Auth; pegawai
+  cukup mengetik 18 angka NIP (dipetakan ke `<NIP>@pegawai.tooltukin.id`), admin memakai username
+  (dipetakan ke `<username>@admin.tooltukin.id`) atau email.
   Pesan galat Bahasa Indonesia. Setelah masuk: admin diarahkan ke `/admin.html`, pegawai ke `/dasbor.html`.
 - `public/dasbor.html` — dasbor pegawai: profil, periode aktif, status pengajuan terakhir,
   rekap presensi, Tukin & uang makan milik sendiri, riwayat, dan panduan. Sesi hanya di
@@ -330,6 +331,13 @@ yang sama persis dengan berkas di repositori (SHA-1 identik).
   Daftar kredensial hasil migrasi ada di `../userpaswordpegawai.md` (di-ignore Git — jangan di-commit).
 - Pegawai baru dari tab **Data Pegawai** dan pendaftar yang disetujui otomatis dibuatkan akun
   login dengan username NIP; password memakai isian admin atau `12345678`.
+
+**Akun admin**
+- Username admin: **`admin_tukin`** (disimpan di Auth sebagai `admin_tukin@admin.tooltukin.id`).
+  Email lama `bastantabangun2024@gmail.com` sudah tidak berlaku.
+- Password admin diatur langsung di Supabase Auth dan **tidak ditulis di repositori**.
+- Baris `public.users` milik admin ikut diperbarui agar email dan peran `admin` tetap konsisten.
+- Halaman masuk menerima NIP (pegawai), username admin, atau email.
 
 **Wajib ganti password**
 - Akun baru/reset diberi metadata `harus_ganti_password: true` di Supabase Auth.

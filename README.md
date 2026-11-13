@@ -25,11 +25,12 @@ versi web harus menghasilkan angka yang sama (uji paritas).
 3. **Keputusan yang sudah diambil**
    - Penyimpanan berkas: **Google Drive** (Supabase hanya Auth + database).
    - **HUKDIS/TB aktif sekarang**, diisi admin per pengajuan (`hukdis_pct`, `tb_pct`).
-   - Email + password untuk login; kunci Supabase baru (`sb_publishable_` / `sb_secret_`).
+   - NIP/username admin + password untuk login; kunci Supabase baru (`sb_publishable_` / `sb_secret_`).
 4. **TAHAP 2 — database Supabase** (sudah diterapkan, bukan draf):
    - 14 tabel, 8 enum, 25 policy RLS, trigger `updated_at`.
    - 11 bidang, 16 aturan potongan versi 1 (nilai identik `app.js`), 30 pegawai dari roster.
-   - Admin pertama `bastantabangun2024@gmail.com` (peran `admin`), tercatat di `audit_log`.
+   - Admin kini memakai username `admin_tukin` (email internal `admin_tukin@admin.tooltukin.id`,
+     peran `admin`); email lama sudah tidak berlaku.
 5. **TAHAP 3 awal — halaman login lokal**:
    - `aplikasi-web/public/masuk.html` (email + password ke Supabase Auth),
      `public/dasbor.html` (profil, peran, ringkasan jumlah data untuk admin, tombol keluar).
