@@ -83,6 +83,7 @@
 <script src="lib/xlsx.full.min.js"></script>
 <script src="pegawai.js"></script>
 <script src="app.js"></script>
+<script src="lib/format-rekap.js"></script>
 <script>
 'use strict';
 var T = window.TukinTool;
@@ -324,7 +325,11 @@ window.unduhBidang = function (kunci) {
   var daftar = (byBidangState[kunci] || []).map(function (dx) { return dx.hasil; });
   if (!daftar.length) return;
   var bagian = kunci.split('|');
-  var wb = T.susunWorkbookBidang(daftar, state.tahun, state.bulan, bagian[1]);
+  // tata letak mengikuti berkas contoh (judul PEMBIMAS, tanpa kolom NO, nominal angka);
+  // angkanya tetap dari mesin hitung T. Bila modul gagal dimuat, pakai format lama.
+  var penyusun = (window.FormatRekap && window.FormatRekap.susunWorkbookBidang)
+    ? window.FormatRekap : T;
+  var wb = penyusun.susunWorkbookBidang(daftar, state.tahun, state.bulan, bagian[1]);
   var und = [
     [wb.fileKehadiran, wb.wbKehadiran],
     [wb.fileTukin, wb.wbTukin],

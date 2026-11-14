@@ -55,6 +55,9 @@ CARA PAKAI (tiap bulan)
    - Rekapitulasi Kehadiran Bimas <BIDANG> PNS <BULAN>.xlsx      (PNS)
    - Rekapitulasi Tukin Bimas <BIDANG> PNS <BULAN>.xlsx          (PNS)
    - Rekapitulasi Uang Makan Bimas <BIDANG> PNS <BULAN>.xlsx     (PNS)
+   Isi ketiga file mengikuti format contoh: judul "... PEMBIMAS <BIDANG>",
+   tanpa kolom NO, nominal berupa angka berformat rupiah, dan tanggal
+   kehadiran berbentuk 2026-09-01 00:00:00.
    Semuanya ke folder "Unduhan" default Chrome.
 7. Buka file Excel, cek beberapa baris, lalu kirim seperti biasa.
 

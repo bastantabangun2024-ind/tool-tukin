@@ -23,6 +23,7 @@ const SUMBER = [
   { dari: join(OFFLINE, 'APLIKASI', 'app.js'), ke: 'app.js' },
   { dari: join(OFFLINE, 'APLIKASI', 'lib', 'xlsx.full.min.js'), ke: 'xlsx.full.min.js' },
   { dari: join(OFFLINE, 'APLIKASI', 'pegawai.js'), ke: 'pegawai.js' },
+  { dari: join(OFFLINE, 'APLIKASI', 'lib', 'format-rekap.js'), ke: 'format-rekap.js' },
   { dari: join(OFFLINE, 'AMBIL-DARI-DRIVE', 'alat-drive.js'), ke: 'alat-drive.js' },
 ];
 
@@ -59,7 +60,7 @@ await writeFile(
     '',
     'Folder ini **dibuat otomatis** oleh `node scripts/siapkan-mesin.mjs` — jangan diedit manual.',
     '',
-    'Sumber sebenarnya: `aplikasi-offline/APLIKASI/{app.js,pegawai.js,lib/xlsx.full.min.js}` dan',
+    'Sumber sebenarnya: `aplikasi-offline/APLIKASI/{app.js,pegawai.js,lib/xlsx.full.min.js,lib/format-rekap.js}` dan',
     '`aplikasi-offline/AMBIL-DARI-DRIVE/alat-drive.js`.',
     '',
     'Di komputer lokal server memakai berkas asli tersebut; di Vercel dipakai salinan ini',

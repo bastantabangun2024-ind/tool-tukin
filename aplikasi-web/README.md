@@ -81,7 +81,11 @@ Ekspor **Ekspor Rekap** di panel admin kini mengikuti tata letak tiga berkas con
 Angka **tidak berubah** — semuanya tetap berasal dari mesin hitung `TukinTool` (`public/lib/app.js`).
 Yang baru hanya lapisan tata letak di `public/lib/format-rekap.js`; bila modul itu gagal dimuat,
 ekspor otomatis kembali memakai format lama (`TukinTool.susunWorkbookBidang`).
-Aplikasi offline (`aplikasi-offline/APLIKASI/app.js`) tidak diubah.
+
+Modul yang sama dipakai **aplikasi offline**: sumber acuannya
+`aplikasi-offline/APLIKASI/lib/format-rekap.js` (dimuat `index.html`), lalu disalin ke
+`public/lib/format-rekap.js` oleh `node scripts/siapkan-mesin.mjs` (build Vercel). Jadi tata letak
+ekspor offline dan web selalu identik, sementara `app.js` (rumus) tetap tidak berubah.
 
 Catatan pilihan:
 
@@ -91,8 +95,10 @@ Catatan pilihan:
 - Baris tambahan di luar tabel pada berkas contoh (mis. nama pegawai di Z13 / I12) adalah sisa
   penyuntingan manual, jadi tidak ikut diekspor.
 
-Berkas yang berubah: `public/lib/format-rekap.js` (baru), `public/admin.html`
-(memuat modul + memakai penyusun baru).
+Berkas yang berubah: `aplikasi-offline/APLIKASI/lib/format-rekap.js` (baru, sumber acuan),
+`aplikasi-offline/APLIKASI/index.html` (memuat modul + memakai penyusun baru),
+`aplikasi-offline/APLIKASI/CARA-PAKAI.txt`, `public/lib/format-rekap.js` (salinan build),
+`public/admin.html`, dan `scripts/siapkan-mesin.mjs` (ikut menyalin modul format).
 
 Pengujian: berkas contoh Kehadiran dibaca ulang dengan mesin hitung lalu dibandingkan sel per sel
 terhadap hasil ekspor — judul, header, posisi baris, nilai harian, serta Tukin Rp4.551.000 dan
