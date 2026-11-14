@@ -1326,6 +1326,7 @@ export async function handler(req, res) {
             golongan: p.golongan,
             jabatan: p.jabatan,
             bidang_id: bidangId,
+            no_wa: p.no_wa || null,
             status_kepegawaian: 'PPPK',
             tukin: 0,
             tarif_uang_makan: 37000,
@@ -1338,7 +1339,11 @@ export async function handler(req, res) {
         await db(`pegawai?id=eq.${encodeURIComponent(pegawaiId)}`, {
           method: 'PATCH',
           headers: { Prefer: 'return=representation' },
-          body: JSON.stringify({ user_id: user.id, aktif: true }),
+          body: JSON.stringify({
+            user_id: user.id,
+            aktif: true,
+            ...(p.no_wa ? { no_wa: p.no_wa } : {}),
+          }),
         });
       }
 
