@@ -23,9 +23,12 @@ Ringkasan pekerjaan revisi yang diminta:
    **Edit data** untuk mengubahnya sendiri lewat endpoint baru `POST /api/profil` (token Supabase
    diverifikasi, RLS tetap menjaga data lain). Nama/NIP/jabatan/golongan tetap diubah admin.
 4. **Menu baru “Unduh Rekap”.** Ada di sidebar dasbor. Pengguna memilih bulan (checklist),
-   bagian **Kehadiran / Tukin / Uang Makan / All**, lalu mengunduh **PDF ukuran A4** yang memuat
-   identitas, ringkasan kehadiran, rincian kejadian, rincian potongan tukin, dan uang makan.
-   PDF dibuat di peramban tanpa pustaka luar (`public/lib/pdf.js` + `rekap-pdf.js`, ±20 KB)
+   bagian **Kehadiran / Tukin / Uang Makan / All**, lalu mengunduh **PDF ringkas ukuran A4**:
+   satu blok pendek per bulan berisi jumlah hadir, tanggal telat/pulang awal/tanpa absen/tanpa
+   keterangan, cuti/sakit/DL/izin, lalu bruto, potongan (dan rinciannya), serta tukin bersih;
+   uang makan berisi hari x tarif, PPh, dan bersih. Tanpa tabel besar dan tanpa kotak statistik,
+   sehingga **12 bulan ≈ 3 halaman** (±20 KB).
+   PDF dibuat di peramban tanpa pustaka luar (`public/lib/pdf.js` + `rekap-pdf.js`)
    sehingga tidak menambah beban server; pustaka baru dimuat saat tombol ditekan.
 5. **Pendaftaran banyak pegawai lewat Excel.** Halaman **Daftar** (umum) punya tombol
    **Unduh format Excel pendaftaran**; pegawai mengisi satu baris per orang lalu mengirim file
