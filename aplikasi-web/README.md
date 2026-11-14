@@ -67,6 +67,38 @@ Status: seluruh revisi 1–7 sudah dijalankan, diuji seperlunya, di-commit, dan 
 `main` (rangkaian commit `bab4e86`, `ea72454`, `808918f`, ditutup commit README ini).
 Migrasi database sudah diterapkan ke Supabase.
 
+## Perubahan 14 November 2026 (lanjutan) — format ekspor Excel
+
+Ekspor **Ekspor Rekap** di panel admin kini mengikuti tata letak tiga berkas contoh di
+`format_excel/` (Rekapitulasi Kehadiran / Tukin / Uang Makan Pembimas Katolik, September 2026):
+
+| Berkas | Tata letak hasil ekspor |
+|---|---|
+| **Kehadiran** | Satu lembar `Worksheet`; judul `REKAPITULASI KEHADIRAN PEMBIMAS <BIDANG>` di baris 1; header di baris 2 (NAMA … KETERANGAN 2, SATKER_2, SATKER_3, STATUS PEGAWAI); satu baris per hari per pegawai; tanggal `2026-09-01 00:00:00`; jam tanpa nol di depan (`8:0`, `7:3`); CEPAT TELAT/PSW berupa angka; hari libur/Dinas Luar memakai kolom LIBUR/JENIS TUGAS/KETERANGAN; Sabtu–Minggu dikosongkan. |
+| **Tukin** | Judul `REKAPITULASI TUKIN PEMBIMAS <BIDANG>` di baris 1, baris 2–3 kosong, header di baris 4, data mulai baris 5; tanpa kolom NO; ada kolom **NPWP** (kosong) setelah GOL/ RUANG; header `TK PERSEN`; nominal TUKIN dan TUKIN BERSIH berupa angka berformat rupiah (bukan teks); baris tanda tangan `Pembimas <Bidang>` di kolom Z, dua baris di bawah data. |
+| **Uang Makan** | Judul `REKAPITULASI UANG MAKAN PEMBIMAS <BIDANG>` di baris 1, header di baris 4, data mulai baris 5; tanpa kolom NO; HARI MASUK, UANG MAKAN, PPH, JUMLAH BERSIH berupa angka (tiga kolom terakhir berformat rupiah); tanda tangan `Pembimas <Bidang>` di kolom I satu baris di bawah data. |
+
+Angka **tidak berubah** — semuanya tetap berasal dari mesin hitung `TukinTool` (`public/lib/app.js`).
+Yang baru hanya lapisan tata letak di `public/lib/format-rekap.js`; bila modul itu gagal dimuat,
+ekspor otomatis kembali memakai format lama (`TukinTool.susunWorkbookBidang`).
+Aplikasi offline (`aplikasi-offline/APLIKASI/app.js`) tidak diubah.
+
+Catatan pilihan:
+
+- Nama berkas unduhan tetap memuat bidang, status, dan bulan (`Rekapitulasi Tukin Bimas KATOLIK PNS SEPT.xlsx`)
+  agar beberapa bidang/status tidak saling menimpa saat diunduh bersamaan; berkas contoh memakai
+  nama ringkas `…20269.xlsx` karena hanya berisi satu bidang.
+- Baris tambahan di luar tabel pada berkas contoh (mis. nama pegawai di Z13 / I12) adalah sisa
+  penyuntingan manual, jadi tidak ikut diekspor.
+
+Berkas yang berubah: `public/lib/format-rekap.js` (baru), `public/admin.html`
+(memuat modul + memakai penyusun baru).
+
+Pengujian: berkas contoh Kehadiran dibaca ulang dengan mesin hitung lalu dibandingkan sel per sel
+terhadap hasil ekspor — judul, header, posisi baris, nilai harian, serta Tukin Rp4.551.000 dan
+uang makan 738.000 / PPh 110.700 / bersih 627.300 **sama**; format rupiah hanya dikenakan pada
+kolom nominal seperti contoh.
+
 ## Dokumen
 
 | Dokumen | Isi |

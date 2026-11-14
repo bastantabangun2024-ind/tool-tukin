@@ -508,6 +508,7 @@
 </div>
 
 <script src="/lib/app.js"></script>
+<script src="/lib/format-rekap.js"></script>
 <script src="/rekap.js"></script>
 <script src="/lib/grafik.js"></script>
 <script src="/lib/sandi.js"></script>
@@ -2150,10 +2151,14 @@
 
   function unduhRekapSiap(kunci, hasilKhusus) {
 
-    if (typeof TukinTool === 'undefined' || !TukinTool.susunWorkbookBidang) {
+    if (typeof TukinTool === 'undefined') {
       catatRekap('Mesin hitung belum termuat. Muat ulang halaman.', '#b42318');
       return;
     }
+    // Format kolom mengikuti berkas contoh (folder format_excel); angkanya tetap
+    // berasal dari TukinTool. Bila modul format gagal dimuat, pakai format lama.
+    var penyusun = (typeof FormatRekap !== 'undefined' && FormatRekap.susunWorkbookBidang)
+      ? FormatRekap : TukinTool;
 
     var dipilih = hasilKhusus || hasilEkspor();
     if (!dipilih.length) {
@@ -2170,7 +2175,7 @@
     var daftar = [];
     Object.keys(groups).sort().forEach(function (key) {
       var bagian = key.split('|');
-      var wb = TukinTool.susunWorkbookBidang(groups[key], dataRekap.tahun, dataRekap.bulan, bagian[1]);
+      var wb = penyusun.susunWorkbookBidang(groups[key], dataRekap.tahun, dataRekap.bulan, bagian[1]);
       if (!wb) return;
       if (kunci === 'semua' || kunci === 'kehadiran') daftar.push([wb.fileKehadiran, wb.wbKehadiran]);
       if (kunci === 'semua' || kunci === 'tukin') daftar.push([wb.fileTukin, wb.wbTukin]);
