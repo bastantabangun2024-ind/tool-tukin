@@ -74,8 +74,14 @@
       yang sama. Simpan bukti pengiriman ini.
     </p>
     <div style="margin-top:10px">
+      <button class="kecil" id="unduhTemplateDaftar" type="button">Unduh format Excel pendaftaran (banyak pegawai)</button>
       <button class="kecil" id="unduhBuktiDaftar" type="button">Unduh bukti pendaftaran terakhir (.txt)</button>
     </div>
+    <p class="catatan" style="margin-top:8px">
+      Mendaftar bersama-sama? Unduh <b>format Excel</b>, isi satu baris per pegawai (jangan ubah nama kolom),
+      lalu kirim file <b>.xlsx</b>-nya ke admin lewat WhatsApp/email. Admin akan mengunggahnya sekaligus
+      sehingga akun semua pegawai pada file itu dibuat otomatis.
+    </p>
   </section>
 
   <section class="kartu">
@@ -179,6 +185,43 @@
     a.download = 'bukti-pendaftaran-' + (data.nip || 'baru') + '.txt';
     document.body.appendChild(a); a.click();
     setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+
+  // --- unduh format Excel pendaftaran (banyak pegawai) ----------------------
+  var skripDimuat = {};
+  function muatSkrip(src) {
+    if (skripDimuat[src]) return skripDimuat[src];
+    skripDimuat[src] = new Promise(function (selesai, gagal) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = function () { selesai(); };
+      s.onerror = function () { delete skripDimuat[src]; gagal(new Error('gagal memuat ' + src)); };
+      document.head.appendChild(s);
+    });
+    return skripDimuat[src];
+  }
+
+  var btnTpl = document.getElementById('unduhTemplateDaftar');
+  if (btnTpl) btnTpl.addEventListener('click', function () {
+    var btn = this;
+    var p = document.getElementById('pesanDaftar');
+    btn.disabled = true;
+    p.className = 'pesan tampil info';
+    p.textContent = 'Menyiapkan format Excel…';
+    Promise.all([
+      muatSkrip('/lib/xlsx.full.min.js'),
+      muatSkrip('/lib/format-pegawai.js')
+    ]).then(function () {
+      var bidang = Object.keys(BIDANG_KODE).map(function (nama) {
+        return { kode: BIDANG_KODE[nama], nama: nama };
+      });
+      FormatPegawai.unduhTemplate(bidang);
+      p.className = 'pesan tampil info';
+      p.textContent = '✔ Format Excel diunduh. Isi satu baris per pegawai, lalu kirim file .xlsx ke admin.';
+    }).catch(function () {
+      p.className = 'pesan tampil galat';
+      p.textContent = 'Format Excel gagal dimuat. Periksa koneksi lalu coba lagi.';
+    }).then(function () { btn.disabled = false; });
   });
 
   // Cek status pendaftaran

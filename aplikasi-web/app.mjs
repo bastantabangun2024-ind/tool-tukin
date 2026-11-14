@@ -19,6 +19,7 @@
 
 import { readFileSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
+import { gzipSync } from 'node:zlib';
 import { extname, join, normalize, sep } from 'node:path';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -69,6 +70,27 @@ const TIPE = {
 function kirimJson(res, kode, data) {
   res.writeHead(kode, { 'Content-Type': 'application/json; charset=utf-8' });
   res.end(JSON.stringify(data));
+}
+
+// Kirim berkas statis; teks (html/css/js/json/svg) digzip bila peramban mau.
+// Di Vercel aset dilayani platform (sudah Brotli), jadi ini untuk server lokal.
+const EKST_KOMPRES = new Set(['.html', '.js', '.css', '.json', '.svg', '.webmanifest']);
+
+function kirimBerkas(req, res, isi, tipe, ekstensi, cache) {
+  const headers = {
+    'Content-Type': tipe,
+    Vary: 'Accept-Encoding',
+    'Cache-Control': cache || 'no-store',
+  };
+  let badan = isi;
+  if (EKST_KOMPRES.has(ekstensi) && isi.length > 1024 &&
+      /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) {
+    badan = gzipSync(isi);
+    headers['Content-Encoding'] = 'gzip';
+  }
+  headers['Content-Length'] = String(badan.length);
+  res.writeHead(200, headers);
+  return res.end(badan);
 }
 
 // 0812… / +62 812… / 62 0812… -> 62812… (format wa.me, tanpa tanda +).
@@ -187,6 +209,26 @@ async function wajibAdmin(req) {
     e.status = 401;
     throw e;
   }
+  return u;
+}
+
+// Token milik pengguna aktif mana pun (admin atau pegawai). Dipakai endpoint
+// yang boleh diakses pemilik akun sendiri, mis. mengubah nomor WhatsApp.
+async function penggunaAktifDariToken(req) {
+  const mentah = String(req.headers.authorization || '');
+  const token = mentah.replace(/^Bearer\s+/i, '').trim();
+  if (!token || !SUPABASE_URL || !KUNCI_PUBLIK) return null;
+
+  const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: KUNCI_PUBLIK, Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) return null;
+  const akun = await res.json().catch(() => null);
+  if (!akun || !akun.id) return null;
+
+  const baris = await db(`users?select=id,email,peran,aktif&id=eq.${encodeURIComponent(akun.id)}`);
+  const u = baris && baris[0];
+  if (!u || !u.aktif) return null;
   return u;
 }
 
@@ -832,7 +874,7 @@ export async function handler(req, res) {
       await wajibAdmin(req);
       const baris = await db(
         'pegawai?select=id,user_id,nip,nama,pangkat,golongan,ruang,jabatan,kelas_jabatan,status_kepegawaian,' +
-          'tukin,tarif_uang_makan,pph_pct,satker_2,aktif,bidang_id,bidang:bidang_id(nama,kode)&order=aktif.desc,nama',
+          'no_wa,tukin,tarif_uang_makan,pph_pct,satker_2,aktif,bidang_id,bidang:bidang_id(nama,kode)&order=aktif.desc,nama',
       );
       // Status sandi: apakah pegawai masih memakai password awal (flag di
       // user_metadata Supabase Auth) atau sudah menggantinya sendiri.
@@ -869,10 +911,21 @@ export async function handler(req, res) {
         return kirimJson(res, 400, { pesan: `Status kepegawaian harus salah satu: ${STATUS_PEGAWAI.join(', ')}` });
       }
 
+      const noWaMasuk = b.no_wa === undefined ? undefined : String(b.no_wa).trim();
+      let noWa;
+      if (noWaMasuk !== undefined) {
+        if (!noWaMasuk) noWa = null;
+        else {
+          noWa = nomorWaInternasional(noWaMasuk);
+          if (!noWa) return kirimJson(res, 400, { pesan: 'Nomor WhatsApp tidak valid (contoh 081234567890)' });
+        }
+      }
+
       const data = {
         nip,
         nama,
         nama_key: Tukin.namaKey(nama),
+        ...(noWa !== undefined ? { no_wa: noWa } : {}),
         pangkat: b.pangkat ? String(b.pangkat).trim() : null,
         golongan: b.golongan ? String(b.golongan).trim() : null,
         ruang: b.ruang ? String(b.ruang).trim() : null,
@@ -1012,6 +1065,130 @@ export async function handler(req, res) {
 
       await db(`pegawai?id=eq.${encodeURIComponent(id)}`, { method: 'DELETE' });
       return kirimJson(res, 200, { pesan: `${ada[0].nama} dihapus dari daftar pegawai` });
+    }
+
+    // Pegawai mengubah nomor HP/WhatsApp miliknya sendiri. Data lain tetap
+    // lewat admin agar identitas kepegawaian tidak berubah sembarangan.
+    if (jalur === '/api/profil' && req.method === 'POST') {
+      const u = await penggunaAktifDariToken(req);
+      if (!u) return kirimJson(res, 401, { pesan: 'Sesi berakhir. Silakan masuk ulang.' });
+      const b = await bacaBody(req);
+      const noWa = nomorWaInternasional(b.no_wa);
+      if (!noWa) return kirimJson(res, 400, { pesan: 'Nomor WhatsApp tidak valid (contoh 081234567890)' });
+
+      const baris = await db(`pegawai?select=id,nama&user_id=eq.${encodeURIComponent(u.id)}`);
+      const p = baris && baris[0];
+      if (!p) return kirimJson(res, 404, { pesan: 'Akun ini belum tertaut ke data pegawai' });
+
+      await db(`pegawai?id=eq.${encodeURIComponent(p.id)}`, {
+        method: 'PATCH',
+        headers: { Prefer: 'return=minimal' },
+        body: JSON.stringify({ no_wa: noWa }),
+      });
+      return kirimJson(res, 200, { pesan: 'Nomor WhatsApp tersimpan', no_wa: noWa });
+    }
+
+    // --- admin: impor pegawai banyak sekaligus dari Excel -----------------
+    // Klien mengirim maksimal 30 baris per permintaan agar tidak melewati batas
+    // waktu Vercel. Tiap baris dicatat hasilnya (tersimpan/dilewati/gagal).
+    if (jalur === '/api/pegawai/impor' && req.method === 'POST') {
+      await wajibAdmin(req);
+      const b = await bacaBody(req, 2 * 1024 * 1024);
+      const daftarBaris = Array.isArray(b.baris) ? b.baris.slice(0, 30) : [];
+      if (!daftarBaris.length) return kirimJson(res, 400, { pesan: 'Tidak ada baris untuk diimpor' });
+
+      const bidangSemua = (await db('bidang?select=id,kode,nama')) || [];
+      const cariBidang = (nilai) => {
+        const t = String(nilai || '').trim().toLowerCase();
+        if (!t) return null;
+        return bidangSemua.find((x) =>
+          String(x.kode).toLowerCase() === t || String(x.nama).toLowerCase() === t) || null;
+      };
+      const teks = (v) => (v === undefined || v === null || String(v).trim() === '' ? null : String(v).trim());
+      const angka = (v) => {
+        if (v === undefined || v === null || String(v).trim() === '') return null;
+        const n = Number(String(v).replace(/[^\d.,-]/g, '').replace(/\.(?=\d{3}\b)/g, '').replace(',', '.'));
+        return Number.isFinite(n) ? n : NaN;
+      };
+
+      const hasil = [];
+      for (const row of daftarBaris) {
+        const nip = String(row.nip == null ? '' : row.nip).replace(/\s/g, '');
+        const nama = String(row.nama == null ? '' : row.nama).trim();
+        try {
+          if (!/^\d{18}$/.test(nip)) throw new Error('NIP harus 18 angka');
+          if (nama.length < 3) throw new Error('Nama pegawai belum diisi');
+
+          const bidang = cariBidang(row.bidang);
+          if (!bidang) throw new Error(`Bidang "${String(row.bidang || '')}" tidak dikenal`);
+
+          const status = String(row.status_kepegawaian || 'PPPK').trim().toUpperCase().replace(/[\s-]+/g, '_');
+          if (!STATUS_PEGAWAI.includes(status)) {
+            throw new Error(`Status kepegawaian harus ${STATUS_PEGAWAI.join('/')}`);
+          }
+
+          const tukin = angka(row.tukin);
+          const tarif = angka(row.tarif_uang_makan);
+          const pph = angka(row.pph_pct);
+          for (const [nilai, label] of [[tukin, 'Tukin'], [tarif, 'Tarif uang makan'], [pph, 'PPh']]) {
+            if (Number.isNaN(nilai) || (nilai !== null && nilai < 0)) throw new Error(`${label} harus angka 0 atau lebih`);
+          }
+
+          const noWaMentah = teks(row.no_wa);
+          const noWa = noWaMentah ? nomorWaInternasional(noWaMentah) : null;
+          if (noWaMentah && !noWa) throw new Error('Nomor WhatsApp tidak valid');
+
+          const ada = await db(`pegawai?select=id&nip=eq.${encodeURIComponent(nip)}`);
+          if (ada && ada.length) throw new Error('NIP sudah terdaftar, dilewati');
+
+          const data = {
+            nip,
+            nama,
+            nama_key: Tukin.namaKey(nama),
+            pangkat: teks(row.pangkat),
+            golongan: teks(row.golongan),
+            ruang: teks(row.ruang),
+            jabatan: teks(row.jabatan),
+            kelas_jabatan: teks(row.kelas_jabatan),
+            bidang_id: bidang.id,
+            status_kepegawaian: status,
+            no_wa: noWa,
+            satker_2: teks(row.satker_2),
+            aktif: true,
+            created_at: new Date().toISOString(),
+          };
+          if (tukin !== null) data.tukin = tukin;
+          if (tarif !== null) data.tarif_uang_makan = tarif;
+          if (pph !== null) data.pph_pct = pph;
+
+          const simpan = await db('pegawai', {
+            method: 'POST',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify(data),
+          });
+
+          let catatan = 'akun login dibuat (sandi awal ' + SANDI_AWAL + ')';
+          try {
+            await simpanAkunPegawai({ pegawaiId: simpan[0].id, nip, nama, password: SANDI_AWAL });
+          } catch (e) {
+            catatan = 'data tersimpan, akun login gagal dibuat: ' + String(e.message || e);
+          }
+          hasil.push({ nip, nama, status: 'tersimpan', pesan: catatan });
+        } catch (e) {
+          const pesan = String(e.message || e);
+          hasil.push({ nip, nama, status: /sudah terdaftar/.test(pesan) ? 'dilewati' : 'gagal', pesan });
+        }
+      }
+
+      const hitung = (s) => hasil.filter((x) => x.status === s).length;
+      return kirimJson(res, 200, {
+        hasil,
+        ringkasan: {
+          tersimpan: hitung('tersimpan'),
+          dilewati: hitung('dilewati'),
+          gagal: hitung('gagal'),
+        },
+      });
     }
 
     if (jalur === '/api/daftar' && req.method === 'POST') {
@@ -1301,8 +1478,9 @@ export async function handler(req, res) {
     // mesin hitung offline (berkas asli, tanpa salinan)
     if (BERKAS_LIB[jalur]) {
       const isi = await readFile(BERKAS_LIB[jalur]);
-      res.writeHead(200, { 'Content-Type': TIPE[extname(jalur)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
-      return res.end(isi);
+      const ekst = extname(jalur).toLowerCase();
+      return kirimBerkas(req, res, isi, TIPE[ekst] || 'application/octet-stream', ekst,
+        'public, max-age=604800, stale-while-revalidate=86400');
     }
 
     // file statis (di Vercel bagian ini tidak dipakai: aset dilayani platform)
@@ -1313,11 +1491,11 @@ export async function handler(req, res) {
     const info = await stat(berkas);
     if (!info.isFile()) throw new Error('bukan berkas');
     const isi = await readFile(berkas);
-    res.writeHead(200, {
-      'Content-Type': TIPE[extname(berkas).toLowerCase()] || 'application/octet-stream',
-      'Cache-Control': 'no-store',
-    });
-    res.end(isi);
+    const ekst = extname(berkas).toLowerCase();
+    const cache = jalur.startsWith('/lib/') || jalur.startsWith('/ikon/')
+      ? 'public, max-age=604800, stale-while-revalidate=86400'
+      : 'no-store';
+    return kirimBerkas(req, res, isi, TIPE[ekst] || 'application/octet-stream', ekst, cache);
   } catch (e) {
     if (String(e.message || '').includes('ENOENT')) {
       res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' });

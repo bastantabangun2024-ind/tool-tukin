@@ -311,6 +311,8 @@
     <div class="baris" style="align-items:flex-end">
       <div><label>Jabatan</label><br><input id="pJabatan" placeholder="Penyuluh Agama"></div>
       <div><label>Bidang</label><br><select id="pBidang"></select></div>
+      <div><label for="pWa">No. WA / HP</label><br>
+        <input id="pWa" type="tel" inputmode="tel" maxlength="20" placeholder="08xx xxxx xxxx"></div>
     </div>
     <div class="baris" style="align-items:flex-end">
       <div><label>Tukin bruto (Rp)</label><br><input type="number" id="pTukin" min="0" step="1000" style="width:170px"></div>
@@ -335,6 +337,26 @@
       <div><button id="btnBaruPegawai">Kosongkan form</button></div>
     </div>
     <p class="catatan" id="catatanPegawai"></p>
+
+    <div style="margin-top:22px;border-top:1px solid var(--garis);padding-top:18px">
+      <h2>Pendaftaran banyak pegawai (Excel)</h2>
+      <p class="sub" style="margin-bottom:10px">Unduh format, isi satu baris per pegawai (atau kumpulkan file
+        isian pegawai), lalu unggah kembali di sini. Setiap pegawai langsung mendapat akun login:
+        username <b>NIP</b>, password awal <b>12345678</b>.</p>
+      <div class="baris" style="align-items:flex-end">
+        <div style="flex:0 0 auto"><button class="kecil" type="button" id="btnUnduhTemplatePegawai">Unduh format Excel</button></div>
+        <div>
+          <label for="berkasImporPegawai">Unggah file Excel yang sudah diisi</label>
+          <input id="berkasImporPegawai" type="file" accept=".xlsx,.xls">
+        </div>
+      </div>
+      <p class="catatan" id="catatanImpor" style="margin-top:8px"></p>
+      <div id="pratinjauImpor" class="tabel-kartu"></div>
+      <div class="baris" id="aksiImpor" style="display:none;margin-top:10px">
+        <div style="flex:0 0 auto"><button id="btnImporPegawai" type="button">Impor ke database</button></div>
+        <div style="flex:0 0 auto"><button class="kecil" id="btnBatalImpor" type="button">Batal</button></div>
+      </div>
+    </div>
 
     <div class="baris" style="align-items:flex-end;margin-bottom:6px">
       <div>
@@ -1123,7 +1145,7 @@
   function isiNilai(id, v) { document.getElementById(id).value = v == null ? '' : v; }
 
   function kosongkanForm() {
-    ['pId', 'pNama', 'pNip', 'pPangkat', 'pGol', 'pRuang', 'pKelas', 'pJabatan', 'pSatker', 'pPassword'].forEach(function (id) {
+    ['pId', 'pNama', 'pNip', 'pPangkat', 'pGol', 'pRuang', 'pKelas', 'pJabatan', 'pSatker', 'pWa', 'pPassword'].forEach(function (id) {
       isiNilai(id, '');
     });
     isiNilai('pTukin', '');
@@ -1156,6 +1178,7 @@
     isiNilai('pRuang', p.ruang);
     isiNilai('pKelas', p.kelas_jabatan);
     isiNilai('pJabatan', p.jabatan);
+    isiNilai('pWa', p.no_wa || '');
     isiNilai('pSatker', p.satker_2);
     isiNilai('pTukin', p.tukin == null ? '' : Number(p.tukin));
     isiNilai('pTarif', p.tarif_uang_makan == null ? '37000' : Number(p.tarif_uang_makan));
@@ -1220,7 +1243,7 @@
 
       var d = pegawaiTampil;
       tabelPegawai.innerHTML =
-        '<table><thead><tr><th>Pegawai</th><th>Jabatan / Bidang</th><th>Gol</th>' +
+        '<table><thead><tr><th>Pegawai</th><th>Jabatan / Bidang</th><th>Gol</th><th>No. WA</th>' +
         '<th>Status sandi</th><th class="num">Tukin</th><th class="num">Uang makan</th><th></th></tr></thead><tbody>' +
         d.map(function (p, i) {
           return '<tr' + (p.aktif ? '' : ' style="opacity:.55"') + '><td>' + esc(p.nama) +
@@ -1228,6 +1251,9 @@
             '<br><span class="catatan">' + esc(p.nip) + ' · ' + esc(p.status_kepegawaian) + '</span></td>' +
             '<td data-label="Jabatan / Bidang">' + esc(p.jabatan) + '<br><span class="catatan">' + esc(p.bidang && p.bidang.nama) + '</span></td>' +
             '<td data-label="Gol">' + esc(p.golongan || '') + (p.ruang ? '/' + esc(p.ruang) : '') + '</td>' +
+            '<td data-label="No. WA">' + (p.no_wa
+              ? '<a href="' + esc(tautanWa(p.no_wa)) + '" target="_blank" rel="noopener">+' + esc(p.no_wa) + '</a>'
+              : '<span class="catatan">—</span>') + '</td>' +
             '<td data-label="Status sandi">' + lencanaSandi(p) + '</td>' +
             '<td class="num" data-label="Tukin">' + rupiah(p.tukin) + '</td>' +
             '<td class="num" data-label="Uang makan">' + rupiah(p.tarif_uang_makan) + '</td>' +
@@ -1338,6 +1364,7 @@
       ruang: nilai('pRuang'),
       jabatan: nilai('pJabatan'),
       kelas_jabatan: nilai('pKelas'),
+      no_wa: nilai('pWa'),
       bidang_id: nilai('pBidang'),
       status_kepegawaian: document.getElementById('pStatus').value,
       tukin: nilai('pTukin') === '' ? null : Number(nilai('pTukin')),
@@ -1359,6 +1386,155 @@
     }).catch(function (e) {
       catatPegawai('Gagal: ' + esc(e.message), '#b42318');
     }).then(function () { btn.disabled = false; });
+  });
+
+  // --- 2c. pendaftaran banyak pegawai lewat Excel --------------------------
+  var barisImpor = [];
+  var janjiFormat = null;
+
+  function catatImpor(html, warna) {
+    document.getElementById('catatanImpor').innerHTML =
+      '<span style="color:' + (warna || '#475569') + '">' + html + '</span>';
+  }
+
+  // Format Excel membutuhkan pustaka XLSX (sudah dimuat malas untuk ekspor).
+  function muatFormatPegawai() {
+    if (window.FormatPegawai) return Promise.resolve(window.FormatPegawai);
+    if (!janjiFormat) {
+      janjiFormat = muatXlsx().then(function () {
+        return new Promise(function (selesai, gagal) {
+          var s = document.createElement('script');
+          s.src = '/lib/format-pegawai.js';
+          s.onload = function () { selesai(window.FormatPegawai); };
+          s.onerror = function () {
+            janjiFormat = null;
+            gagal(new Error('gagal memuat format Excel'));
+          };
+          document.head.appendChild(s);
+        });
+      });
+    }
+    return janjiFormat;
+  }
+
+  function bidangUntukTemplate() {
+    return api('bidang?select=kode,nama&order=nama')
+      .then(function (r) { return r.json(); })
+      .then(function (d) { return Array.isArray(d) ? d : []; })
+      .catch(function () { return []; });
+  }
+
+  document.getElementById('btnUnduhTemplatePegawai').addEventListener('click', function () {
+    var btn = this;
+    btn.disabled = true;
+    catatImpor('Menyiapkan format Excel…');
+    Promise.all([muatFormatPegawai(), bidangUntukTemplate()]).then(function (hasil) {
+      hasil[0].unduhTemplate(hasil[1]);
+      catatImpor('✔ Format Excel diunduh. Isi satu baris per pegawai, lalu unggah kembali di atas. ' +
+        '<b>Jangan mengubah nama kolom.</b> Baris contoh silakan dihapus.', '#0b6b3a');
+    }).catch(function (e) {
+      catatImpor('Gagal: ' + esc(e.message), '#b42318');
+    }).then(function () { btn.disabled = false; });
+  });
+
+  function renderPratinjauImpor() {
+    var wadah = document.getElementById('pratinjauImpor');
+    if (!barisImpor.length) {
+      wadah.innerHTML = '';
+      document.getElementById('aksiImpor').style.display = 'none';
+      return;
+    }
+    var siap = barisImpor.filter(function (x) { return x.status !== 'gagal'; }).length;
+    wadah.innerHTML =
+      '<table><thead><tr><th>Nama</th><th>NIP</th><th>Bidang</th><th>Status</th><th>Hasil impor</th></tr></thead><tbody>' +
+      barisImpor.map(function (x) {
+        var masalah = []
+          .concat(!/^\d{18}$/.test(String(x.nip || '')) ? ['NIP harus 18 angka'] : [])
+          .concat(String(x.nama || '').trim().length < 3 ? ['nama kosong'] : [])
+          .concat(!String(x.bidang || '').trim() ? ['bidang kosong'] : []);
+        var lencana = x.status === 'tersimpan' ? '<span class="status disetujui">tersimpan</span>'
+          : x.status === 'dilewati' ? '<span class="status menunggu_verifikasi">dilewati</span>'
+          : x.status === 'gagal' ? '<span class="status ditolak">gagal</span>'
+          : masalah.length ? '<span class="status ditolak">perlu diperbaiki</span>'
+          : '<span class="status">siap</span>';
+        return '<tr><td>' + esc(x.nama || '—') + '</td><td>' + esc(x.nip || '—') + '</td>' +
+          '<td>' + esc(x.bidang || '—') + '</td><td>' + lencana + '</td>' +
+          '<td class="catatan">' + esc(x.pesan || masalah.join(', ') || '—') + '</td></tr>';
+      }).join('') + '</tbody></table>' +
+      '<p class="catatan">' + barisImpor.length + ' baris terbaca, ' + siap +
+      ' siap diimpor. Akun login dibuat otomatis dengan password awal 12345678.</p>';
+    document.getElementById('aksiImpor').style.display = '';
+  }
+
+  document.getElementById('berkasImporPegawai').addEventListener('change', function () {
+    var input = this;
+    var berkas = input.files && input.files[0];
+    if (!berkas) return;
+    barisImpor = [];
+    document.getElementById('pratinjauImpor').innerHTML = '';
+    document.getElementById('aksiImpor').style.display = 'none';
+    catatImpor('Membaca ' + esc(berkas.name) + '…');
+
+    muatFormatPegawai().then(function (F) {
+      return F.bacaBerkas(berkas);
+    }).then(function (rows) {
+      barisImpor = rows;
+      if (!rows.length) {
+        catatImpor('Tidak ada data pada file. Pastikan sheet <b>Data Pegawai</b> diisi dan nama kolom tidak diubah.', '#b42318');
+        return;
+      }
+      catatImpor('✔ ' + rows.length + ' baris terbaca dari ' + esc(berkas.name) + '. Periksa pratinjau lalu tekan Impor.', '#0b6b3a');
+      renderPratinjauImpor();
+    }).catch(function (e) {
+      catatImpor('Gagal membaca file: ' + esc(e.message), '#b42318');
+    }).then(function () { input.value = ''; });
+  });
+
+  document.getElementById('btnBatalImpor').addEventListener('click', function () {
+    barisImpor = [];
+    document.getElementById('pratinjauImpor').innerHTML = '';
+    document.getElementById('aksiImpor').style.display = 'none';
+    catatImpor('Impor dibatalkan.');
+  });
+
+  document.getElementById('btnImporPegawai').addEventListener('click', function () {
+    if (!barisImpor.length) return;
+    var btn = this;
+    var i = 0;
+    var batch = 8;
+    var ringkas = { tersimpan: 0, dilewati: 0, gagal: 0 };
+    btn.disabled = true;
+
+    function kirim() {
+      if (i >= barisImpor.length) {
+        catatImpor('✔ Selesai: <b>' + ringkas.tersimpan + ' pegawai tersimpan</b>, ' +
+          ringkas.dilewati + ' dilewati, ' + ringkas.gagal + ' gagal. Password awal 12345678.', '#0b6b3a');
+        btn.disabled = false;
+        muatPegawai();
+        return;
+      }
+      var potong = barisImpor.slice(i, i + batch);
+      catatImpor('Mengimpor baris ' + (i + 1) + '–' + Math.min(i + batch, barisImpor.length) +
+        ' dari ' + barisImpor.length + '…');
+      adminApi('/api/pegawai/impor', { method: 'POST', body: { baris: potong } }).then(function (h) {
+        if (!h.ok) throw new Error(h.j.pesan || ('HTTP ' + h.status));
+        (h.j.hasil || []).forEach(function (r, n) {
+          var baris = potong[n];
+          if (!baris) return;
+          baris.status = r.status;
+          baris.pesan = r.pesan;
+          ringkas[r.status] = (ringkas[r.status] || 0) + 1;
+        });
+        i += potong.length;
+        renderPratinjauImpor();
+        kirim();
+      }).catch(function (e) {
+        catatImpor('Gagal pada baris ' + (i + 1) + ': ' + esc(e.message), '#b42318');
+        btn.disabled = false;
+      });
+    }
+
+    kirim();
   });
 
   // --- 3. ambil dari drive --------------------------------------------------

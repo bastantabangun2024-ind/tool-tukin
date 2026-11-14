@@ -29,6 +29,10 @@
         <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg></span>
         <span class="teks-nav">Unggah Presensi</span>
       </a>
+      <a href="#unduhRekap">
+        <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0 4.5-4.5M12 15 7.5 10.5"/><path d="M4 17v2.5A1.5 1.5 0 0 0 5.5 21h13a1.5 1.5 0 0 0 1.5-1.5V17"/></svg></span>
+        <span class="teks-nav">Unduh Rekap</span>
+      </a>
       <a href="/ganti-password.html" id="tautanGantiSandi">
         <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>
         <span class="teks-nav">Ganti Password</span>
@@ -147,12 +151,27 @@
 
       <div class="grid-dua">
         <section class="kartu">
-          <div class="kartu-kepala"><div><h2>Profil pegawai</h2><p>Data identitas sesuai database kepegawaian.</p></div></div>
+          <div class="kartu-kepala">
+            <div><h2>Profil pegawai</h2><p>Data identitas sesuai database kepegawaian.</p></div>
+            <button class="kecil" id="btnEditProfil" type="button" style="display:none">Edit data</button>
+          </div>
           <dl class="identitas" id="profilPegawai" style="margin-top:0">
             <dt>Nama</dt><dd>—</dd><dt>NIP</dt><dd>—</dd>
             <dt>Jabatan</dt><dd>—</dd><dt>Golongan</dt><dd>—</dd>
             <dt>Bidang</dt><dd>—</dd><dt>Status</dt><dd>—</dd>
+            <dt>No. HP / WA</dt><dd id="profilWa">—</dd>
           </dl>
+          <div class="tersembunyi" id="formEditProfil" style="margin-top:14px;border-top:1px solid var(--garis);padding-top:14px">
+            <label for="editWa">No. HP / WhatsApp</label>
+            <input id="editWa" type="tel" inputmode="tel" maxlength="20" placeholder="08xx xxxx xxxx" autocomplete="tel">
+            <div style="margin-top:10px">
+              <button class="utama" id="btnSimpanProfil" type="button" style="margin-top:0">Simpan</button>
+              <button class="kecil" id="btnBatalProfil" type="button" style="margin-left:8px">Batal</button>
+            </div>
+            <div class="pesan" id="pesanProfil" role="alert"></div>
+            <p class="catatan" style="margin-top:8px">Nama, NIP, jabatan, dan golongan hanya bisa diubah oleh
+              admin kepegawaian. Nomor HP dipakai admin untuk menghubungi Anda.</p>
+          </div>
           <p class="catatan" id="catatanProfil"></p>
         </section>
 
@@ -176,6 +195,7 @@
             <div class="rangka rangka-baris" style="margin-top:8px"></div>
             <div class="rangka rangka-baris" style="margin-top:8px"></div>
           </div>
+          <div id="rincianPresensi"></div>
         </section>
 
         <section class="kartu">
@@ -199,6 +219,34 @@
           <div class="rangka rangka-tabel"></div>
           <div class="rangka rangka-tabel"></div>
         </div>
+      </section>
+
+      <section class="kartu" id="unduhRekap">
+        <div class="kartu-kepala">
+          <div><h2>Unduh Rekap</h2><p>Pilih bulan dan isi rekap, lalu unduh PDF ukuran A4.</p></div>
+        </div>
+        <div class="pilihan-ekspor">
+          <div>
+            <label>Nama bulan
+              <span class="catatan" style="font-weight:400;display:inline">(<a href="#" id="linkBulanSemua">semua</a>
+                &middot; <a href="#" id="linkBulanKosong">kosongkan</a>)</span></label>
+            <div class="cek-daftar" id="cekUnduhBulan"></div>
+          </div>
+          <div>
+            <label>Isi rekap</label>
+            <div class="cek-daftar" id="cekUnduhBagian">
+              <label><input type="checkbox" data-bagian="kehadiran"> Kehadiran — rekap harian &amp; rincian
+                terlambat/pulang awal</label>
+              <label><input type="checkbox" data-bagian="tukin"> Tukin — bruto, potongan, dan tukin bersih</label>
+              <label><input type="checkbox" data-bagian="uangMakan"> Uang makan — hari hadir, PPh, dan bersih</label>
+              <label><input type="checkbox" data-bagian="semua"> <b>All</b> — semua bagian di atas</label>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <button class="utama" id="btnUnduhRekap" type="button">Unduh PDF (A4)</button>
+        </div>
+        <p class="catatan" id="catatanUnduhRekap">Pilih minimal satu bulan dan satu isi rekap.</p>
       </section>
 
       <section class="kartu" id="panduan">
@@ -246,6 +294,71 @@
   var el = function (id) { return document.getElementById(id); };
   var kini = new Date();
   var k = null;
+  var profilSaya = null;
+  var HARI_PANJANG = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+
+  function labelTanggalPanjang(iso) {
+    var c = String(iso || '').split('-');
+    if (c.length !== 3) return String(iso || '');
+    var t = new Date(Number(c[0]), Number(c[1]) - 1, Number(c[2]));
+    return HARI_PANJANG[t.getDay()] + ', ' + Number(c[2]) + ' ' +
+      (NAMA_BULAN[Number(c[1]) - 1] || '') + ' ' + c[0];
+  }
+
+  // Sebab potongan satu baris presensi (sama dengan yang dipakai admin).
+  function sebabPotongan(r) {
+    var sebab = [];
+    var telat = Number(r.menit_telat) || 0;
+    var pulangAwal = Number(r.menit_pulang_awal) || 0;
+    if (telat > 0) sebab.push('Terlambat masuk ' + telat + ' menit');
+    if (pulangAwal > 0) sebab.push('Pulang ' + pulangAwal + ' menit lebih awal');
+    if (r.jenis === 'tidak_presensi') {
+      sebab.push(r.sisi === 'masuk' ? 'Tidak absen masuk'
+        : r.sisi === 'pulang' ? 'Tidak absen pulang' : 'Tidak absen');
+    }
+    if (r.jenis === 'tk') sebab.push('Tanpa keterangan');
+    if (r.libur_sub) sebab.push(String(r.libur_sub));
+    return sebab;
+  }
+
+  function htmlRincianPresensi(rows) {
+    var baris = rows.map(function (r) {
+      var sebab = sebabPotongan(r);
+      if (!sebab.length) return '';
+      var jam = r.jam_masuk
+        ? 'Masuk ' + String(r.jam_masuk).slice(0, 5) +
+          (r.jam_pulang ? ' · Pulang ' + String(r.jam_pulang).slice(0, 5) : '')
+        : '';
+      return '<li><b>' + esc(labelTanggalPanjang(r.tanggal)) + '</b> — ' + esc(sebab.join('; ')) +
+        (jam ? '<br><span class="catatan">' + esc(jam) + '</span>' : '') + '</li>';
+    }).filter(function (x) { return x; });
+
+    var kepala = '<div class="catatan" style="margin:14px 0 4px"><b>Rincian kejadian</b> ' +
+      '(hari, tanggal, dan keterangannya)</div>';
+    if (!baris.length) {
+      return kepala + '<p class="catatan" style="margin:0">Tidak ada keterlambatan, pulang awal, atau ' +
+        'ketidakhadiran pada periode ini.</p>';
+    }
+    return kepala + '<ol class="daftar-potongan">' + baris.join('') + '</ol>';
+  }
+
+  function muatRincianPresensi(x) {
+    var wadah = el('rincianPresensi');
+    if (!x || !k) { wadah.innerHTML = ''; return; }
+    wadah.innerHTML = '<div class="rangka rangka-baris" style="margin-top:12px"></div>';
+    fetch(k.url + '/rest/v1/presensi?select=tanggal,jenis,sisi,jam_masuk,jam_pulang,' +
+      'menit_telat,menit_pulang_awal,libur_sub,keterangan' +
+      '&pengajuan_id=eq.' + encodeURIComponent(x.id) + '&order=tanggal', {
+      headers: { apikey: k.kunci, Authorization: 'Bearer ' + sesi.access_token }
+    }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (rows) {
+      wadah.innerHTML = htmlRincianPresensi(Array.isArray(rows) ? rows : []);
+    }).catch(function () {
+      wadah.innerHTML = '<p class="catatan">Rincian harian tidak dapat dimuat.</p>';
+    });
+  }
 
   el('siapa').textContent = /@(pegawai|admin)\.tooltukin\.id$/i.test(sesi.email || '')
     ? String(sesi.email).split('@')[0] : (sesi.email || '');
@@ -356,6 +469,7 @@
     el('namaSambutan').textContent = nama;
 
     if (p) {
+      profilSaya = p;
       el('jabatanSambutan').textContent = [p.jabatan, (p.bidang && p.bidang.nama)].filter(Boolean).join(' · ') || 'Pegawai';
       var gol = p.golongan ? p.golongan + (p.ruang ? '/' + p.ruang : '') : '—';
       el('profilPegawai').innerHTML =
@@ -364,7 +478,9 @@
         '<dt>Jabatan</dt><dd>' + esc(p.jabatan || '—') + '</dd>' +
         '<dt>Golongan</dt><dd>' + esc(gol) + '</dd>' +
         '<dt>Bidang</dt><dd>' + esc((p.bidang && p.bidang.nama) || '—') + '</dd>' +
-        '<dt>Status</dt><dd>' + esc(String(p.status_kepegawaian || '—').replace(/_/g, ' ')) + '</dd>';
+        '<dt>Status</dt><dd>' + esc(String(p.status_kepegawaian || '—').replace(/_/g, ' ')) + '</dd>' +
+        '<dt>No. HP / WA</dt><dd id="profilWa">' + (p.no_wa ? '+' + esc(p.no_wa) : 'Belum diisi') + '</dd>';
+      el('btnEditProfil').style.display = '';
     } else {
       el('jabatanSambutan').textContent = u && u.peran === 'admin'
         ? 'Administrator — kelola data melalui panel admin' : 'Data pegawai belum tertaut ke akun ini.';
@@ -381,6 +497,8 @@
       el('tautanAdmin').style.display = '';
       if (!p) {
         el('tombolBaru').style.display = 'none';
+        // Admin tidak punya data pegawai; rekap per orang dibuat di panel admin.
+        el('unduhRekap').style.display = 'none';
         el('catatanProfil').textContent = 'Anda masuk sebagai admin. Buka Panel Admin untuk melihat seluruh pengajuan.';
       }
     }
@@ -501,6 +619,180 @@
       }).join('') + '</tbody></table>';
   }
 
+  // --- unduh rekap PDF ------------------------------------------------------
+  var UNDUH_BAGIAN = { kehadiran: true, tukin: true, uangMakan: true };
+  var bulanUnduh = {};
+  var daftarPeriode = [];
+  var skripDimuat = {};
+
+  function kunciPeriode(b) { return b.tahun + '-' + String(b.bulan).padStart(2, '0'); }
+
+  function muatSkrip(src) {
+    if (skripDimuat[src]) return skripDimuat[src];
+    skripDimuat[src] = new Promise(function (selesai, gagal) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = function () { selesai(); };
+      s.onerror = function () {
+        delete skripDimuat[src];
+        gagal(new Error('gagal memuat ' + src));
+      };
+      document.head.appendChild(s);
+    });
+    return skripDimuat[src];
+  }
+
+  function renderCekUnduhBulan() {
+    var wadah = el('cekUnduhBulan');
+    if (!daftarPeriode.length) {
+      wadah.innerHTML = '<span class="catatan">Belum ada rekap yang bisa diunduh.</span>';
+      el('btnUnduhRekap').disabled = true;
+      return;
+    }
+    wadah.innerHTML = daftarPeriode.map(function (b) {
+      var kunci = kunciPeriode(b);
+      return '<label><input type="checkbox" data-periode="' + kunci + '"' +
+        (bulanUnduh[kunci] ? ' checked' : '') + '> <span>' + labelBulan(b.bulan) + ' ' + b.tahun +
+        '</span></label>';
+    }).join('');
+    el('btnUnduhRekap').disabled = false;
+  }
+
+  function siapkanUnduhRekap(riwayat) {
+    daftarPeriode = (riwayat || []).map(function (x) {
+      return { id: x.id, tahun: Number(x.tahun), bulan: Number(x.bulan) };
+    });
+    daftarPeriode.forEach(function (b) {
+      if (bulanUnduh[kunciPeriode(b)] === undefined) bulanUnduh[kunciPeriode(b)] = true;
+    });
+    renderCekUnduhBulan();
+    sinkronBagian();
+  }
+
+  function sinkronBagian() {
+    var kotak = el('cekUnduhBagian').querySelectorAll('input[data-bagian]');
+    var semua = true;
+    kotak.forEach(function (b) {
+      var kunci = b.dataset.bagian;
+      if (kunci === 'semua') return;
+      b.checked = !!UNDUH_BAGIAN[kunci];
+      if (!UNDUH_BAGIAN[kunci]) semua = false;
+    });
+    el('cekUnduhBagian').querySelector('input[data-bagian="semua"]').checked = semua;
+  }
+
+  el('cekUnduhBulan').addEventListener('change', function (e) {
+    var b = e.target;
+    if (!b.dataset.periode) return;
+    bulanUnduh[b.dataset.periode] = !!b.checked;
+  });
+
+  el('cekUnduhBagian').addEventListener('change', function (e) {
+    var b = e.target;
+    if (b.dataset.bagian === 'semua') {
+      UNDUH_BAGIAN = { kehadiran: !!b.checked, tukin: !!b.checked, uangMakan: !!b.checked };
+    } else if (b.dataset.bagian) {
+      UNDUH_BAGIAN[b.dataset.bagian] = !!b.checked;
+    }
+    sinkronBagian();
+  });
+
+  el('linkBulanSemua').addEventListener('click', function (e) {
+    e.preventDefault();
+    daftarPeriode.forEach(function (b) { bulanUnduh[kunciPeriode(b)] = true; });
+    renderCekUnduhBulan();
+  });
+
+  el('linkBulanKosong').addEventListener('click', function (e) {
+    e.preventDefault();
+    daftarPeriode.forEach(function (b) { bulanUnduh[kunciPeriode(b)] = false; });
+    renderCekUnduhBulan();
+  });
+
+  el('btnUnduhRekap').addEventListener('click', function () {
+    var btn = this;
+    var catat = el('catatanUnduhRekap');
+    var dipilih = daftarPeriode.filter(function (b) { return bulanUnduh[kunciPeriode(b)]; });
+    var bagian = {};
+    Object.keys(UNDUH_BAGIAN).forEach(function (k) { if (UNDUH_BAGIAN[k]) bagian[k] = true; });
+
+    if (!dipilih.length) { catat.textContent = 'Pilih minimal satu bulan.'; return; }
+    if (!Object.keys(bagian).length) { catat.textContent = 'Pilih minimal satu isi rekap.'; return; }
+
+    var ids = dipilih.map(function (b) { return b.id; });
+    btn.disabled = true;
+    catat.textContent = 'Menyiapkan data dan PDF…';
+
+    Promise.all([muatSkrip('/lib/pdf.js'), muatSkrip('/lib/rekap-pdf.js')]).then(function () {
+      var kueri = 'pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,' +
+        'pegawai(nama,nip,jabatan,golongan,ruang,status_kepegawaian,no_wa,satker_3,bidang:bidang_id(nama)),' +
+        'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*),presensi(*)' +
+        '&id=in.(' + ids.join(',') + ')&order=tahun,bulan';
+      return fetch(k.url + '/rest/v1/' + kueri, {
+        headers: { apikey: k.kunci, Authorization: 'Bearer ' + sesi.access_token }
+      }).then(function (r) {
+        if (!r.ok) throw new Error('Data rekap gagal dimuat (HTTP ' + r.status + ')');
+        return r.json();
+      });
+    }).then(function (rows) {
+      if (!Array.isArray(rows) || !rows.length) throw new Error('Data periode yang dipilih tidak ditemukan');
+      rows.sort(function (a, b) { return (Number(a.tahun) - Number(b.tahun)) || (Number(a.bulan) - Number(b.bulan)); });
+      window.RekapPDF.unduh({
+        pegawai: profilSaya,
+        items: rows,
+        bagian: bagian,
+        dicetak: new Date()
+      });
+      catat.textContent = '✔ PDF ' + rows.length + ' bulan berhasil dibuat.';
+    }).catch(function (e) {
+      catat.textContent = 'Gagal: ' + (e.message || e);
+    }).then(function () { btn.disabled = false; });
+  });
+
+  // --- profil: nomor HP & tombol edit --------------------------------------
+  function pesanProfil(teks, jenis) {
+    var p = el('pesanProfil');
+    if (!teks) { p.className = 'pesan'; p.textContent = ''; return; }
+    p.textContent = teks;
+    p.className = 'pesan tampil ' + (jenis || 'galat');
+  }
+
+  el('btnEditProfil').addEventListener('click', function () {
+    el('editWa').value = (profilSaya && profilSaya.no_wa) ? '+' + profilSaya.no_wa : '';
+    pesanProfil('');
+    el('formEditProfil').classList.remove('tersembunyi');
+    el('editWa').focus();
+  });
+
+  el('btnBatalProfil').addEventListener('click', function () {
+    el('formEditProfil').classList.add('tersembunyi');
+    pesanProfil('');
+  });
+
+  el('btnSimpanProfil').addEventListener('click', function () {
+    var btn = this;
+    var noWa = el('editWa').value.trim();
+    if (noWa.replace(/\D/g, '').length < 9) { pesanProfil('Nomor HP/WhatsApp belum benar.'); return; }
+    btn.disabled = true;
+    pesanProfil('Menyimpan…', 'info');
+    fetch('/api/profil', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sesi.access_token },
+      body: JSON.stringify({ no_wa: noWa })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (h) {
+      if (!h.ok) { pesanProfil('Gagal: ' + (h.j.pesan || 'kesalahan tidak dikenal')); return; }
+      if (profilSaya) profilSaya.no_wa = h.j.no_wa;
+      var dd = el('profilWa');
+      if (dd) dd.textContent = '+' + h.j.no_wa;
+      pesanProfil('✔ Nomor HP tersimpan.', 'info');
+      setTimeout(function () { el('formEditProfil').classList.add('tersembunyi'); pesanProfil(''); }, 2500);
+    }).catch(function () {
+      pesanProfil('Tidak bisa menghubungi server.');
+    }).then(function () { btn.disabled = false; });
+  });
+
   function renderStatistik(riwayat) {
     var periodeIni = riwayat.filter(function (x) {
       return Number(x.bulan) === kini.getMonth() + 1 && Number(x.tahun) === kini.getFullYear();
@@ -535,7 +827,7 @@
 
     return Promise.all([
       ambil('users?select=nama,email,peran,aktif&id=eq.' + encodeURIComponent(sesi.id)),
-      ambil('pegawai?select=id,nama,nip,jabatan,golongan,ruang,status_kepegawaian,bidang:bidang_id(nama)&user_id=eq.' + encodeURIComponent(sesi.id)),
+      ambil('pegawai?select=id,nama,nip,jabatan,golongan,ruang,status_kepegawaian,no_wa,bidang:bidang_id(nama)&user_id=eq.' + encodeURIComponent(sesi.id)),
       ambil('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,diverifikasi_pada,catatan_admin,' +
         'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*)' +
         '&order=tahun.desc,bulan.desc&limit=24')
@@ -549,8 +841,10 @@
       renderStatistik(riwayat);
       renderStatusTerakhir(riwayat);
       renderRekapPresensi(riwayat);
+      muatRincianPresensi(riwayat[0]);
       renderNilai(riwayat);
       renderRiwayat(riwayat);
+      siapkanUnduhRekap(riwayat);
     });
   }).catch(gagal);
 })();

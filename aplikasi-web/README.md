@@ -2,11 +2,58 @@
 
 Status: **berjalan di produksi** — https://tool-tukin.vercel.app (Vercel + Supabase).
 Dokumen audit/rancangan di `docs/` tetap dipakai sebagai acuan; ringkasan perubahan terbaru
-ada di bagian **Perubahan 11 November 2026** di bawah.
+ada di bagian **Perubahan 14 November 2026** di bawah.
 
 Keputusan 10 November 2026: **berkas disimpan di Google Drive** (Supabase hanya Auth + database),
 dan **potongan HUKDIS/TB diaktifkan sejak awal** (diisi admin saat verifikasi).
 File kredensial yang perlu diisi: `.env.local` (template: `.env.example`).
+
+## Perubahan 14 November 2026 (revisi 1–6)
+
+Ringkasan pekerjaan revisi yang diminta:
+
+1. **No. WA pada Data Pegawai.** Form admin mendapat isian **No. WA / HP**, tabel menampilkan
+   tautan `wa.me`, dan kolom baru `pegawai.no_wa` ditambahkan lewat migrasi `0006_pegawai_no_wa.sql`.
+   Nomor disimpan format internasional (`62812…`, tanpa `+`).
+2. **Rincian Rekap Presensi di dasbor pegawai.** Kotak Rekap Presensi kini menampilkan daftar
+   kejadian per hari: tanggal + nama hari, jam masuk/pulang, menit terlambat, pulang awal,
+   tanpa absen masuk/pulang, tanpa keterangan, dan cuti/sakit/dinas. Sumbernya tabel `presensi`
+   milik pengajuan terakhir (dimuat hanya saat dibutuhkan).
+3. **Profil pegawai: No. HP + tombol Edit data.** Profil menampilkan nomor HP dan tombol
+   **Edit data** untuk mengubahnya sendiri lewat endpoint baru `POST /api/profil` (token Supabase
+   diverifikasi, RLS tetap menjaga data lain). Nama/NIP/jabatan/golongan tetap diubah admin.
+4. **Menu baru “Unduh Rekap”.** Ada di sidebar dasbor. Pengguna memilih bulan (checklist),
+   bagian **Kehadiran / Tukin / Uang Makan / All**, lalu mengunduh **PDF ukuran A4** yang memuat
+   identitas, ringkasan kehadiran, rincian kejadian, rincian potongan tukin, dan uang makan.
+   PDF dibuat di peramban tanpa pustaka luar (`public/lib/pdf.js` + `rekap-pdf.js`, ±20 KB)
+   sehingga tidak menambah beban server; pustaka baru dimuat saat tombol ditekan.
+5. **Pendaftaran banyak pegawai lewat Excel.** Halaman **Daftar** (umum) punya tombol
+   **Unduh format Excel pendaftaran**; pegawai mengisi satu baris per orang lalu mengirim file
+   `.xlsx` ke admin. Di admin (Data Pegawai) ada **Unduh format Excel** dan **Unggah file Excel**;
+   pratinjau menampilkan status tiap baris sebelum diimpor. Impor berjalan per 8 baris
+   (`POST /api/pegawai/impor`) agar tidak melewati batas waktu Vercel, dan langsung membuat akun
+   login (username NIP, password awal `12345678`). Pustaka Excel (881 KB) tetap dimuat malas.
+6. **Database & kompresi.** Migrasi 0006 sudah dijalankan ke Supabase; ringkasan 30 pegawai,
+   25 policy, ukuran database **12 MB**, tabel terbesar `presensi` 312 kB (186 baris).
+   Yang bisa/ sudah dikompres: aset teks (HTML/CSS/JS/JSON/SVG) memakai **gzip** di server lokal
+   dan **Brotli otomatis** di Vercel; `xlsx.full.min.js` + PDF hanya diunduh saat diperlukan;
+   PostgreSQL otomatis mengompres teks/json besar lewat **TOAST** dan membersihkan baris mati
+   lewat autovacuum. Angka `smallint/numeric` tidak perlu dikompres. Cache aset `/lib/` dan
+   `/ikon/` sekarang 7 hari + `stale-while-revalidate` (header Vercel + server lokal).
+   Periksa ulang kapan saja dengan `node scripts/periksa-database.mjs`.
+
+Berkas baru/berubah utama:
+
+| Berkas | Perubahan |
+|---|---|
+| `supabase/migrations/0006_pegawai_no_wa.sql` | kolom `pegawai.no_wa` + analyze |
+| `app.mjs` | `no_wa` di simpan/daftar pegawai, `POST /api/profil`, `POST /api/pegawai/impor`, gzip aset |
+| `public/admin.html` | isian No. WA, kolom WA, unduh template + unggah/impor Excel |
+| `public/dasbor.html` | rincian presensi, No. HP + edit profil, menu & form Unduh Rekap |
+| `public/daftar.html` | tombol unduh format Excel pendaftaran |
+| `public/lib/pdf.js`, `rekap-pdf.js`, `format-pegawai.js` | pembuat PDF A4, tata letak rekap, format Excel |
+| `vercel.json` | cache 7 hari untuk `/lib/` dan `/ikon/` |
+| `scripts/periksa-database.mjs` | laporan ukuran tabel/indeks database |
 
 ## Dokumen
 
