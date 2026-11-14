@@ -968,6 +968,30 @@ button.item-legenda:focus-visible { outline: 2px solid rgba(37, 99, 235, .45); o
 .tombol-putih:hover { text-decoration: none; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(6, 20, 40, .24); }
 .tombol-putih svg { width: 16px; height: 16px; }
 
+/* Tautan situs luar berbentuk tombol, dipakai di dalam kalimat petunjuk. */
+a.tombol-situs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 11px;
+  border: 1px solid var(--biru);
+  border-radius: 999px;
+  background: var(--biru-muda);
+  color: var(--biru);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.7;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+a.tombol-situs:hover {
+  background: var(--biru);
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 6px 14px rgba(29, 78, 216, .22);
+}
+a.tombol-situs svg { width: 12px; height: 12px; }
+
 .grid-dua { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; margin-bottom: 18px; }
 .grid-dua > .kartu { margin-bottom: 0; }
 
@@ -1032,6 +1056,7 @@ button.item-legenda:focus-visible { outline: 2px solid rgba(37, 99, 235, .45); o
   .topbar .judul-halaman h1 { font-size: 15px; }
   .topbar .judul-halaman p { display: none; }
   .topbar .aksi-kanan .teks-pengguna { display: none; }
+  .topbar .aksi-kanan a.tombol-situs { display: none; }
   main { padding: 16px 12px 40px; }
   .saringan { gap: 10px; padding: 12px; }
   .saringan > div { flex: 1 1 calc(50% - 10px); min-width: 0; }
