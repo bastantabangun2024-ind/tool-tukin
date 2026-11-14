@@ -8,7 +8,7 @@ Keputusan 10 November 2026: **berkas disimpan di Google Drive** (Supabase hanya 
 dan **potongan HUKDIS/TB diaktifkan sejak awal** (diisi admin saat verifikasi).
 File kredensial yang perlu diisi: `.env.local` (template: `.env.example`).
 
-## Perubahan 14 November 2026 (revisi 1–6)
+## Perubahan 14 November 2026 (revisi 1–7)
 
 Ringkasan pekerjaan revisi yang diminta:
 
@@ -41,6 +41,10 @@ Ringkasan pekerjaan revisi yang diminta:
    lewat autovacuum. Angka `smallint/numeric` tidak perlu dikompres. Cache aset `/lib/` dan
    `/ikon/` sekarang 7 hari + `stale-while-revalidate` (header Vercel + server lokal).
    Periksa ulang kapan saja dengan `node scripts/periksa-database.mjs`.
+7. **Tombol absensi.kemenag.go.id.** Tulisan situs absensi pada petunjuk **Unggah Presensi**
+   (halaman umum) dan panduan **Dasbor pegawai** kini berupa tombol pil (`a.tombol-situs`) yang
+   membuka `https://absensi.kemenag.go.id` di tab baru. Di panel admin tombol yang sama
+   ditempatkan di topbar karena panel admin tidak memiliki kotak unggah presensi.
 
 Berkas baru/berubah utama:
 
@@ -48,12 +52,17 @@ Berkas baru/berubah utama:
 |---|---|
 | `supabase/migrations/0006_pegawai_no_wa.sql` | kolom `pegawai.no_wa` + analyze |
 | `app.mjs` | `no_wa` di simpan/daftar pegawai, `POST /api/profil`, `POST /api/pegawai/impor`, gzip aset |
-| `public/admin.html` | isian No. WA, kolom WA, unduh template + unggah/impor Excel |
-| `public/dasbor.html` | rincian presensi, No. HP + edit profil, menu & form Unduh Rekap |
+| `public/admin.html` | isian No. WA, kolom WA, unduh template + unggah/impor Excel, tombol absensi |
+| `public/dasbor.html` | rincian presensi, No. HP + edit profil, menu & form Unduh Rekap, tombol absensi |
 | `public/daftar.html` | tombol unduh format Excel pendaftaran |
+| `public/index.html`, `public/gaya.css` | tombol tautan `absensi.kemenag.go.id` + gaya `a.tombol-situs` |
 | `public/lib/pdf.js`, `rekap-pdf.js`, `format-pegawai.js` | pembuat PDF A4, tata letak rekap, format Excel |
 | `vercel.json` | cache 7 hari untuk `/lib/` dan `/ikon/` |
 | `scripts/periksa-database.mjs` | laporan ukuran tabel/indeks database |
+
+Status: seluruh revisi 1–7 sudah dijalankan, diuji seperlunya, di-commit, dan di-push ke
+`main` (rangkaian commit `bab4e86`, `ea72454`, `808918f`, ditutup commit README ini).
+Migrasi database sudah diterapkan ke Supabase.
 
 ## Dokumen
 
