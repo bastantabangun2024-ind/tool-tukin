@@ -65,6 +65,7 @@ const TIPE = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.ico': 'image/x-icon',
+  '.pdf': 'application/pdf',
 };
 
 function kirimJson(res, kode, data) {
