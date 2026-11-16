@@ -14,7 +14,10 @@ versi web harus menghasilkan angka yang sama (uji paritas).
 
 ---
 
-## Status per 10 November 2026
+## Status per 16 November 2026
+
+*Item 1–8 dan bukti uji di bawah dicatat per 10 November 2026 sebagai riwayat; item 9–10
+ditambahkan pada 16 November 2026.*
 
 ### Selesai
 
@@ -53,6 +56,23 @@ versi web harus menghasilkan angka yang sama (uji paritas).
    - Tab **Sudah Unggah** kini dilengkapi pemilih periode (Bulan & Tahun), filter bidang, serta kartu ringkasan status (*Sudah Mengunggah*, *Belum Mengunggah*, *Menunggu Verifikasi*, *Disetujui*).
    - Admin dapat beralih ke sub-tab **Belum Mengunggah** untuk melihat langsung daftar nama, NIP, bidang, dan jabatan pegawai yang belum mengirimkan presensi pada periode tersebut, lengkap dengan tombol **Salin Daftar Belum Unggah** untuk dibagikan ke WhatsApp.
    - Di tab **Ekspor Rekap**, sistem otomatis menampilkan notifikasi peringatan jika masih ada pegawai aktif yang belum mengunggah presensi sebelum admin mengunduh laporan Excel.
+9. **Usulan nominal Tukin & uang makan dengan verifikasi admin** (16 November 2026):
+   - Pegawai mengisi sendiri **Tukin**, **uang makan harian**, dan **potongan PPh 21** (0% / 5% / 15%)
+     lewat tombol **Edit data** di dasbor, lengkap dengan keterangan SBM dan tarif PPh 21.
+   - Usulan disimpan di tabel baru `usulan_nominal` (migrasi `0007`) dan **belum mengubah acuan**
+     sampai admin menyetujui.
+   - Admin memverifikasi di menu **Perlu Tindakan**, yang menggabungkan antrian pengajuan presensi
+     dan usulan nominal dengan satu badge jumlah menunggu. Persetujuan nominal menyalin nilai usulan
+     ke `pegawai.tukin`, `pegawai.tarif_uang_makan`, dan `pegawai.pph_pct`; penolakan menyimpan catatan.
+   - Diuji: 7/7 migrasi OK, tabel dapat dibaca, halaman dasbor/admin HTTP 200, endpoint verifikasi
+     tanpa token HTTP 401, sintaks server dan seluruh JS inline lolos. Commit `dd9f35e` sudah
+     di-push ke `main`; push memicu deploy otomatis Vercel (belum diverifikasi ulang di produksi).
+10. **Panduan pendaftaran & pengisian dalam PDF** (16 November 2026):
+   - PDF 9 halaman (`±339 KB`) disajikan sebagai aset statis di
+     `aplikasi-web/public/panduan/Panduan-Pendaftaran-dan-Pengisian.pdf` — bukan dari database.
+   - Tombol unduh tersedia di dasbor pegawai, sidebar panel admin, dan halaman masuk.
+   - Commit `798071b` sudah di-push; di produksi PDF merespons `HTTP 200` dengan tipe
+     `application/pdf`, dan halaman `masuk.html` serta `admin.html` memuat tautannya.
 
 ### Alamat & akun
 
@@ -173,6 +193,64 @@ Rujukan resmi berdasarkan **PMA No. 11 Tahun 2019**, diselaraskan dengan **PP No
 ### 6. Ketiadaan Notifikasi Real-Time (WhatsApp / Email)
 * **Kondisi Saat Ini:** Pegawai tidak mendapat notifikasi otomatis saat pengajuannya disetujui atau ditolak dengan catatan perbaikan.
 * **Rekomendasi:** Integrasikan notifikasi email otomatis (atau pesan WhatsApp via bot gateway sederhana) begitu admin mengklik **Setujui** atau **Tolak** di dasbor admin.
+
+---
+
+## Catatan Desain UI/UX (16 November 2026)
+
+Audit tampilan dilakukan setelah fitur usulan nominal. Sebagian sudah diterapkan pada
+16 November 2026: **penggabungan antrian verifikasi** ke menu **Perlu Tindakan**. Catatan lain
+di bawah masih berupa rekomendasi untuk tahap berikutnya.
+
+### Duplikasi tombol yang perlu dikurangi
+
+- **Buka form pengajuan**: tombol **Buat pengajuan baru** di kartu sambutan dan menu sidebar
+  **Unggah Presensi** menuju halaman yang sama. Pertahankan tombol kartu sebagai aksi utama;
+  sidebar cukup menjadi navigasi biasa.
+- **Panduan**: tautan sidebar **Panduan** / **Unduh Panduan**, tombol **Unduh panduan lengkap (PDF)**
+  di dasbor, dan tombol di halaman masuk menuju PDF yang sama. Satu pintu per halaman sudah cukup.
+- **Verifikasi pengajuan**: menu **Pengajuan & Kehadiran** dan tombol **Lihat semua pengajuan** di
+  dasbor admin. Tombol kedua sebaiknya menjadi tautan teks, bukan tombol yang bersaing.
+- **Mengubah nominal**: form **Data Pegawai** (Tukin/Tarif/PPh) dan menu **Perlu Tindakan**
+  sama-sama dapat mengubah nilai acuan. Perlu ditetapkan satu sumber perubahan.
+- **Pengajuan & Kehadiran**: kartu statistik yang dapat diklik, sub-tab, filter, dan tombol
+  **50 Riwayat Terbaru** adalah empat cara berpindah tampilan. Sisakan satu mekanisme utama.
+- **Unduh Rekap**: tautan sidebar dan panel ekspor. Sidebar cukup mengarah ke panel; tombol format
+  di dalam panel adalah pilihan, bukan duplikasi.
+
+### Kekurangan struktur
+
+- **Sudah diterapkan 16 November 2026**: pengajuan presensi dan usulan nominal kini berada di satu
+  menu **Perlu Tindakan** dengan badge gabungan. Tombol Setujui pada tabel pemantauan dihapus agar
+  keputusan terpusat.
+- Sidebar admin masih mencampur antrian (Pendaftar), data master (Pegawai, Potongan), impor
+  (Drive), dan laporan (Rekap). Kelompokkan menjadi **Ringkasan / Antrian / Data / Laporan / Akun**.
+- Dasbor admin memuat 5 kartu statistik, 4 grafik, filter, dan aktivitas sekaligus; untuk aplikasi
+  administrasi kecil, 3–4 angka kunci dan 1–2 grafik sudah memadai.
+- Kartu **Tukin & uang makan** mengerjakan dua hal sekaligus: nominal acuan yang diisi pegawai dan
+  hasil perhitungan periode terakhir. Sebaiknya dipecah menjadi dua blok/kartu.
+- Form **Edit data** menggabungkan No. WA dan nominal dalam satu tombol Simpan; pegawai yang hanya
+  ingin mengganti nomor tetap dipaksa mengisi nominal. Pisahkan bagian **Kontak** dan **Nominal**.
+
+### Catatan kecil
+
+- Verifikasi admin masih memakai `alert()` / `prompt()` bawaan peramban; modal di dalam halaman
+  akan terasa lebih konsisten.
+- Istilah status belum seragam: usulan memakai “menunggu”, pengajuan memakai “Menunggu verifikasi”.
+- Gaya tombol terlalu banyak yang terlihat sama penting (`.utama`, `.kecil`, `.tombol-putih`,
+  `.tombol-situs`). Tetapkan tiga tingkat: utama, sekunder, tautan teks; aksi berbahaya berwarna merah.
+- Teks kredit `created:` berukuran 9,5 px dan `position: fixed`, berisiko menimpa tabel di layar
+  kecil. Pindahkan ke footer atau sembunyikan di ponsel. Teksnya sendiri hanya **38 byte**; bila
+  ingin menambah logo, **SVG inline** lebih ringan daripada photo/ikon raster.
+- Seragamkan label dengan pola **kata kerja + objek**: “Unggah presensi”, “Impor dari Drive”,
+  “Ekspor rekap”.
+
+### Susunan menu yang disarankan
+
+- **Pegawai**: Dasbor · Pengajuan · Rekap · Akun · Panduan.
+- **Admin**: Ringkasan (Dasbor) · Antrian (Pengajuan, Pendaftar, Nominal) · Data (Pegawai,
+  Pengaturan Potongan) · Laporan (Ekspor Rekap) · Akun (Ganti Password, Panduan).
+- **Ambil dari Drive** lebih tepat menjadi aksi sekunder di halaman Pengajuan, bukan menu utama.
 
 ---
 

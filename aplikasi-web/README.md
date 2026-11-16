@@ -2,11 +2,118 @@
 
 Status: **berjalan di produksi** — https://tool-tukin.vercel.app (Vercel + Supabase).
 Dokumen audit/rancangan di `docs/` tetap dipakai sebagai acuan; ringkasan perubahan terbaru
-ada di bagian **Perubahan 14 November 2026** di bawah.
+ada di bagian **Perubahan 16 November 2026** di bawah.
 
 Keputusan 10 November 2026: **berkas disimpan di Google Drive** (Supabase hanya Auth + database),
 dan **potongan HUKDIS/TB diaktifkan sejak awal** (diisi admin saat verifikasi).
 File kredensial yang perlu diisi: `.env.local` (template: `.env.example`).
+
+## Perubahan 16 November 2026 — panduan PDF & usulan nominal
+
+### Panduan pendaftaran & pengisian (PDF)
+
+Panduan 9 halaman disimpan sebagai aset statis di
+`public/panduan/Panduan-Pendaftaran-dan-Pengisian.pdf` (±339 KB), bukan di database. Tombol
+unduh dipasang di tiga tempat: kartu panduan dasbor pegawai, sidebar panel admin, dan halaman
+masuk. Commit `798071b` sudah di-push; di produksi PDF merespons `HTTP 200` dengan
+`Content-Type: application/pdf`, dan kedua halaman memuat tautannya.
+
+### Usulan nominal Tukin & uang makan
+
+Pegawai kini dapat mengajukan sendiri nominal **Tukin**, **uang makan harian**, dan **potongan
+PPh 21** lewat tombol **Edit data** di dasbor. Usulan tidak langsung mengubah perhitungan:
+admin harus menyetujuinya lebih dulu di panel admin.
+
+### Alur
+
+1. Pegawai membuka **Edit data**, mengisi Tukin, uang makan harian, dan memilih PPh 21
+   (0% Gol I–II, 5% Gol III, 15% Gol IV), lalu menekan **Simpan**.
+2. Usulan tersimpan di `usulan_nominal` dengan status `menunggu`. Nilai acuan di tabel `pegawai`
+   belum berubah, dan kartu **Tukin & uang makan** menampilkan status “Menunggu verifikasi admin”.
+3. Admin membuka menu **Perlu Tindakan** (badge menunjukkan jumlah menunggu), lalu memilih
+   **Setujui** atau **Tolak** beserta catatan opsional.
+4. Saat disetujui, server menyalin nilai usulan ke `pegawai.tukin`, `pegawai.tarif_uang_makan`,
+   dan `pegawai.pph_pct`. Saat ditolak, acuan lama tetap dipakai dan alasan tampil ke pegawai.
+
+Pengajuan ulang saat masih ada usulan `menunggu` akan memperbarui baris yang sama, bukan membuat
+antrian ganda. Usulan yang sudah ditolak dapat diajukan lagi sebagai baris baru.
+
+### Database
+
+Migrasi baru `supabase/migrations/0007_usulan_nominal.sql`:
+
+- enum `public.status_usulan` (`menunggu`, `disetujui`, `ditolak`);
+- tabel `public.usulan_nominal` dengan `pegawai_id`, `tukin`, `uang_makan`, `pph_pct`, status,
+  waktu pengajuan/verifikasi, verifikator, dan `catatan_admin`;
+- unique index parsial `usulan_nominal_satu_menunggu` (satu usulan menunggu per pegawai);
+- RLS: pegawai hanya membaca usulan miliknya; admin membaca dan mengelola semua;
+- grant select untuk `authenticated`; insert/update/delete dibatasi policy admin, sedangkan
+  endpoint server memakai service role; plus `analyze`.
+
+Migrasi sudah diterapkan ke Supabase pada 16 November 2026; ketujuh migrasi berjalan `OK` dan
+tabel dapat dibaca melalui REST (`HTTP 200`).
+
+### Endpoint
+
+| Endpoint | Peran | Perilaku |
+|---|---|---|
+| `POST /api/profil` | pegawai | Menerima `no_wa` dan/atau `tukin`, `uang_makan`, `pph_pct`. Nomor WA kini opsional; nominal divalidasi (Tukin ≤ 999.999.999.999; uang makan ≤ 9.999.999.999; PPh hanya 0/5/15). Usulan menunggu diperbarui atau dibuat baru. |
+| `POST /api/nominal/verifikasi` | admin | Body `id`, `aksi` (`setujui`/`tolak`), `catatan`. Menolak usulan yang sudah diverifikasi (`HTTP 409`). Persetujuan menyalin nominal ke tabel `pegawai`. |
+
+### Tampilan
+
+- **Dasbor pegawai**: isian Tukin dan uang makan harian, pilihan PPh 21, keterangan SBM per
+  golongan dan tarif PPh 21, serta blok **Nominal acuan Anda** dengan status usulan.
+- **Panel admin**: menu **Perlu Tindakan** yang menggabungkan antrian pengajuan presensi dan
+  usulan nominal dengan satu badge jumlah menunggu. Halaman ini memuat tabel pengajuan menunggu
+  (Detail/Setujui), tabel usulan nominal (nama/NIP, golongan, Tukin, uang makan, PPh, tanggal)
+  dengan tombol Setujui/Tolak, dan riwayat verifikasi nominal beserta catatan.
+- Data nominal pada form **Data Pegawai** tetap ada sebagai acuan yang sedang berlaku; sumber
+  perubahan yang disarankan adalah usulan + verifikasi (lihat catatan desain di README utama).
+
+### Antrian verifikasi digabung (lanjutan 16 November 2026)
+
+- Menu sidebar **Verifikasi Nominal** dihapus; isinya dipindah ke tab **Perlu Tindakan** bersama
+  antrian pengajuan presensi. Badge sidebar kini menampilkan **total** keduanya (dengan tooltip
+  rincian), dan halaman menampilkan dua angka antrian.
+- Verifikasi pengajuan di tab ini memakai data `pengajuan_tukin` berstatus `menunggu_verifikasi`
+  (urut paling lama), dengan tombol **Detail** dan **Setujui**. Persetujuan memakai fungsi dan
+  endpoint yang sama seperti sebelumnya.
+- Tab lama **Sudah Unggah** diganti nama menjadi **Pengajuan & Kehadiran** dan difokuskan untuk
+  pemantauan. Tombol **Setujui** di tabelnya dihapus agar tidak ada dua tempat keputusan;
+  tombol Reset dan rincian potongan tetap ada.
+- Setelah verifikasi dari dasbor, detail, atau antrian, badge dan tabel antrian dimuat ulang.
+
+### Berkas yang berubah
+
+| Berkas | Perubahan |
+|---|---|
+| `supabase/migrations/0007_usulan_nominal.sql` | tabel, enum, index, RLS, grant |
+| `app.mjs` | `POST /api/profil` diperluas; endpoint baru `POST /api/nominal/verifikasi` |
+| `public/dasbor.html` | form nominal + status usulan + pemuatan usulan terbaru |
+| `public/admin.html` | tab **Perlu Tindakan**, badge gabungan, antrian pengajuan + nominal, riwayat |
+| `README.md` (root) | ringkasan status + catatan desain UI/UX |
+
+### Pengujian (16 November 2026)
+
+- `node scripts/terapkan-migrasi.mjs`: 0001–0007 `OK`; ringkasan 11 bidang, 16 aturan,
+  30 pegawai, 27 policy.
+- Tabel `usulan_nominal` dibaca lewat REST dengan service role: `HTTP 200`.
+- `node --check app.mjs` lolos; seluruh blok `<script>` inline di `dasbor.html` dan `admin.html`
+  lolos pemeriksaan sintaks. Setelah penggabungan antrian, semua tombol `data-tab` memiliki
+  section `id="tab-…"` yang sesuai dan tidak ada ID ganda.
+- Server lokal: `/dasbor.html` dan `/admin.html` `HTTP 200`; `POST /api/nominal/verifikasi`
+  tanpa token `HTTP 401`; `POST /api/profil` tanpa token `HTTP 401`.
+- `npm install`: sudah mutakhir. Proyek tidak memiliki tahap build; perintah build Vercel tetap
+  `node scripts/siapkan-mesin.mjs`.
+- Commit `dd9f35e` sudah di-push ke `main`; push memicu deploy otomatis Vercel.
+
+### Batasan
+
+- Alur klik penuh dengan akun sungguhan (login pegawai → simpan → setujui admin) belum dijalankan
+  karena tidak tersedia kredensial uji; verifikasi terbatas pada sintaks, pemuatan halaman,
+  otorisasi endpoint, dan kesiapan tabel.
+- Deploy produksi setelah commit ini belum diperiksa ulang secara langsung.
 
 ## Perubahan 14 November 2026 (revisi 1–7)
 
