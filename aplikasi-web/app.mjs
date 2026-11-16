@@ -14,6 +14,8 @@
 //                                atau semua file dalam folder (tanpa "berkas")
 //   GET  /api/pegawai/daftar     [admin] daftar pegawai untuk form tambah/ubah
 //   POST /api/pegawai/simpan     [admin] tambah pegawai baru / ubah pegawai (id dikirim)
+//   POST /api/profil             pegawai ubah No. WA dan/atau ajukan nominal Tukin & uang makan
+//   POST /api/nominal/verifikasi [admin] setujui/tolak usulan nominal pegawai
 //   GET  /lib/app.js|/lib/xlsx.full.min.js|/lib/pegawai.js  (mesin offline)
 //   GET  /*                      file statis dari public/
 
@@ -1068,25 +1070,133 @@ export async function handler(req, res) {
       return kirimJson(res, 200, { pesan: `${ada[0].nama} dihapus dari daftar pegawai` });
     }
 
-    // Pegawai mengubah nomor HP/WhatsApp miliknya sendiri. Data lain tetap
-    // lewat admin agar identitas kepegawaian tidak berubah sembarangan.
+    // Pegawai mengubah nomor HP/WhatsApp miliknya sendiri dan/atau mengajukan
+    // nominal Tukin & uang makan. Identitas kepegawaian tetap lewat admin.
+    // Usulan nominal belum mengubah data acuan sampai admin menyetujuinya.
     if (jalur === '/api/profil' && req.method === 'POST') {
       const u = await penggunaAktifDariToken(req);
       if (!u) return kirimJson(res, 401, { pesan: 'Sesi berakhir. Silakan masuk ulang.' });
       const b = await bacaBody(req);
-      const noWa = nomorWaInternasional(b.no_wa);
-      if (!noWa) return kirimJson(res, 400, { pesan: 'Nomor WhatsApp tidak valid (contoh 081234567890)' });
 
       const baris = await db(`pegawai?select=id,nama&user_id=eq.${encodeURIComponent(u.id)}`);
       const p = baris && baris[0];
       if (!p) return kirimJson(res, 404, { pesan: 'Akun ini belum tertaut ke data pegawai' });
 
-      await db(`pegawai?id=eq.${encodeURIComponent(p.id)}`, {
+      let noWa;
+      if (b.no_wa !== undefined) {
+        noWa = nomorWaInternasional(b.no_wa);
+        if (!noWa) return kirimJson(res, 400, { pesan: 'Nomor WhatsApp tidak valid (contoh 081234567890)' });
+      }
+
+      const angka = (v) => {
+        if (v === undefined || v === null || String(v).trim() === '') return null;
+        const n = Number(String(v).replace(/[^\d.-]/g, ''));
+        return Number.isFinite(n) ? n : NaN;
+      };
+      const adaNominal = b.tukin !== undefined || b.uang_makan !== undefined || b.pph_pct !== undefined;
+      if (!adaNominal && noWa === undefined) {
+        return kirimJson(res, 400, { pesan: 'Tidak ada perubahan untuk disimpan' });
+      }
+
+      let usulan = null;
+      if (adaNominal) {
+        const tukin = angka(b.tukin);
+        const uangMakan = angka(b.uang_makan);
+        const pph = angka(b.pph_pct);
+        if (!Number.isFinite(tukin) || tukin < 0 || tukin > 999999999999) {
+          return kirimJson(res, 400, { pesan: 'Nominal Tukin belum benar' });
+        }
+        if (!Number.isFinite(uangMakan) || uangMakan < 0 || uangMakan > 9999999999) {
+          return kirimJson(res, 400, { pesan: 'Nominal uang makan belum benar' });
+        }
+        if (![0, 5, 15].includes(pph)) {
+          return kirimJson(res, 400, { pesan: 'Potongan PPh 21 harus 0%, 5%, atau 15%' });
+        }
+
+        const data = { tukin, uang_makan: uangMakan, pph_pct: pph, diajukan_pada: new Date().toISOString() };
+        const menunggu = await db(
+          `usulan_nominal?select=id&pegawai_id=eq.${encodeURIComponent(p.id)}&status=eq.menunggu&limit=1`,
+        );
+        if (menunggu && menunggu.length) {
+          const hasil = await db(`usulan_nominal?id=eq.${encodeURIComponent(menunggu[0].id)}`, {
+            method: 'PATCH',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify(data),
+          });
+          usulan = hasil && hasil[0];
+        } else {
+          const hasil = await db('usulan_nominal', {
+            method: 'POST',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify({ pegawai_id: p.id, status: 'menunggu', ...data }),
+          });
+          usulan = hasil && hasil[0];
+        }
+      }
+
+      if (noWa !== undefined) {
+        await db(`pegawai?id=eq.${encodeURIComponent(p.id)}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({ no_wa: noWa }),
+        });
+      }
+
+      return kirimJson(res, 200, {
+        pesan: adaNominal
+          ? 'Usulan nominal tersimpan dan menunggu verifikasi admin'
+          : 'Nomor WhatsApp tersimpan',
+        ...(noWa !== undefined ? { no_wa: noWa } : {}),
+        usulan: usulan || null,
+      });
+    }
+
+    // Admin menyetujui/menolak usulan nominal pegawai. Persetujuan menyalin
+    // nilai usulan menjadi acuan perhitungan di tabel pegawai.
+    if (jalur === '/api/nominal/verifikasi' && req.method === 'POST') {
+      const admin = await wajibAdmin(req);
+      const b = await bacaBody(req);
+      const id = b.id ? String(b.id) : '';
+      const aksi = b.aksi === 'setujui' ? 'setujui' : b.aksi === 'tolak' ? 'tolak' : '';
+      if (!id) return kirimJson(res, 400, { pesan: 'Usulan belum dipilih' });
+      if (!aksi) return kirimJson(res, 400, { pesan: 'Aksi harus setujui atau tolak' });
+
+      const baris = await db(
+        `usulan_nominal?select=id,pegawai_id,status,tukin,uang_makan,pph_pct&id=eq.${encodeURIComponent(id)}`,
+      );
+      const usulan = baris && baris[0];
+      if (!usulan) return kirimJson(res, 404, { pesan: 'Usulan tidak ditemukan' });
+      if (usulan.status !== 'menunggu') {
+        return kirimJson(res, 409, { pesan: 'Usulan ini sudah diverifikasi sebelumnya' });
+      }
+
+      const catatan = b.catatan ? String(b.catatan).trim().slice(0, 500) : null;
+      if (aksi === 'setujui') {
+        await db(`pegawai?id=eq.${encodeURIComponent(usulan.pegawai_id)}`, {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            tukin: usulan.tukin,
+            tarif_uang_makan: usulan.uang_makan,
+            pph_pct: usulan.pph_pct,
+          }),
+        });
+      }
+
+      await db(`usulan_nominal?id=eq.${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ no_wa: noWa }),
+        body: JSON.stringify({
+          status: aksi === 'setujui' ? 'disetujui' : 'ditolak',
+          diverifikasi_oleh: admin.id,
+          diverifikasi_pada: new Date().toISOString(),
+          catatan_admin: catatan,
+        }),
       });
-      return kirimJson(res, 200, { pesan: 'Nomor WhatsApp tersimpan', no_wa: noWa });
+
+      return kirimJson(res, 200, {
+        pesan: aksi === 'setujui' ? 'Nominal disetujui dan menjadi acuan' : 'Usulan nominal ditolak',
+      });
     }
 
     // --- admin: impor pegawai banyak sekaligus dari Excel -----------------

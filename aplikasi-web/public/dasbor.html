@@ -164,13 +164,40 @@
           <div class="tersembunyi" id="formEditProfil" style="margin-top:14px;border-top:1px solid var(--garis);padding-top:14px">
             <label for="editWa">No. HP / WhatsApp</label>
             <input id="editWa" type="tel" inputmode="tel" maxlength="20" placeholder="08xx xxxx xxxx" autocomplete="tel">
+
+            <div class="baris" style="margin-top:12px">
+              <div>
+                <label for="editTukin">Tukin (Rp)</label>
+                <input id="editTukin" type="number" inputmode="numeric" min="0" step="1000" placeholder="contoh 3319000">
+              </div>
+              <div>
+                <label for="editUangMakan">Uang makan harian (Rp)</label>
+                <input id="editUangMakan" type="number" inputmode="numeric" min="0" step="1000" placeholder="contoh 37000">
+              </div>
+            </div>
+            <div style="margin-top:10px">
+              <label for="editPph">Potongan PPh 21</label>
+              <select id="editPph">
+                <option value="0">0% — Golongan I &amp; II</option>
+                <option value="5">5% — Golongan III</option>
+                <option value="15">15% — Golongan IV</option>
+              </select>
+            </div>
+            <div class="catatan" style="margin:12px 0;padding:10px 12px;background:#f8fafc;border:1px solid var(--garis);border-radius:10px;line-height:1.6">
+              <b>Besaran Uang Makan Harian (SBM)</b> per hari kerja efektif: Gol I–II PNS / I–VIII PPPK = Rp35.000;
+              Gol III PNS / IX–XII PPPK = Rp37.000; Gol IV PNS / XIII–XVII PPPK = Rp41.000.<br>
+              <b>Tarif Potongan PPh 21:</b> Gol I &amp; II = 0%; Gol III = 5% (dari bruto);
+              Gol IV = 15% (dari bruto).
+            </div>
+
             <div style="margin-top:10px">
               <button class="utama" id="btnSimpanProfil" type="button" style="margin-top:0">Simpan</button>
               <button class="kecil" id="btnBatalProfil" type="button" style="margin-left:8px">Batal</button>
             </div>
             <div class="pesan" id="pesanProfil" role="alert"></div>
             <p class="catatan" style="margin-top:8px">Nama, NIP, jabatan, dan golongan hanya bisa diubah oleh
-              admin kepegawaian. Nomor HP dipakai admin untuk menghubungi Anda.</p>
+              admin kepegawaian. Nomor HP dipakai admin untuk menghubungi Anda. Nominal Tukin dan uang makan
+              yang Anda simpan berlaku setelah disetujui admin.</p>
           </div>
           <p class="catatan" id="catatanProfil"></p>
         </section>
@@ -305,6 +332,8 @@
   var kini = new Date();
   var k = null;
   var profilSaya = null;
+  var usulanNominal = null;
+  var riwayatSaya = [];
   var HARI_PANJANG = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
 
   function labelTanggalPanjang(iso) {
@@ -577,19 +606,66 @@
     }).join('') + '</div>';
   }
 
+  // Nominal acuan yang diisi sendiri pegawai. Baru berubah setelah admin
+  // menyetujui usulan; selama menunggu, nilai lama tetap dipakai perhitungan.
+  function blokNominalAcuan() {
+    var u = usulanNominal;
+    if (!u) {
+      return '<p class="catatan" style="margin-top:0">Nominal acuan belum diisi. Klik <b>Edit data</b> pada ' +
+        'profil untuk mengisi Tukin dan uang makan.</p>';
+    }
+    var kelas = u.status === 'menunggu' ? 'menunggu_verifikasi' : u.status;
+    var teks = u.status === 'menunggu' ? 'Menunggu verifikasi admin' : labelStatus(u.status);
+    var ket = u.status === 'menunggu'
+      ? 'Nominal ini belum dipakai dalam perhitungan sampai admin menyetujuinya.'
+      : u.status === 'ditolak'
+        ? 'Usulan ditolak' + (u.catatan_admin ? ': ' + u.catatan_admin : '') + '. Perbaiki lewat Edit data.'
+        : 'Disetujui ' + tanggal(u.diverifikasi_pada) + ' dan menjadi acuan perhitungan.';
+    return '<div style="padding:12px 14px;border:1px solid var(--garis);border-radius:10px;margin-bottom:14px;background:#f8fafc">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">' +
+          '<b>Nominal acuan Anda</b>' +
+          '<span class="status ' + esc(kelas) + '" style="font-size:12px;padding:4px 10px">' + esc(teks) + '</span>' +
+        '</div>' +
+        '<dl class="identitas" style="margin:0">' +
+          '<dt>Tukin</dt><dd>' + rupiah(u.tukin) + '</dd>' +
+          '<dt>Uang makan harian</dt><dd>' + rupiah(u.uang_makan) + ' (PPh ' + (Number(u.pph_pct) || 0) + '%)</dd>' +
+          '<dt>Diajukan</dt><dd>' + tanggal(u.diajukan_pada) + '</dd>' +
+        '</dl>' +
+        '<p class="catatan" style="margin:8px 0 0">' + esc(ket) + '</p>' +
+      '</div>';
+  }
+
+  function muatUsulanNominal(p) {
+    if (!p) { usulanNominal = null; return Promise.resolve(null); }
+    return fetch(k.url + '/rest/v1/usulan_nominal?select=id,tukin,uang_makan,pph_pct,status,' +
+      'diajukan_pada,diverifikasi_pada,catatan_admin&pegawai_id=eq.' + encodeURIComponent(p.id) +
+      '&order=diajukan_pada.desc&limit=1', {
+      headers: { apikey: k.kunci, Authorization: 'Bearer ' + sesi.access_token }
+    }).then(function (r) {
+      return r.ok ? r.json() : [];
+    }).then(function (d) {
+      usulanNominal = (Array.isArray(d) && d[0]) || null;
+      return usulanNominal;
+    }).catch(function () {
+      usulanNominal = null;
+      return null;
+    });
+  }
+
   function renderNilai(riwayat) {
     var wadah = el('rekapNilai');
     var terakhir = riwayat[0];
     var rt = terakhir ? satuRekap(terakhir.rekap_tukin) : null;
     var rm = terakhir ? satuRekap(terakhir.rekap_uang_makan) : null;
+    var blok = blokNominalAcuan();
     if (!rt && !rm) {
-      wadah.innerHTML = kartuKosong('Nominal belum tersedia',
-        'Tukin dan uang makan muncul setelah pengajuan diproses.');
+      wadah.innerHTML = blok + kartuKosong('Nominal pengajuan belum tersedia',
+        'Tukin dan uang makan hasil pengajuan muncul setelah presensi diproses.');
       return;
     }
     rt = rt || {};
     rm = rm || {};
-    wadah.innerHTML =
+    wadah.innerHTML = blok +
       '<div class="kotak-dua" style="gap:12px">' +
         '<div><h3>Tukin</h3><dl>' +
           '<dt>Bruto</dt><dd>' + rupiah(rt.tukin_bruto) + '</dd>' +
@@ -767,8 +843,29 @@
     p.className = 'pesan tampil ' + (jenis || 'galat');
   }
 
+  function pphDariGolongan(gol) {
+    var g = String(gol || '').trim().toUpperCase();
+    if (g === 'IV') return 15;
+    if (g === 'III') return 5;
+    if (g === 'II' || g === 'I') return 0;
+    return null;
+  }
+
+  function isiFormNominal(p) {
+    var acuan = (usulanNominal && usulanNominal.status !== 'ditolak') ? usulanNominal : {};
+    var tukin = acuan.tukin != null ? acuan.tukin : (p && p.tukin);
+    var uangMakan = acuan.uang_makan != null ? acuan.uang_makan : (p && p.tarif_uang_makan);
+    var pph = acuan.pph_pct != null ? acuan.pph_pct : (p && p.pph_pct);
+    el('editTukin').value = tukin == null ? '' : Number(tukin);
+    el('editUangMakan').value = uangMakan == null ? '' : Number(uangMakan);
+    var saran = pphDariGolongan(p && p.golongan);
+    var nilai = pph == null ? saran : Number(pph);
+    el('editPph').value = String([0, 5, 15].indexOf(nilai) >= 0 ? nilai : (saran == null ? 0 : saran));
+  }
+
   el('btnEditProfil').addEventListener('click', function () {
     el('editWa').value = (profilSaya && profilSaya.no_wa) ? '+' + profilSaya.no_wa : '';
+    isiFormNominal(profilSaya);
     pesanProfil('');
     el('formEditProfil').classList.remove('tersembunyi');
     el('editWa').focus();
@@ -783,21 +880,37 @@
     var btn = this;
     var noWa = el('editWa').value.trim();
     if (noWa.replace(/\D/g, '').length < 9) { pesanProfil('Nomor HP/WhatsApp belum benar.'); return; }
+
+    var tukin = Number(el('editTukin').value);
+    var uangMakan = Number(el('editUangMakan').value);
+    var pph = Number(el('editPph').value);
+    if (!el('editTukin').value || !Number.isFinite(tukin) || tukin < 0) {
+      pesanProfil('Nominal Tukin belum diisi dengan benar.'); return;
+    }
+    if (!el('editUangMakan').value || !Number.isFinite(uangMakan) || uangMakan < 0) {
+      pesanProfil('Nominal uang makan harian belum diisi dengan benar.'); return;
+    }
+    if ([0, 5, 15].indexOf(pph) < 0) {
+      pesanProfil('Potongan PPh 21 harus 0%, 5%, atau 15%.'); return;
+    }
+
     btn.disabled = true;
     pesanProfil('Menyimpan…', 'info');
     fetch('/api/profil', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sesi.access_token },
-      body: JSON.stringify({ no_wa: noWa })
+      body: JSON.stringify({ no_wa: noWa, tukin: tukin, uang_makan: uangMakan, pph_pct: pph })
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (h) {
       if (!h.ok) { pesanProfil('Gagal: ' + (h.j.pesan || 'kesalahan tidak dikenal')); return; }
-      if (profilSaya) profilSaya.no_wa = h.j.no_wa;
+      if (profilSaya && h.j.no_wa) profilSaya.no_wa = h.j.no_wa;
       var dd = el('profilWa');
-      if (dd) dd.textContent = '+' + h.j.no_wa;
-      pesanProfil('✔ Nomor HP tersimpan.', 'info');
-      setTimeout(function () { el('formEditProfil').classList.add('tersembunyi'); pesanProfil(''); }, 2500);
+      if (dd && h.j.no_wa) dd.textContent = '+' + h.j.no_wa;
+      if (h.j.usulan) usulanNominal = h.j.usulan;
+      renderNilai(riwayatSaya);
+      pesanProfil('✔ Tersimpan. Nominal menunggu verifikasi admin.', 'info');
+      setTimeout(function () { el('formEditProfil').classList.add('tersembunyi'); pesanProfil(''); }, 3000);
     }).catch(function () {
       pesanProfil('Tidak bisa menghubungi server.');
     }).then(function () { btn.disabled = false; });
@@ -837,7 +950,7 @@
 
     return Promise.all([
       ambil('users?select=nama,email,peran,aktif&id=eq.' + encodeURIComponent(sesi.id)),
-      ambil('pegawai?select=id,nama,nip,jabatan,golongan,ruang,status_kepegawaian,no_wa,bidang:bidang_id(nama)&user_id=eq.' + encodeURIComponent(sesi.id)),
+      ambil('pegawai?select=id,nama,nip,jabatan,golongan,ruang,status_kepegawaian,no_wa,tukin,tarif_uang_makan,pph_pct,bidang:bidang_id(nama)&user_id=eq.' + encodeURIComponent(sesi.id)),
       ambil('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,diverifikasi_pada,catatan_admin,' +
         'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*)' +
         '&order=tahun.desc,bulan.desc&limit=24')
@@ -846,6 +959,7 @@
       var p = (hasil[1] && hasil[1][0]) || null;
       var riwayat = Array.isArray(hasil[2]) ? hasil[2] : [];
 
+      riwayatSaya = riwayat;
       tampilkanProfil(u, p);
       if (perluGantiSandi && (!u || u.peran !== 'admin')) tampilkanKartuSandi();
       renderStatistik(riwayat);
@@ -853,6 +967,7 @@
       renderRekapPresensi(riwayat);
       muatRincianPresensi(riwayat[0]);
       renderNilai(riwayat);
+      muatUsulanNominal(p).then(function () { renderNilai(riwayat); });
       renderRiwayat(riwayat);
       siapkanUnduhRekap(riwayat);
     });

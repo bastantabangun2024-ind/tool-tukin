@@ -36,6 +36,11 @@
       <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3 2.5-5.2 5.5-5.2s5.5 2.2 5.5 5.2M17 8h4M19 6v4M17.5 20c0-2.2-1-4-2.6-5"/></svg></span>
       <span class="teks-nav">Pendaftar</span>
     </button>
+    <button data-tab="nominal" type="button">
+      <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M7.5 9h5M7.5 13h3"/><path d="m13.5 16.5 2 2 4-4.5"/></svg></span>
+      <span class="teks-nav">Verifikasi Nominal</span>
+      <span class="lencana-nav" id="lencanaNominal"></span>
+    </button>
     <button data-tab="pegawai" type="button">
       <span class="ikon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-3.4 3-5.8 7-5.8s7 2.4 7 5.8"/></svg></span>
       <span class="teks-nav">Data Pegawai</span>
@@ -295,6 +300,16 @@
     <h1>Pendaftar Baru</h1>
     <p class="sub">Pendaftaran yang menunggu keputusan admin.</p>
     <div id="tabelPendaftar" class="tabel-kartu"><p class="catatan">Memuat…</p></div>
+  </section>
+
+  <section class="kartu tersembunyi" id="tab-nominal">
+    <h1>Verifikasi Nominal</h1>
+    <p class="sub">Usulan Tukin dan uang makan harian yang diisi pegawai lewat tombol <b>Edit data</b>.
+      Nominal baru dipakai sebagai acuan perhitungan setelah Anda setujui.</p>
+    <h2 style="font-size:16px;margin:18px 0 8px">Menunggu verifikasi</h2>
+    <div id="tabelNominal" class="tabel-kartu"><p class="catatan">Memuat…</p></div>
+    <h2 style="font-size:16px;margin:24px 0 8px">Riwayat verifikasi</h2>
+    <div id="tabelNominalRiwayat" class="tabel-kartu"><p class="catatan">Memuat…</p></div>
   </section>
 
   <section class="kartu tersembunyi" id="tab-pegawai">
@@ -568,12 +583,13 @@
     dasbor: ['Dasbor', 'Ringkasan administrasi kepegawaian'],
     unggah: ['Status Presensi & Pengajuan', 'Pantau pengajuan dan verifikasi pegawai'],
     pendaftar: ['Pendaftar Baru', 'Pendaftaran yang menunggu keputusan admin'],
+    nominal: ['Verifikasi Nominal', 'Usulan Tukin & uang makan dari pegawai'],
     pegawai: ['Data Pegawai', 'Kelola data kepegawaian'],
     drive: ['Ambil dari Drive', 'Impor presensi dari folder Google Drive'],
     rekap: ['Ekspor Rekap', 'Unduh rekap bulanan per bidang'],
     pengaturan: ['Pengaturan Potongan', 'Aturan yang dipakai mesin hitung']
   };
-  var URUTAN_TAB = ['dasbor', 'unggah', 'pendaftar', 'pegawai', 'drive', 'rekap', 'pengaturan'];
+  var URUTAN_TAB = ['dasbor', 'unggah', 'pendaftar', 'nominal', 'pegawai', 'drive', 'rekap', 'pengaturan'];
 
   function tutupMenuPonsel() {
     document.body.classList.remove('sidebar-terbuka');
@@ -621,6 +637,7 @@
 
       if (b.dataset.tab === 'dasbor') muatDasbor();
       if (b.dataset.tab === 'pendaftar') muatPendaftar();
+      if (b.dataset.tab === 'nominal') muatNominal();
       if (b.dataset.tab === 'pegawai') muatPegawai();
       if (b.dataset.tab === 'drive' && !document.getElementById('bulanDrive').options.length) siapkanDrive();
       if (b.dataset.tab === 'rekap' && !document.getElementById('bulanRekap').options.length) siapkanRekap();
@@ -1139,6 +1156,99 @@
       })
       .catch(function () {
         document.getElementById('tabelPendaftar').innerHTML = '<p class="catatan">Gagal memuat data.</p>';
+      });
+  }
+
+  // --- 2a-bis. verifikasi nominal Tukin & uang makan -------------------------
+  function muatLencanaNominal() {
+    api('usulan_nominal?select=id&status=eq.menunggu')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var n = Array.isArray(d) ? d.length : 0;
+        document.getElementById('lencanaNominal').textContent = n ? String(n) : '';
+      })
+      .catch(function () { /* badge opsional */ });
+  }
+
+  function nominalUsulan(x, aksi, id) {
+    var catatan = '';
+    if (aksi === 'tolak') catatan = prompt('Catatan penolakan (opsional):', '') || '';
+    var tombol = document.querySelector('button[data-' + aksi + 'nominal="' + id + '"]');
+    if (tombol) { tombol.disabled = true; tombol.textContent = 'Menyimpan…'; }
+    adminApi('/api/nominal/verifikasi', {
+      method: 'POST',
+      body: { id: id, aksi: aksi, catatan: catatan }
+    }).then(function (h) {
+      if (!h.ok) {
+        alert('Gagal: ' + (h.j.pesan || ('HTTP ' + h.status)));
+        if (tombol) { tombol.disabled = false; tombol.textContent = aksi === 'setujui' ? 'Setujui' : 'Tolak'; }
+        return;
+      }
+      muatNominal();
+    }).catch(function (e) { alert('Gagal: ' + e.message); });
+  }
+
+  function tabelNominal(daftar, jenis) {
+    if (!daftar.length) {
+      return '<p class="catatan">' +
+        (jenis === 'menunggu' ? 'Tidak ada usulan nominal menunggu.' : 'Belum ada riwayat verifikasi.') + '</p>';
+    }
+    if (jenis === 'menunggu') {
+      return '<table><thead><tr><th>Nama / NIP</th><th>Gol</th><th class="num">Tukin</th>' +
+        '<th class="num">Uang makan</th><th>PPh</th><th>Diajukan</th><th></th></tr></thead><tbody>' +
+        daftar.map(function (x) {
+          var p = x.pegawai || {};
+          var gol = p.golongan ? p.golongan + (p.ruang ? '/' + p.ruang : '') : '—';
+          return '<tr>' +
+            '<td data-label="Nama / NIP"><b>' + esc(p.nama || '—') + '</b><br><span class="catatan">' + esc(p.nip || '') + '</span></td>' +
+            '<td data-label="Gol">' + esc(gol) + '</td>' +
+            '<td class="num" data-label="Tukin">' + rupiah(x.tukin) + '</td>' +
+            '<td class="num" data-label="Uang makan">' + rupiah(x.uang_makan) + '</td>' +
+            '<td data-label="PPh">' + (Number(x.pph_pct) || 0) + '%</td>' +
+            '<td data-label="Diajukan">' + formatTanggal(x.diajukan_pada) + '</td>' +
+            '<td class="aksi"><button class="kecil" data-setujuinominal="' + esc(x.id) + '">Setujui</button> ' +
+            '<button class="kecil" data-tolaknominal="' + esc(x.id) + '">Tolak</button></td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    return '<table><thead><tr><th>Nama / NIP</th><th class="num">Tukin</th><th class="num">Uang makan</th>' +
+      '<th>Status</th><th>Diverifikasi</th><th>Catatan</th></tr></thead><tbody>' +
+      daftar.map(function (x) {
+        var p = x.pegawai || {};
+        var label = x.status === 'disetujui' ? 'Disetujui' : 'Ditolak';
+        return '<tr>' +
+          '<td data-label="Nama / NIP"><b>' + esc(p.nama || '—') + '</b><br><span class="catatan">' + esc(p.nip || '') + '</span></td>' +
+          '<td class="num" data-label="Tukin">' + rupiah(x.tukin) + '</td>' +
+          '<td class="num" data-label="Uang makan">' + rupiah(x.uang_makan) + ' (' + (Number(x.pph_pct) || 0) + '%)</td>' +
+          '<td data-label="Status"><span class="status ' + esc(x.status) + '">' + esc(label) + '</span></td>' +
+          '<td data-label="Diverifikasi">' + formatTanggal(x.diverifikasi_pada) + '</td>' +
+          '<td data-label="Catatan">' + esc(x.catatan_admin || '—') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+
+  function muatNominal() {
+    muatLencanaNominal();
+    api('usulan_nominal?select=id,tukin,uang_makan,pph_pct,status,diajukan_pada,diverifikasi_pada,catatan_admin,' +
+      'pegawai:pegawai_id(nama,nip,golongan,ruang,jabatan,bidang:bidang_id(nama))' +
+      '&order=diajukan_pada.desc&limit=100')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        var semua = Array.isArray(d) ? d : [];
+        var menunggu = semua.filter(function (x) { return x.status === 'menunggu'; });
+        var riwayat = semua.filter(function (x) { return x.status !== 'menunggu'; });
+        document.getElementById('tabelNominal').innerHTML = tabelNominal(menunggu, 'menunggu');
+        document.getElementById('tabelNominalRiwayat').innerHTML = tabelNominal(riwayat, 'riwayat');
+        document.getElementById('lencanaNominal').textContent = menunggu.length ? String(menunggu.length) : '';
+
+        document.querySelectorAll('#tabelNominal button').forEach(function (b) {
+          b.addEventListener('click', function () {
+            if (b.dataset.setujuinominal) nominalUsulan(null, 'setujui', b.dataset.setujuinominal);
+            else if (b.dataset.tolaknominal) nominalUsulan(null, 'tolak', b.dataset.tolaknominal);
+          });
+        });
+      })
+      .catch(function () {
+        document.getElementById('tabelNominal').innerHTML = '<p class="catatan">Gagal memuat data.</p>';
+        document.getElementById('tabelNominalRiwayat').innerHTML = '';
       });
   }
 
@@ -2833,6 +2943,7 @@
       siapkanDasbor();
       muatDasbor();
       muatUnggah();
+      muatLencanaNominal();
     }
 
     // Pisahkan peran: hanya admin yang boleh memakai panel ini. Bila gagal memeriksa,
