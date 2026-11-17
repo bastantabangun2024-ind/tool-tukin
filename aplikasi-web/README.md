@@ -2,11 +2,38 @@
 
 Status: **berjalan di produksi** — https://tool-tukin.vercel.app (Vercel + Supabase).
 Dokumen audit/rancangan di `docs/` tetap dipakai sebagai acuan; ringkasan perubahan terbaru
-ada di bagian **Perubahan 16 November 2026** di bawah.
+ada di bagian **Perubahan 17 November 2026** di bawah.
 
 Keputusan 10 November 2026: **berkas disimpan di Google Drive** (Supabase hanya Auth + database),
 dan **potongan HUKDIS/TB diaktifkan sejak awal** (diisi admin saat verifikasi).
 File kredensial yang perlu diisi: `.env.local` (template: `.env.example`).
+
+## Perubahan 17 November 2026 — pilihan pegawai di tab Ekspor Rekap
+
+Tab **Ekspor Rekap** di panel admin sekarang memilih pegawai langsung dari tabel rekap:
+
+- Bagian **“Pegawai pada bidang terpilih”** (kotak centang pegawai + kolom cari) **dihapus**.
+  Bagian pilihan yang tersisa hanya **Bidang** beserta tautan *semua · kosongkan*.
+- Tabel rekap (Pegawai | Bidang | Status | Hadir | Tukin bersih | Uang makan) **hanya menampilkan
+  pegawai dari bidang yang dicentang**. Bila semua bidang dikosongkan, tabel menampilkan
+  keterangan “Centang minimal satu bidang…” dan tidak ada berkas yang bisa diunduh.
+- Di tiap baris, di sebelah kiri nama (tepat di samping tanda panah ▸ rincian potongan) ada
+  **kotak centang** penanda pegawai yang ikut diekspor. Tombol **Rekap Kehadiran**,
+  **Rekap Tukin**, **Rekap Uang Makan**, dan **Ketiga berkas** hanya mengekspor pegawai yang
+  dicentang — dengan syarat bidangnya juga dicentang.
+- Tautan **semua · kosongkan** untuk pegawai dipindah ke baris kendali di atas tabel dan berlaku
+  untuk pegawai pada bidang yang sedang dicentang. Teks info di sebelahnya menghitung
+  “x dari y pegawai pada bidang terpilih akan diekspor”.
+- Tombol **⬇ 3 berkas** per bidang tetap ada dan tetap mengunduh seluruh pegawai bidang itu
+  tanpa mengubah centang.
+- Tanda panah rincian potongan kini memakai delegasi klik pada wadah tabel, jadi tetap berfungsi
+  setelah tabel digambar ulang ketika bidang dicentang atau dikosongkan.
+
+Berkas yang berubah: `aplikasi-web/public/admin.html` (HTML pilihan ekspor + fungsi
+`renderTabelRekap()`, `tulisInfoEkspor()`, dan pendengar delegasi) dan
+`aplikasi-web/public/gaya.css` (`.pilih-pegawai`, `.cek-pegawai-ekspor`; aturan
+`#cekEksporPegawai` dihapus). Pengujian: sintaks seluruh JS inline `admin.html` lolos
+(`new Function`), tidak ada lagi rujukan ke `cariPegawaiEkspor` / `cekEksporPegawai`.
 
 ## Perubahan 16 November 2026 — panduan PDF & usulan nominal
 

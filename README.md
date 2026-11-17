@@ -73,6 +73,15 @@ ditambahkan pada 16 November 2026.*
    - Tombol unduh tersedia di dasbor pegawai, sidebar panel admin, dan halaman masuk.
    - Commit `798071b` sudah di-push; di produksi PDF merespons `HTTP 200` dengan tipe
      `application/pdf`, dan halaman `masuk.html` serta `admin.html` memuat tautannya.
+11. **Pilihan pegawai langsung di tabel Ekspor Rekap** (17 November 2026):
+   - Bagian pilihan **“Pegawai pada bidang terpilih”** (centang pegawai + kolom cari) dihapus;
+     pilihan yang tersisa hanya **Bidang** (*semua · kosongkan*).
+   - Tabel rekap (Pegawai | Bidang | Status | Hadir | Tukin bersih | Uang makan) hanya menampilkan
+     pegawai dari bidang yang dicentang, dan tiap baris punya **kotak centang di samping tanda
+     panah ▸** untuk menandai pegawai yang ikut diekspor.
+   - Tombol **Rekap Kehadiran**, **Rekap Tukin**, **Rekap Uang Makan**, dan **Ketiga berkas**
+     mengikuti centang tersebut; tautan *semua · kosongkan* pegawai pindah ke atas tabel.
+   - Detail teknis ada di `aplikasi-web/README.md` bagian **Perubahan 17 November 2026**.
 
 ### Alamat & akun
 

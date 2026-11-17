@@ -512,7 +512,8 @@
       <h2>Pilih yang akan diekspor</h2>
       <p class="sub" style="margin-bottom:10px">Rekap dibuat <b>terpisah per bidang</b> — tiap bidang menghasilkan
         berkas sendiri (nama berkas sudah memuat nama bidang). Centang bidang yang ingin diunduh;
-        daftar pegawai di bawahnya hanya menampilkan pegawai dari bidang yang dicentang.</p>
+        tabel di bawahnya hanya menampilkan pegawai dari bidang yang dicentang. Centang pegawai
+        pada tabel (di samping tanda panah) untuk memilih siapa saja yang ikut diekspor.</p>
       <div class="pilihan-ekspor">
         <div>
           <label>Bidang
@@ -520,15 +521,6 @@
               &middot; <a href="#" id="linkBidangKosong">kosongkan</a>)</span>
           </label>
           <div class="cek-daftar" id="cekEksporBidang"></div>
-        </div>
-        <div>
-          <label for="cariPegawaiEkspor">Pegawai pada bidang terpilih
-            <span class="catatan" style="font-weight:400;display:inline">(<a href="#" id="linkPegawaiSemua">semua</a>
-              &middot; <a href="#" id="linkPegawaiKosong">kosongkan</a>)</span>
-          </label>
-          <input id="cariPegawaiEkspor" type="search" autocomplete="off" placeholder="cari nama atau NIP">
-          <div class="cek-daftar" id="cekEksporPegawai"></div>
-          <div class="catatan" id="infoEkspor"></div>
         </div>
       </div>
     </div>
@@ -2084,9 +2076,14 @@
   }
 
   function tulisInfoEkspor() {
-    var total = (dataRekap && dataRekap.hasil) ? dataRekap.hasil.length : 0;
-    document.getElementById('infoEkspor').textContent =
-      hasilEkspor().length + ' dari ' + total + ' pegawai akan diekspor.';
+    var el = document.getElementById('infoEkspor');
+    if (!el) return;
+    var terlihat = 0;
+    ((dataRekap && dataRekap.hasil) || []).forEach(function (dx) {
+      if (bidangEkspor.has(dx.pegawai.bidang || '')) terlihat++;
+    });
+    el.textContent = hasilEkspor().length + ' dari ' + terlihat +
+      ' pegawai pada bidang terpilih akan diekspor.';
   }
 
   function renderCekBidangEkspor() {
@@ -2098,24 +2095,47 @@
     }).join('') || '<span class="catatan">Belum ada data bidang.</span>';
   }
 
-  function renderCekPegawaiEkspor() {
-    var cari = (document.getElementById('cariPegawaiEkspor').value || '').trim().toLowerCase();
-    var daftar = ((dataRekap && dataRekap.hasil) || []).filter(function (dx) {
-      if (!bidangEkspor.has(dx.pegawai.bidang || '')) return false;
-      if (!cari) return true;
-      return (String(dx.pegawai.nama) + ' ' + String(dx.pegawai.nip)).toLowerCase().indexOf(cari) > -1;
-    });
-    document.getElementById('cekEksporPegawai').innerHTML = daftar.map(function (dx) {
-      return '<label><input type="checkbox" data-nip="' + esc(dx.pegawai.nip) + '"' +
-        (pegawaiEkspor.has(dx.pegawai.nip) ? ' checked' : '') + '> <span>' + esc(dx.pegawai.nama) +
-        '<br><span class="catatan">' + esc(dx.pegawai.bidang) + '</span></span></label>';
-    }).join('') || '<span class="catatan">Tidak ada pegawai pada bidang yang dipilih.</span>';
+  // Kotak centang di samping tanda panah memilih pegawai yang ikut diekspor.
+  function renderTabelRekap() {
+    var kotak = document.getElementById('tabelRekap');
+    if (!dataRekap || !dataRekap.hasil) { kotak.innerHTML = ''; return; }
+    var baris = (dataRekap.hasil || []).map(function (dx, i) {
+      if (!bidangEkspor.has(dx.pegawai.bidang || '')) return '';
+      var h = dx.hasil || {};
+      var um = h.uangMakan || {};
+      var nip = dx.pegawai.nip;
+      return '<tr><td><input type="checkbox" class="cek-pegawai-ekspor" data-nip-ekspor="' + esc(nip) + '"' +
+          (pegawaiEkspor.has(nip) ? ' checked' : '') + ' title="Pilih ' + esc(dx.pegawai.nama) +
+          ' untuk diekspor"> <button type="button" class="kecil panah-potongan" data-potongan="' + i +
+          '" aria-expanded="false" title="Lihat rincian sebab potongan">▸</button> ' +
+          esc(dx.pegawai.nama) + '<br><span class="catatan" style="margin-left:52px">' +
+          esc(nip) + '</span></td>' +
+        '<td data-label="Bidang">' + esc(dx.pegawai.bidang) + '</td>' +
+        '<td data-label="Status">' + esc(dx.status.replace(/_/g, ' ')) + '</td>' +
+        '<td class="num" data-label="Hadir">' + (h.hariMasuk != null ? h.hariMasuk : '—') + '</td>' +
+        '<td class="num" data-label="Tukin bersih">' + rupiah(h.tukinBersih) + '</td>' +
+        '<td class="num" data-label="Uang makan">' + rupiah(um.bersih) + '</td></tr>' +
+        '<tr class="baris-potongan" id="potonganRekap-' + i + '" style="display:none">' +
+        '<td colspan="6">' + htmlRincianPotongan(dx) + '</td></tr>';
+    }).filter(function (x) { return x; });
+
+    var kepala = '<div class="pilih-pegawai">' +
+      '<span><b>Pilih pegawai</b> <span class="catatan">(<a href="#" id="linkPegawaiSemua">semua</a>' +
+      ' &middot; <a href="#" id="linkPegawaiKosong">kosongkan</a>)</span></span>' +
+      '<span class="catatan" id="infoEkspor"></span></div>';
+
+    kotak.innerHTML = (dataRekap.infoStatus || '') + kepala +
+      (baris.length
+        ? '<table><thead><tr><th>Pegawai</th><th>Bidang</th><th>Status</th>' +
+          '<th class="num">Hadir</th><th class="num">Tukin bersih</th>' +
+          '<th class="num">Uang makan</th></tr></thead><tbody>' + baris.join('') + '</tbody></table>'
+        : '<p class="catatan">Centang minimal satu bidang untuk menampilkan pegawai.</p>');
     tulisInfoEkspor();
   }
 
   function renderCekEkspor() {
     renderCekBidangEkspor();
-    renderCekPegawaiEkspor();
+    renderTabelRekap();
   }
 
   function siapkanPilihanEkspor() {
@@ -2129,7 +2149,7 @@
     var b = e.target;
     if (!b.dataset.bidang) return;
     if (b.checked) bidangEkspor.add(b.dataset.bidang); else bidangEkspor.delete(b.dataset.bidang);
-    renderCekPegawaiEkspor();
+    renderTabelRekap();
   });
 
   // Tombol "⬇ 3 berkas" per bidang: hanya mengunduh, tidak mengubah centang.
@@ -2141,14 +2161,39 @@
     setTimeout(function () { tombol.disabled = false; }, 3000);
   });
 
-  document.getElementById('cekEksporPegawai').addEventListener('change', function (e) {
+  // Delegasi: kotak centang pegawai dan tautan semua/kosongkan dibuat ulang
+  // setiap tabel digambar, jadi pendengar dipasang di wadahnya.
+  document.getElementById('tabelRekap').addEventListener('change', function (e) {
     var b = e.target;
-    if (!b.dataset.nip) return;
-    if (b.checked) pegawaiEkspor.add(b.dataset.nip); else pegawaiEkspor.delete(b.dataset.nip);
+    if (!b.dataset || !b.dataset.nipEkspor) return;
+    if (b.checked) pegawaiEkspor.add(b.dataset.nipEkspor); else pegawaiEkspor.delete(b.dataset.nipEkspor);
     tulisInfoEkspor();
   });
 
-  document.getElementById('cariPegawaiEkspor').addEventListener('input', renderCekPegawaiEkspor);
+  document.getElementById('tabelRekap').addEventListener('click', function (e) {
+    var tautan = e.target.closest && e.target.closest('a[id^="linkPegawai"]');
+    if (tautan) {
+      e.preventDefault();
+      var nips = ((dataRekap && dataRekap.hasil) || []).filter(function (dx) {
+        return bidangEkspor.has(dx.pegawai.bidang || '');
+      }).map(function (dx) { return dx.pegawai.nip; });
+      if (tautan.id === 'linkPegawaiSemua') {
+        nips.forEach(function (nip) { pegawaiEkspor.add(nip); });
+      } else {
+        nips.forEach(function (nip) { pegawaiEkspor.delete(nip); });
+      }
+      renderTabelRekap();
+      return;
+    }
+    var tombol = e.target.closest && e.target.closest('button[data-potongan]');
+    if (!tombol) return;
+    var barisDetail = document.getElementById('potonganRekap-' + tombol.dataset.potongan);
+    if (!barisDetail) return;
+    var buka = barisDetail.style.display === 'none';
+    barisDetail.style.display = buka ? '' : 'none';
+    tombol.textContent = buka ? '▾' : '▸';
+    tombol.setAttribute('aria-expanded', buka ? 'true' : 'false');
+  });
 
   document.getElementById('linkBidangSemua').addEventListener('click', function (e) {
     e.preventDefault();
@@ -2160,20 +2205,6 @@
     e.preventDefault();
     bidangEkspor = new Set();
     renderCekEkspor();
-  });
-
-  document.getElementById('linkPegawaiSemua').addEventListener('click', function (e) {
-    e.preventDefault();
-    pegawaiEkspor = new Set(((dataRekap && dataRekap.hasil) || []).filter(function (dx) {
-      return bidangEkspor.has(dx.pegawai.bidang || '');
-    }).map(function (dx) { return dx.pegawai.nip; }));
-    renderCekPegawaiEkspor();
-  });
-
-  document.getElementById('linkPegawaiKosong').addEventListener('click', function (e) {
-    e.preventDefault();
-    pegawaiEkspor = new Set();
-    renderCekPegawaiEkspor();
   });
 
   function muatRekap() {
@@ -2279,37 +2310,8 @@
           '</div>';
       }
 
-      var sus = (typeof TukinTool !== 'undefined' && dataRekap.hasil)
-        ? null : Rekap.susun(d, tahun, bulan);
-
-      document.getElementById('tabelRekap').innerHTML = infoStatus +
-        '<table><thead><tr><th>Pegawai</th><th>Bidang</th><th>Status</th>' +
-        '<th class="num">Hadir</th><th class="num">Tukin bersih</th>' +
-        '<th class="num">Uang makan</th></tr></thead><tbody>' +
-        (dataRekap.hasil || []).map(function (dx, i) {
-          var h = dx.hasil || {};
-          var um = h.uangMakan || {};
-          return '<tr><td><button type="button" class="kecil panah-potongan" data-potongan="' + i +
-              '" aria-expanded="false" title="Lihat rincian sebab potongan">▸</button> ' +
-              esc(dx.pegawai.nama) + '<br><span class="catatan">' + esc(dx.pegawai.nip) + '</span></td>' +
-            '<td data-label="Bidang">' + esc(dx.pegawai.bidang) + '</td>' +
-            '<td data-label="Status">' + esc(dx.status.replace(/_/g, ' ')) + '</td>' +
-            '<td class="num" data-label="Hadir">' + (h.hariMasuk != null ? h.hariMasuk : '—') + '</td>' +
-            '<td class="num" data-label="Tukin bersih">' + rupiah(h.tukinBersih) + '</td>' +
-            '<td class="num" data-label="Uang makan">' + rupiah(um.bersih) + '</td></tr>' +
-            '<tr class="baris-potongan" id="potonganRekap-' + i + '" style="display:none">' +
-            '<td colspan="6">' + htmlRincianPotongan(dx) + '</td></tr>';
-        }).join('') + '</tbody></table>';
-
-      document.getElementById('tabelRekap').querySelectorAll('button[data-potongan]').forEach(function (b) {
-        b.addEventListener('click', function () {
-          var barisDetail = document.getElementById('potonganRekap-' + b.dataset.potongan);
-          var buka = barisDetail.style.display === 'none';
-          barisDetail.style.display = buka ? '' : 'none';
-          b.textContent = buka ? '▾' : '▸';
-          b.setAttribute('aria-expanded', buka ? 'true' : 'false');
-        });
-      });
+      dataRekap.infoStatus = infoStatus;
+      renderTabelRekap();
     })
     .catch(function (e) {
       catatRekap('Gagal memuat: ' + esc(e.message), '#b42318');

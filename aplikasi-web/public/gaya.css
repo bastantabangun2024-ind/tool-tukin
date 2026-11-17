@@ -878,7 +878,25 @@ button.item-legenda:focus-visible { outline: 2px solid rgba(37, 99, 235, .45); o
 
 .pilihan-ekspor { display: flex; flex-direction: column; gap: 16px; }
 .pilihan-ekspor > div { min-width: 0; }
-.pilihan-ekspor #cekEksporPegawai { max-height: 260px; }
+
+/* Baris kendali pegawai di atas tabel rekap */
+.pilih-pegawai {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 4px 0 10px;
+  font-size: 13px;
+}
+.pilih-pegawai #infoEkspor { margin: 0; }
+/* Kotak centang pegawai di samping tanda panah rincian */
+.cek-pegawai-ekspor {
+  width: auto;
+  margin: 0 2px 0 0;
+  vertical-align: middle;
+  cursor: pointer;
+}
 
 .cek-daftar {
   border: 1px solid var(--garis);
