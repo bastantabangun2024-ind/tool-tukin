@@ -2103,9 +2103,12 @@
   function renderCekBidangEkspor() {
     document.getElementById('cekEksporBidang').innerHTML = daftarBidangEkspor().map(function (b) {
       var nips = nipBidang(b);
-      var semua = nips.length > 0 && nips.every(function (nip) { return pegawaiEkspor.has(nip); });
+      var dipilih = nips.filter(function (nip) { return pegawaiEkspor.has(nip); }).length;
+      var semua = nips.length > 0 && dipilih === nips.length;
       return '<div class="cek-baris"><label><input type="checkbox" data-bidang="' + esc(b) + '"' +
-        (bidangEkspor.has(b) ? ' checked' : '') + '> <span>' + esc(b) + '</span></label>' +
+        (bidangEkspor.has(b) ? ' checked' : '') + '> <span>' + esc(b) +
+        ' <span class="catatan hitung-bidang" title="' + dipilih + ' dari ' + nips.length +
+        ' pegawai bidang ini dicentang">' + dipilih + '/' + nips.length + '</span></span></label>' +
         '<span class="aksi-cek-baris">' +
         '<button type="button" class="kecil pilih-cepat" data-pilih-bidang="' + esc(b) + '" ' +
         'title="' + (semua ? 'Kosongkan centang pegawai bidang ini' : 'Centang semua pegawai bidang ini') +
@@ -2208,6 +2211,8 @@
     var b = e.target;
     if (!b.dataset || !b.dataset.nipEkspor) return;
     if (b.checked) pegawaiEkspor.add(b.dataset.nipEkspor); else pegawaiEkspor.delete(b.dataset.nipEkspor);
+    // Hitungan "/" di samping nama bidang ikut diperbarui.
+    renderCekBidangEkspor();
     tulisInfoEkspor();
   });
 
@@ -2481,6 +2486,17 @@
 
   document.getElementById('btnMuatRekap').addEventListener('click', muatRekap);
   document.getElementById('btnResetRekap').addEventListener('click', function () {
+    // Bila data sudah dimuat, Reset hanya mengembalikan pilihan ke awal:
+    // semua bidang dan semua pegawai dicentang, pencarian dikosongkan.
+    if (dataRekap && dataRekap.hasil) {
+      cariEkspor = '';
+      document.getElementById('cariPegawaiEkspor').value = '';
+      bidangEkspor = new Set(daftarBidangEkspor());
+      pegawaiEkspor = new Set(dataRekap.hasil.map(function (dx) { return dx.pegawai.nip; }));
+      renderCekEkspor();
+      catatRekap('Pilihan direset: semua bidang dan semua pegawai dicentang.', '#475569');
+      return;
+    }
     dataRekap = null;
     cariEkspor = '';
     document.getElementById('cariPegawaiEkspor').value = '';

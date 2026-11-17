@@ -82,8 +82,11 @@ ditambahkan pada 16 November 2026.*
    - Tombol **Rekap Kehadiran**, **Rekap Tukin**, **Rekap Uang Makan**, dan **Ketiga berkas**
      mengikuti centang tersebut; tautan *semua · kosongkan* pegawai pindah ke atas tabel.
    - Tiap bidang punya tombol **✓ semua** / **✕ kosong** untuk memilih atau mengosongkan semua
-     pegawai bidang itu sekaligus, dan kolom **pencarian nama/NIP** di atas tabel menyaring baris
-     tanpa menghidupkan kembali bagian pilihan pegawai yang terpisah.
+     pegawai bidang itu sekaligus, plus ringkasan **`x/y`** pegawai tercentang di samping nama
+     bidang, dan kolom **pencarian nama/NIP** di atas tabel menyaring baris tanpa menghidupkan
+     kembali bagian pilihan pegawai yang terpisah.
+   - Tombol **Reset** mengembalikan centang pegawai (dan bidang) ke **semua** tanpa perlu memuat
+     ulang data.
    - Detail teknis ada di `aplikasi-web/README.md` bagian **Perubahan 17 November 2026**.
 
 ### Alamat & akun

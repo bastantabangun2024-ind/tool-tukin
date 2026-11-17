@@ -31,6 +31,12 @@ Tab **Ekspor Rekap** di panel admin sekarang memilih pegawai langsung dari tabel
 - Tiap baris bidang punya tombol **✓ semua** (berubah jadi **✕ kosong** bila seluruh pegawai
   bidang itu sudah dicentang) untuk memilih/mengosongkan semua pegawai bidang tersebut sekaligus.
   Memilih semua juga otomatis mencentang bidangnya agar baris langsung tampil di tabel.
+- Di samping nama bidang tampil ringkasan **`x/y`** = pegawai bidang itu yang dicentang dari
+  total pegawainya (mis. `3/12`, dengan tooltip “3 dari 12 pegawai bidang ini dicentang”).
+  Angka ini ikut berubah saat centang pegawai di tabel diubah.
+- Tombol **Reset** kini juga mengembalikan centang pegawai ke **semua**: bila data sudah dimuat,
+  Reset mencentang lagi semua bidang dan semua pegawai serta mengosongkan pencarian tanpa perlu
+  memuat ulang; bila data belum dimuat, Reset tetap mengosongkan tampilan seperti sebelumnya.
 - Tombol **⬇ 3 berkas** per bidang tetap ada dan tetap mengunduh seluruh pegawai bidang itu
   tanpa mengubah centang.
 - Tanda panah rincian potongan kini memakai delegasi klik pada wadah tabel, jadi tetap berfungsi
@@ -39,8 +45,8 @@ Tab **Ekspor Rekap** di panel admin sekarang memilih pegawai langsung dari tabel
 Berkas yang berubah: `aplikasi-web/public/admin.html` (HTML pilihan ekspor + fungsi
 `renderTabelRekap()`, `renderCekBidangEkspor()`, `nipBidang()`, `pilihSemuaPegawai()`,
 `tulisInfoEkspor()`, dan pendengar delegasi) dan `aplikasi-web/public/gaya.css`
-(`.pilih-pegawai`, `.pilih-cepat`, `.aksi-cek-baris`, `.cek-pegawai-ekspor`; aturan
-`#cekEksporPegawai` dihapus). Pengujian: sintaks seluruh JS inline `admin.html` lolos
+(`.pilih-pegawai`, `.pilih-cepat`, `.aksi-cek-baris`, `.hitung-bidang`, `.cek-pegawai-ekspor`;
+aturan `#cekEksporPegawai` dihapus). Pengujian: sintaks seluruh JS inline `admin.html` lolos
 (`new Function`), tidak ada rujukan tersisa ke id lama, dan HTML produksi sudah memuat
 penanda baru.
 

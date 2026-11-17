@@ -912,6 +912,7 @@ button.item-legenda:focus-visible { outline: 2px solid rgba(37, 99, 235, .45); o
 .cek-daftar input[type="checkbox"] { width: auto; flex: 0 0 auto; margin: 2px 0 0; }
 .cek-daftar .catatan { margin: 0; }
 .cek-baris { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.hitung-bidang { margin-left: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .cek-baris label { margin: 4px 0; }
 .aksi-cek-baris { display: flex; gap: 6px; flex: 0 0 auto; }
 .unduh-cepat, .pilih-cepat { padding: 3px 8px; font-size: 11.5px; white-space: nowrap; flex: 0 0 auto; }
