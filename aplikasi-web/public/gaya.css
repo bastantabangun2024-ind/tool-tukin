@@ -496,6 +496,8 @@ button.kecil:hover { background: var(--biru-muda); border-color: #b9cdf0; color:
 button.kecil:disabled { opacity: .6; cursor: progress; }
 button.kecil.isi { background: var(--royal); border-color: var(--royal); color: #fff; }
 button.kecil.isi:hover { filter: brightness(1.07); color: #fff; }
+button.kecil.bahaya { background: #fef3f2; border-color: #f3c2bd; color: var(--merah); }
+button.kecil.bahaya:hover { background: #fde8e6; border-color: var(--merah); color: var(--merah); }
 
 a.tombol-wa {
   display: inline-block;

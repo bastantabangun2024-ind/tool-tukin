@@ -242,7 +242,9 @@
   <section class="kartu tersembunyi" id="tab-unggah">
     <h1>Pengajuan &amp; Kehadiran</h1>
     <p class="sub">Pantau siapa saja yang sudah dan belum mengunggah presensi bulanan. Keputusan
-      verifikasi pengajuan dilakukan di menu <b>Perlu Tindakan</b>.</p>
+      verifikasi pengajuan dilakukan di menu <b>Perlu Tindakan</b>. Data yang sudah disetujui dapat
+      dibatalkan dengan tombol <b>Batalkan</b> — presensi &amp; rekap periode itu ikut terhapus agar
+      bisa diimpor ulang dari Drive.</p>
 
     <div class="baris" style="align-items:flex-end;margin-bottom:14px">
       <div style="flex:0 0 150px">
@@ -822,6 +824,11 @@
         aksi = '<button class="kecil" data-reset="' + x.id + '">Reset</button>';
       } else if (x.status === 'perlu_perbaikan') {
         aksi = '<button class="kecil" data-reset="' + x.id + '">Reset</button>';
+      } else if (x.status === 'disetujui') {
+        // Data yang sudah disetujui dikunci; tombol ini membatalkan persetujuan
+        // sekaligus menghapus presensi & rekap periodenya agar bisa diimpor ulang.
+        aksi = '<button class="kecil bahaya" data-reset="' + x.id + '" data-disetujui="1"' +
+          ' title="Batalkan persetujuan dan hapus data periode ini">Batalkan</button>';
       }
       var bidangNama = (x.pegawai && x.pegawai.bidang && x.pegawai.bidang.nama) || '';
       var idRincian = 'rincianUnggahAktif-' + i;
@@ -890,7 +897,19 @@
     tabel.querySelectorAll('button[data-reset]').forEach(function (b) {
       b.addEventListener('click', function () {
         var id = b.dataset.reset;
-        if (!confirm('Reset (hapus) pengajuan ini? Data presensi & rekapnya ikut terhapus, dan penyuluh kembali ke daftar belum mengunggah.')) return;
+        if (b.dataset.disetujui === '1') {
+          var baris = b.closest('tr');
+          var namaPegawai = (baris && baris.querySelector('b') && baris.querySelector('b').textContent) || 'pegawai ini';
+          var ketik = prompt('Batalkan persetujuan ' + namaPegawai + '?\n\n' +
+            'Pengajuan yang sudah DISETUJUI akan dihapus bersama data presensi dan ketiga rekap periodenya. ' +
+            'Pegawai kembali ke daftar Belum Mengunggah dan data bisa diimpor ulang dari Drive.\n\n' +
+            'Ketik HAPUS untuk melanjutkan:');
+          if (ketik === null) return;
+          if (ketik.trim().toUpperCase() !== 'HAPUS') {
+            alert('Dibatalkan — kata kunci tidak cocok. Tidak ada data yang dihapus.');
+            return;
+          }
+        } else if (!confirm('Reset (hapus) pengajuan ini? Data presensi & rekapnya ikut terhapus, dan penyuluh kembali ke daftar belum mengunggah.')) return;
         b.disabled = true;
         api('pengajuan_tukin?id=eq.' + id, { method: 'DELETE' }).then(function (r) {
           if (!r.ok) { alert('Gagal mereset'); b.disabled = false; return; }
