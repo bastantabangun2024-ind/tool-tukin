@@ -21,19 +21,28 @@ Tab **Ekspor Rekap** di panel admin sekarang memilih pegawai langsung dari tabel
   **kotak centang** penanda pegawai yang ikut diekspor. Tombol **Rekap Kehadiran**,
   **Rekap Tukin**, **Rekap Uang Makan**, dan **Ketiga berkas** hanya mengekspor pegawai yang
   dicentang — dengan syarat bidangnya juga dicentang.
-- Tautan **semua · kosongkan** untuk pegawai dipindah ke baris kendali di atas tabel dan berlaku
+- Tautan **semua · kosongkan** untuk pegawai ada di baris kendali di atas tabel dan berlaku
   untuk pegawai pada bidang yang sedang dicentang. Teks info di sebelahnya menghitung
   “x dari y pegawai pada bidang terpilih akan diekspor”.
+- **Kolom pencarian nama/NIP** ada di baris kendali yang sama dan hanya menyaring baris tabel;
+  pilihan bidang dan centang pegawai tidak berubah. Bila tidak ada yang cocok, tabel menampilkan
+  “Tidak ada pegawai yang cocok dengan pencarian …”. Pencarian tidak menghidupkan kembali bagian
+  pilihan pegawai yang terpisah.
+- Tiap baris bidang punya tombol **✓ semua** (berubah jadi **✕ kosong** bila seluruh pegawai
+  bidang itu sudah dicentang) untuk memilih/mengosongkan semua pegawai bidang tersebut sekaligus.
+  Memilih semua juga otomatis mencentang bidangnya agar baris langsung tampil di tabel.
 - Tombol **⬇ 3 berkas** per bidang tetap ada dan tetap mengunduh seluruh pegawai bidang itu
   tanpa mengubah centang.
 - Tanda panah rincian potongan kini memakai delegasi klik pada wadah tabel, jadi tetap berfungsi
   setelah tabel digambar ulang ketika bidang dicentang atau dikosongkan.
 
 Berkas yang berubah: `aplikasi-web/public/admin.html` (HTML pilihan ekspor + fungsi
-`renderTabelRekap()`, `tulisInfoEkspor()`, dan pendengar delegasi) dan
-`aplikasi-web/public/gaya.css` (`.pilih-pegawai`, `.cek-pegawai-ekspor`; aturan
+`renderTabelRekap()`, `renderCekBidangEkspor()`, `nipBidang()`, `pilihSemuaPegawai()`,
+`tulisInfoEkspor()`, dan pendengar delegasi) dan `aplikasi-web/public/gaya.css`
+(`.pilih-pegawai`, `.pilih-cepat`, `.aksi-cek-baris`, `.cek-pegawai-ekspor`; aturan
 `#cekEksporPegawai` dihapus). Pengujian: sintaks seluruh JS inline `admin.html` lolos
-(`new Function`), tidak ada lagi rujukan ke `cariPegawaiEkspor` / `cekEksporPegawai`.
+(`new Function`), tidak ada rujukan tersisa ke id lama, dan HTML produksi sudah memuat
+penanda baru.
 
 ## Perubahan 16 November 2026 — panduan PDF & usulan nominal
 

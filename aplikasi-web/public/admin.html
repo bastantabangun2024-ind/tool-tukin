@@ -531,6 +531,12 @@
       <div><button data-ekspor="uangMakan">Rekap Uang Makan (.xlsx)</button></div>
       <div><button data-ekspor="semua">Ketiga berkas</button></div>
     </div>
+    <div class="pilih-pegawai" id="pilihPegawaiEkspor" style="display:none">
+      <input id="cariPegawaiEkspor" type="search" autocomplete="off" placeholder="Cari nama atau NIP…">
+      <span><b>Pilih pegawai</b> <span class="catatan">(<a href="#" id="linkPegawaiSemua">semua</a>
+        &middot; <a href="#" id="linkPegawaiKosong">kosongkan</a>)</span></span>
+      <span class="catatan" id="infoEkspor"></span>
+    </div>
     <div id="tabelRekap" class="tabel-kartu"></div>
   </section>
 </main>
@@ -2058,6 +2064,7 @@
   // --- pilihan ekspor: bidang & pegawai ------------------------------------
   var bidangEkspor = new Set();   // nama bidang yang dicentang
   var pegawaiEkspor = new Set();  // nip pegawai yang dicentang
+  var cariEkspor = '';            // kata kunci pencarian nama/NIP di tabel rekap
 
   function daftarBidangEkspor() {
     var set = new Set();
@@ -2086,12 +2093,26 @@
       ' pegawai pada bidang terpilih akan diekspor.';
   }
 
+  // Semua NIP pada satu bidang — dipakai tombol centang cepat per bidang.
+  function nipBidang(bidang) {
+    return ((dataRekap && dataRekap.hasil) || []).filter(function (dx) {
+      return (dx.pegawai.bidang || '') === bidang;
+    }).map(function (dx) { return dx.pegawai.nip; });
+  }
+
   function renderCekBidangEkspor() {
     document.getElementById('cekEksporBidang').innerHTML = daftarBidangEkspor().map(function (b) {
+      var nips = nipBidang(b);
+      var semua = nips.length > 0 && nips.every(function (nip) { return pegawaiEkspor.has(nip); });
       return '<div class="cek-baris"><label><input type="checkbox" data-bidang="' + esc(b) + '"' +
         (bidangEkspor.has(b) ? ' checked' : '') + '> <span>' + esc(b) + '</span></label>' +
+        '<span class="aksi-cek-baris">' +
+        '<button type="button" class="kecil pilih-cepat" data-pilih-bidang="' + esc(b) + '" ' +
+        'title="' + (semua ? 'Kosongkan centang pegawai bidang ini' : 'Centang semua pegawai bidang ini') +
+        '">' + (semua ? '✕ kosong' : '✓ semua') + '</button>' +
         '<button type="button" class="kecil unduh-cepat" data-unduh-bidang="' + esc(b) + '" ' +
-        'title="Unduh kehadiran, tukin, dan uang makan bidang ini sekaligus">⬇ 3 berkas</button></div>';
+        'title="Unduh kehadiran, tukin, dan uang makan bidang ini sekaligus">⬇ 3 berkas</button>' +
+        '</span></div>';
     }).join('') || '<span class="catatan">Belum ada data bidang.</span>';
   }
 
@@ -2101,6 +2122,8 @@
     if (!dataRekap || !dataRekap.hasil) { kotak.innerHTML = ''; return; }
     var baris = (dataRekap.hasil || []).map(function (dx, i) {
       if (!bidangEkspor.has(dx.pegawai.bidang || '')) return '';
+      if (cariEkspor && (String(dx.pegawai.nama) + ' ' + String(dx.pegawai.nip))
+        .toLowerCase().indexOf(cariEkspor) === -1) return '';
       var h = dx.hasil || {};
       var um = h.uangMakan || {};
       var nip = dx.pegawai.nip;
@@ -2119,17 +2142,17 @@
         '<td colspan="6">' + htmlRincianPotongan(dx) + '</td></tr>';
     }).filter(function (x) { return x; });
 
-    var kepala = '<div class="pilih-pegawai">' +
-      '<span><b>Pilih pegawai</b> <span class="catatan">(<a href="#" id="linkPegawaiSemua">semua</a>' +
-      ' &middot; <a href="#" id="linkPegawaiKosong">kosongkan</a>)</span></span>' +
-      '<span class="catatan" id="infoEkspor"></span></div>';
+    var kosong = cariEkspor
+      ? 'Tidak ada pegawai yang cocok dengan pencarian “' + esc(cariEkspor) + '”.'
+      : 'Centang minimal satu bidang untuk menampilkan pegawai.';
 
-    kotak.innerHTML = (dataRekap.infoStatus || '') + kepala +
+    kotak.innerHTML = (dataRekap.infoStatus || '') +
       (baris.length
         ? '<table><thead><tr><th>Pegawai</th><th>Bidang</th><th>Status</th>' +
           '<th class="num">Hadir</th><th class="num">Tukin bersih</th>' +
           '<th class="num">Uang makan</th></tr></thead><tbody>' + baris.join('') + '</tbody></table>'
-        : '<p class="catatan">Centang minimal satu bidang untuk menampilkan pegawai.</p>');
+        : '<p class="catatan">' + kosong + '</p>');
+    document.getElementById('pilihPegawaiEkspor').style.display = '';
     tulisInfoEkspor();
   }
 
@@ -2152,17 +2175,35 @@
     renderTabelRekap();
   });
 
-  // Tombol "⬇ 3 berkas" per bidang: hanya mengunduh, tidak mengubah centang.
   document.getElementById('cekEksporBidang').addEventListener('click', function (e) {
-    var tombol = e.target.closest && e.target.closest('button[data-unduh-bidang]');
+    if (!e.target.closest) return;
+
+    // Centang cepat: satu klik memilih (atau mengosongkan) semua pegawai bidang ini.
+    var pilih = e.target.closest('button[data-pilih-bidang]');
+    if (pilih) {
+      var bidang = pilih.dataset.pilihBidang;
+      var nips = nipBidang(bidang);
+      var sudahSemua = nips.length > 0 && nips.every(function (nip) { return pegawaiEkspor.has(nip); });
+      nips.forEach(function (nip) {
+        if (sudahSemua) pegawaiEkspor.delete(nip); else pegawaiEkspor.add(nip);
+      });
+      // Bila semua pegawai dipilih, pastikan bidangnya ikut dicentang agar
+      // barisnya tampil di tabel dan ikut diekspor.
+      if (!sudahSemua) bidangEkspor.add(bidang);
+      renderCekEkspor();
+      return;
+    }
+
+    // Tombol "⬇ 3 berkas" per bidang: hanya mengunduh, tidak mengubah centang.
+    var tombol = e.target.closest('button[data-unduh-bidang]');
     if (!tombol) return;
     tombol.disabled = true;
     unduhCepatBidang(tombol.dataset.unduhBidang);
     setTimeout(function () { tombol.disabled = false; }, 3000);
   });
 
-  // Delegasi: kotak centang pegawai dan tautan semua/kosongkan dibuat ulang
-  // setiap tabel digambar, jadi pendengar dipasang di wadahnya.
+  // Delegasi: kotak centang pegawai dibuat ulang setiap tabel digambar,
+  // jadi pendengar dipasang di wadahnya.
   document.getElementById('tabelRekap').addEventListener('change', function (e) {
     var b = e.target;
     if (!b.dataset || !b.dataset.nipEkspor) return;
@@ -2170,22 +2211,33 @@
     tulisInfoEkspor();
   });
 
+  document.getElementById('cariPegawaiEkspor').addEventListener('input', function () {
+    cariEkspor = (this.value || '').trim().toLowerCase();
+    renderTabelRekap();
+  });
+
+  function pilihSemuaPegawai(centang) {
+    ((dataRekap && dataRekap.hasil) || []).filter(function (dx) {
+      return bidangEkspor.has(dx.pegawai.bidang || '');
+    }).forEach(function (dx) {
+      if (centang) pegawaiEkspor.add(dx.pegawai.nip); else pegawaiEkspor.delete(dx.pegawai.nip);
+    });
+    renderTabelRekap();
+  }
+
+  document.getElementById('linkPegawaiSemua').addEventListener('click', function (e) {
+    e.preventDefault();
+    pilihSemuaPegawai(true);
+  });
+
+  document.getElementById('linkPegawaiKosong').addEventListener('click', function (e) {
+    e.preventDefault();
+    pilihSemuaPegawai(false);
+  });
+
   document.getElementById('tabelRekap').addEventListener('click', function (e) {
-    var tautan = e.target.closest && e.target.closest('a[id^="linkPegawai"]');
-    if (tautan) {
-      e.preventDefault();
-      var nips = ((dataRekap && dataRekap.hasil) || []).filter(function (dx) {
-        return bidangEkspor.has(dx.pegawai.bidang || '');
-      }).map(function (dx) { return dx.pegawai.nip; });
-      if (tautan.id === 'linkPegawaiSemua') {
-        nips.forEach(function (nip) { pegawaiEkspor.add(nip); });
-      } else {
-        nips.forEach(function (nip) { pegawaiEkspor.delete(nip); });
-      }
-      renderTabelRekap();
-      return;
-    }
-    var tombol = e.target.closest && e.target.closest('button[data-potongan]');
+    if (!e.target.closest) return;
+    var tombol = e.target.closest('button[data-potongan]');
     if (!tombol) return;
     var barisDetail = document.getElementById('potonganRekap-' + tombol.dataset.potongan);
     if (!barisDetail) return;
@@ -2211,8 +2263,11 @@
     var bulan = Number(document.getElementById('bulanRekap').value);
     var tahun = Number(document.getElementById('tahunRekap').value);
     dataRekap = null;
+    cariEkspor = '';
+    document.getElementById('cariPegawaiEkspor').value = '';
     document.getElementById('tombolRekap').style.display = 'none';
     document.getElementById('kotakEkspor').style.display = 'none';
+    document.getElementById('pilihPegawaiEkspor').style.display = 'none';
     document.getElementById('tabelRekap').innerHTML = '';
     catatRekap('Memuat data ' + Rekap.labelBulan(bulan) + ' ' + tahun + '…');
 
@@ -2427,8 +2482,11 @@
   document.getElementById('btnMuatRekap').addEventListener('click', muatRekap);
   document.getElementById('btnResetRekap').addEventListener('click', function () {
     dataRekap = null;
+    cariEkspor = '';
+    document.getElementById('cariPegawaiEkspor').value = '';
     document.getElementById('tombolRekap').style.display = 'none';
     document.getElementById('kotakEkspor').style.display = 'none';
+    document.getElementById('pilihPegawaiEkspor').style.display = 'none';
     document.getElementById('tabelRekap').innerHTML = '';
     catatRekap('Tampilan direset. Tekan Muat data untuk memuat ulang.', '#475569');
   });
