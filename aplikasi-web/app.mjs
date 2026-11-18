@@ -479,40 +479,12 @@ function gabungHariSama(hariList) {
 }
 
 // Hitung satu pegawai dari data presensi, lalu simpan pengajuan + rincian + rekap.
-async function simpanPengajuan(p, hari, tahun, bulan, sumberFile) {
+// opsi.simpan === false dipakai halaman unggah untuk menampilkan hasil lebih dulu;
+// pengajuan baru ditulis setelah pegawai mencentang dan mengonfirmasi.
+async function simpanPengajuan(p, hari, tahun, bulan, sumberFile, opsi = {}) {
+  const simpan = opsi.simpan !== false;
   const hariBersih = gabungHariSama(hari);
   const hasil = Tukin.prosesSatuOrang(objekPegawai(p), hariBersih, {});
-
-  const pengajuan = await db('pengajuan_tukin?on_conflict=pegawai_id,tahun,bulan', {
-    method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
-    body: JSON.stringify({
-      pegawai_id: p.id,
-      bidang_id: p.bidang_id,
-      tahun,
-      bulan,
-      status: 'menunggu_verifikasi',
-      dikirim_pada: new Date().toISOString(),
-      aturan_versi: 1,
-      aturan_snapshot: {
-        tk: 3,
-        tanpa_presensi: 1.5,
-        tangga: [0.5, 1, 1.25, 1.5],
-        batas: 100,
-        ...(sumberFile ? { sumber_file: sumberFile } : {}),
-      },
-    }),
-  });
-  const idPengajuan = pengajuan[0].id;
-
-  // Bersihkan pengajuan duplikat untuk pegawai & periode yang sama (jika ada),
-  // agar sisa baris presensi/rekap milik pengajuan lama ikut terhapus (cascade).
-  await db(`pengajuan_tukin?pegawai_id=eq.${p.id}&tahun=eq.${tahun}&bulan=eq.${bulan}&id=neq.${idPengajuan}`, { method: 'DELETE' });
-
-  await db(`presensi?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
-  await db(`rekap_kehadiran?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
-  await db(`rekap_tukin?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
-  await db(`rekap_uang_makan?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
 
   const rincianMap = new Map();
   for (const d of hasil.perDay) {
@@ -528,7 +500,6 @@ async function simpanPengajuan(p, hari, tahun, bulan, sumberFile) {
       kode = d.telatPct ? 'telat' : (d.pswPct ? 'psw' : null);
     }
     const item = {
-      pengajuan_id: idPengajuan,
       pegawai_id: p.id,
       tanggal,
       jenis,
@@ -560,90 +531,125 @@ async function simpanPengajuan(p, hari, tahun, bulan, sumberFile) {
     }
   }
   const rincian = Array.from(rincianMap.values());
+  let idPengajuan = null;
 
-  if (rincian.length) {
-    const tulisPresensi = async () => {
-      await db('presensi?on_conflict=pengajuan_id,tanggal', {
-        method: 'POST',
-        headers: { Prefer: 'resolution=merge-duplicates' },
-        body: JSON.stringify(rincian),
-      });
-    };
-    try {
-      await tulisPresensi();
-    } catch (e) {
-      // Jika masih ada baris duplikat (mis. sisa dari run sebelumnya), hapus lalu coba lagi.
-      if (/23505|duplicate key/i.test(String(e && e.message))) {
-        await db(`presensi?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
+  if (simpan) {
+    const pengajuan = await db('pengajuan_tukin?on_conflict=pegawai_id,tahun,bulan', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({
+        pegawai_id: p.id,
+        bidang_id: p.bidang_id,
+        tahun,
+        bulan,
+        status: 'menunggu_verifikasi',
+        dikirim_pada: new Date().toISOString(),
+        aturan_versi: 1,
+        aturan_snapshot: {
+          tk: 3,
+          tanpa_presensi: 1.5,
+          tangga: [0.5, 1, 1.25, 1.5],
+          batas: 100,
+          ...(opsi.diperiksaPengirim ? { diperiksa_pengirim: true } : {}),
+          ...(sumberFile ? { sumber_file: sumberFile } : {}),
+        },
+      }),
+    });
+    idPengajuan = pengajuan[0].id;
+
+    // Bersihkan pengajuan duplikat untuk pegawai & periode yang sama (jika ada),
+    // agar sisa baris presensi/rekap milik pengajuan lama ikut terhapus (cascade).
+    await db(`pengajuan_tukin?pegawai_id=eq.${p.id}&tahun=eq.${tahun}&bulan=eq.${bulan}&id=neq.${idPengajuan}`, { method: 'DELETE' });
+
+    await db(`presensi?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
+    await db(`rekap_kehadiran?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
+    await db(`rekap_tukin?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
+    await db(`rekap_uang_makan?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
+
+    if (rincian.length) {
+      const tulisPresensi = async () => {
+        await db('presensi?on_conflict=pengajuan_id,tanggal', {
+          method: 'POST',
+          headers: { Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify(rincian.map((r) => ({ ...r, pengajuan_id: idPengajuan }))),
+        });
+      };
+      try {
         await tulisPresensi();
-      } else {
-        throw e;
+      } catch (e) {
+        // Jika masih ada baris duplikat (mis. sisa dari run sebelumnya), hapus lalu coba lagi.
+        if (/23505|duplicate key/i.test(String(e && e.message))) {
+          await db(`presensi?pengajuan_id=eq.${idPengajuan}`, { method: 'DELETE' });
+          await tulisPresensi();
+        } else {
+          throw e;
+        }
       }
     }
+
+    const hitung = (kunci) => rincian.filter((r) => r.libur_sub && new RegExp(kunci, 'i').test(r.libur_sub)).length;
+    await db('rekap_kehadiran?on_conflict=pengajuan_id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        pengajuan_id: idPengajuan,
+        hari_kerja: rincian.filter((r) => r.jenis !== 'weekend').length,
+        hadir: hasil.hariMasuk,
+        telat: hasil.telatList.length,
+        pulang_awal: hasil.pswList.length,
+        tidak_presensi_masuk: hasil.noPresensiList.filter((x) => x.sisi === 'masuk').length,
+        tidak_presensi_pulang: hasil.noPresensiList.filter((x) => x.sisi === 'pulang').length,
+        tk: hasil.tkHari,
+        libur: hasil.liburList.length,
+        cuti: hitung('cuti'),
+        sakit: hitung('sakit'),
+        dinas_luar: hitung('dinas'),
+        izin: hitung('izin'),
+        weekend: hasil.perDay.filter((d) => d.jenis === 'weekend').length,
+        anomali: hasil.anomaliList.map((x) => ({
+          tanggal: tanggalSql(x.tanggal),
+          menit_pulang_awal: x.pswAwal || 0,
+          sisi: x.sisi || null,
+        })),
+      }),
+    });
+
+    await db('rekap_tukin?on_conflict=pengajuan_id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        pengajuan_id: idPengajuan,
+        tukin_bruto: Number(p.tukin) || 0,
+        pot_tk: hasil.rupiahPotongan.tk,
+        pot_tl: hasil.rupiahPotongan.tl,
+        pot_psw: hasil.rupiahPotongan.psw,
+        pot_hukdis: 0,
+        pot_tb: 0,
+        hukdis_pct: 0,
+        tb_pct: 0,
+        pot_lain: 0,
+        total_persen: hasil.pct.total,
+        total_potongan: hasil.rupiahPotongan.total,
+        pajak: 0,
+        tukin_bersih: hasil.tukinBersih,
+        rincian: { persen: hasil.pct, rupiah: hasil.rupiahPotongan },
+      }),
+    });
+
+    await db('rekap_uang_makan?on_conflict=pengajuan_id', {
+      method: 'POST',
+      headers: { Prefer: 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        pengajuan_id: idPengajuan,
+        hari_hadir: hasil.uangMakan.hariHadir,
+        tarif: hasil.uangMakan.tarif,
+        bruto: hasil.uangMakan.bruto,
+        pph_pct: hasil.uangMakan.pphPct,
+        pph: hasil.uangMakan.pph,
+        bersih: hasil.uangMakan.bersih,
+      }),
+    });
   }
-
-  const hitung = (kunci) => rincian.filter((r) => r.libur_sub && new RegExp(kunci, 'i').test(r.libur_sub)).length;
-  await db('rekap_kehadiran?on_conflict=pengajuan_id', {
-    method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify({
-      pengajuan_id: idPengajuan,
-      hari_kerja: rincian.filter((r) => r.jenis !== 'weekend').length,
-      hadir: hasil.hariMasuk,
-      telat: hasil.telatList.length,
-      pulang_awal: hasil.pswList.length,
-      tidak_presensi_masuk: hasil.noPresensiList.filter((x) => x.sisi === 'masuk').length,
-      tidak_presensi_pulang: hasil.noPresensiList.filter((x) => x.sisi === 'pulang').length,
-      tk: hasil.tkHari,
-      libur: hasil.liburList.length,
-      cuti: hitung('cuti'),
-      sakit: hitung('sakit'),
-      dinas_luar: hitung('dinas'),
-      izin: hitung('izin'),
-      weekend: hasil.perDay.filter((d) => d.jenis === 'weekend').length,
-      anomali: hasil.anomaliList.map((x) => ({
-        tanggal: tanggalSql(x.tanggal),
-        menit_pulang_awal: x.pswAwal || 0,
-        sisi: x.sisi || null,
-      })),
-    }),
-  });
-
-  await db('rekap_tukin?on_conflict=pengajuan_id', {
-    method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify({
-      pengajuan_id: idPengajuan,
-      tukin_bruto: Number(p.tukin) || 0,
-      pot_tk: hasil.rupiahPotongan.tk,
-      pot_tl: hasil.rupiahPotongan.tl,
-      pot_psw: hasil.rupiahPotongan.psw,
-      pot_hukdis: 0,
-      pot_tb: 0,
-      hukdis_pct: 0,
-      tb_pct: 0,
-      pot_lain: 0,
-      total_persen: hasil.pct.total,
-      total_potongan: hasil.rupiahPotongan.total,
-      pajak: 0,
-      tukin_bersih: hasil.tukinBersih,
-      rincian: { persen: hasil.pct, rupiah: hasil.rupiahPotongan },
-    }),
-  });
-
-  await db('rekap_uang_makan?on_conflict=pengajuan_id', {
-    method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates' },
-    body: JSON.stringify({
-      pengajuan_id: idPengajuan,
-      hari_hadir: hasil.uangMakan.hariHadir,
-      tarif: hasil.uangMakan.tarif,
-      bruto: hasil.uangMakan.bruto,
-      pph_pct: hasil.uangMakan.pphPct,
-      pph: hasil.uangMakan.pph,
-      bersih: hasil.uangMakan.bersih,
-    }),
-  });
 
   return {
     pengajuanId: idPengajuan,
@@ -1508,8 +1514,17 @@ export async function handler(req, res) {
         return kirimJson(res, 400, { pesan: 'File berisi lebih dari satu bulan; periksa file presensi' });
       }
 
-      const r = await simpanPengajuan(p, b.hari, tahun, bulan);
-      return kirimJson(res, 200, { pesan: 'Selamat Data Anda Sudah Terupload', ...r });
+      // simpan:false = hanya hitung, hasil ditampilkan dulu ke pegawai.
+      // Setelah pegawai mencentang Tukin & Uang Makan, halaman mengirim ulang
+      // dengan simpan:true agar pengajuan masuk ke admin.
+      const simpan = b.simpan !== false;
+      // Hanya pengajuan dari halaman unggah (setelah pegawai mencentang "Sudah benar")
+      // yang diberi penanda diperiksa_pengirim; impor Drive oleh admin tidak.
+      const r = await simpanPengajuan(p, b.hari, tahun, bulan, undefined, { simpan, diperiksaPengirim: simpan });
+      return kirimJson(res, 200, {
+        pesan: simpan ? 'Selamat Data Anda Sudah Terupload' : 'Perhitungan selesai. Periksa Tukin dan Uang Makan Anda.',
+        ...r,
+      });
     }
 
     if (jalur === '/api/drive/daftar' && req.method === 'POST') {

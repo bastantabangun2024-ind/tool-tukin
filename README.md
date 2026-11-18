@@ -14,10 +14,11 @@ versi web harus menghasilkan angka yang sama (uji paritas).
 
 ---
 
-## Status per 16 November 2026
+## Status per 18 November 2026
 
 *Item 1–8 dan bukti uji di bawah dicatat per 10 November 2026 sebagai riwayat; item 9–10
-ditambahkan pada 16 November 2026.*
+ditambahkan pada 16 November 2026, item 11 pada 17 November 2026, dan item 12 pada
+18 November 2026.*
 
 ### Selesai
 
@@ -68,7 +69,7 @@ ditambahkan pada 16 November 2026.*
      tanpa token HTTP 401, sintaks server dan seluruh JS inline lolos. Commit `dd9f35e` sudah
      di-push ke `main`; push memicu deploy otomatis Vercel (belum diverifikasi ulang di produksi).
 10. **Panduan pendaftaran & pengisian dalam PDF** (16 November 2026):
-   - PDF 9 halaman (`±339 KB`) disajikan sebagai aset statis di
+   - PDF (kini 10 halaman, `±360 KB` setelah pembaruan 18 November 2026) disajikan sebagai aset statis di
      `aplikasi-web/public/panduan/Panduan-Pendaftaran-dan-Pengisian.pdf` — bukan dari database.
    - Tombol unduh tersedia di dasbor pegawai, sidebar panel admin, dan halaman masuk.
    - Commit `798071b` sudah di-push; di produksi PDF merespons `HTTP 200` dengan tipe
@@ -88,13 +89,34 @@ ditambahkan pada 16 November 2026.*
    - Tombol **Reset** mengembalikan centang pegawai (dan bidang) ke **semua** tanpa perlu memuat
      ulang data.
    - Detail teknis ada di `aplikasi-web/README.md` bagian **Perubahan 17 November 2026**.
+12. **Halaman awal baru & konfirmasi kirim ke admin** (18 November 2026):
+    - Halaman awal `https://tool-tukin.vercel.app/` tidak lagi memuat menu/form **Unggah Presensi**.
+      Tampilannya kini seperti halaman masuk: tombol **Masuk** dan tombol **Daftar** di bawahnya,
+      plus tautan panduan PDF.
+    - Form unggah pindah ke halaman **`/unggah.html`**; menu **Unggah Presensi** di dasbor,
+      tombol **Buat pengajuan baru**, dan tautan di halaman Daftar mengarah ke sana.
+    - Setelah **Proses**, hasil hanya dihitung (belum disimpan). Di atas kotak Tukin dan Uang Makan
+      ada tautan **“Tolong cek kebenaran jumlah uang tukin dan uang makan di
+      absensi.kemenag.go.id”**. Masing-masing kotak punya centang **“Sudah benar”**; bila keduanya
+      dicentang, tombol **Proses Kirim ke Admin** aktif dan pengajuan baru tersimpan sebagai
+      `menunggu_verifikasi` (penanda `aturan_snapshot.diperiksa_pengirim = true`).
+    - Panel verifikasi admin (tab **Perlu Tindakan**) menampilkan kolom **Pemeriksaan pengirim**:
+      **Sudah diperiksa pengirim** atau **Belum dikonfirmasi pengirim** (pengajuan lama), termasuk
+      di dialog **Detail pengajuan**.
+    - Panduan PDF (10 halaman, ±360 KB) dan `README` diperbarui mengikuti halaman dan alur baru:
+      halaman awal Masuk/Daftar, langkah cek di absensi.kemenag.go.id, centang “Sudah benar” dan
+      kirim ke admin, serta penanda “Sudah diperiksa pengirim” di panel verifikasi. Tangkapan layar
+      halaman unggah ikut diperbarui. Detail teknis ada di `aplikasi-web/README.md` bagian
+      **Perubahan 18 November 2026**.
 
 ### Alamat & akun
 
 | Keperluan | Alamat |
 |---|---|
 | Website Live (Vercel) | https://tool-tukin.vercel.app |
+| Halaman awal (Masuk / Daftar) | https://tool-tukin.vercel.app |
 | Halaman masuk / login | https://tool-tukin.vercel.app/masuk.html |
+| Halaman unggah presensi | https://tool-tukin.vercel.app/unggah.html |
 | Halaman Admin | https://tool-tukin.vercel.app/admin.html |
 | Halaman masuk (lokal) | http://localhost:3000/masuk.html |
 | Dasbor (lokal) | http://localhost:3000/dasbor.html |

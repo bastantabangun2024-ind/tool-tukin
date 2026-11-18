@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Panduan Pendaftaran dan Pengisian — Tool Tukin</title>
+<style>
+  @page { size: A4; margin: 16mm 15mm 15mm; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    font-family: "Segoe UI", Arial, Helvetica, sans-serif;
+    color: #1e293b; font-size: 10.5pt; line-height: 1.55; margin: 0;
+  }
+  h1, h2, h3 { color: #0f2a5c; margin: 0; }
+  p { margin: 0 0 8px; }
+  a { color: #1d4ed8; text-decoration: none; }
+  .muted { color: #64748b; }
+
+  /* ---------- sampul ---------- */
+  .sampul {
+    height: 255mm; display: flex; flex-direction: column; justify-content: center;
+    page-break-after: always; text-align: left;
+  }
+  .sampul .logo {
+    width: 64px; height: 64px; border-radius: 16px; background: #1d4ed8;
+    color: #fff; font-weight: 800; font-size: 26px; display: flex;
+    align-items: center; justify-content: center; margin-bottom: 22px;
+  }
+  .sampul .kecil { letter-spacing: 2px; font-size: 9pt; font-weight: 700; color: #1d4ed8; text-transform: uppercase; }
+  .sampul h1 { font-size: 34pt; line-height: 1.1; margin: 10px 0 14px; }
+  .sampul .sub { font-size: 13pt; color: #475569; max-width: 135mm; }
+  .sampul .garis { height: 5px; width: 60mm; background: #1d4ed8; border-radius: 3px; margin: 26px 0; }
+  .sampul .alamat {
+    margin-top: 34px; padding: 14px 18px; background: #eff6ff; border: 1px solid #bfdbfe;
+    border-radius: 10px; font-size: 12pt; max-width: 150mm;
+  }
+  .sampul .alamat b { color: #1e3a8a; }
+  .sampul .meta { margin-top: 26px; font-size: 9.5pt; color: #64748b; }
+
+  /* ---------- isi ---------- */
+  .bagian { page-break-inside: auto; }
+  .judul-bagian {
+    display: flex; align-items: center; gap: 10px; margin: 0 0 12px;
+    padding-bottom: 8px; border-bottom: 2px solid #dbeafe;
+  }
+  .judul-bagian .nomor {
+    width: 28px; height: 28px; flex: none; border-radius: 8px; background: #1d4ed8;
+    color: #fff; font-weight: 700; font-size: 12pt; display: flex; align-items: center; justify-content: center;
+  }
+  .judul-bagian h2 { font-size: 16pt; }
+
+  h3 { font-size: 11.5pt; margin: 14px 0 5px; page-break-after: avoid; }
+  .judul-bagian { page-break-after: avoid; }
+  tr { page-break-inside: avoid; }
+  .langkah { display: flex; gap: 9px; margin: 8px 0; page-break-inside: avoid; }
+  .langkah .bulat {
+    width: 20px; height: 20px; flex: none; border-radius: 50%; background: #dbeafe;
+    color: #1e3a8a; font-weight: 700; font-size: 9pt; display: flex;
+    align-items: center; justify-content: center; margin-top: 2px;
+  }
+  .langkah .teks { flex: 1; }
+  .langkah b { color: #0f2a5c; }
+
+  .gambar { margin: 8px 0 10px; page-break-inside: avoid; }
+  .gambar img {
+    width: 100%; display: block; border: 1px solid #cbd5e1; border-radius: 7px;
+  }
+  .gambar .ket { font-size: 8.5pt; color: #64748b; margin-top: 4px; font-style: italic; }
+  .gambar.sempit img { width: 46%; margin: 0 auto; }
+
+  .kotak {
+    background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #1d4ed8;
+    border-radius: 6px; padding: 9px 12px; margin: 9px 0; page-break-inside: avoid;
+  }
+  .kotak.kuning { background: #fffbeb; border-color: #fde68a; border-left-color: #d97706; }
+  .kotak.hijau { background: #f0fdf4; border-color: #bbf7d0; border-left-color: #16a34a; }
+  .kotak b { color: #0f2a5c; }
+  .kotak p:last-child { margin-bottom: 0; }
+
+  ul, ol { margin: 4px 0 8px; padding-left: 20px; }
+  li { margin-bottom: 3px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 12px; font-size: 9.5pt; page-break-inside: avoid; }
+  th { background: #1e3a8a; color: #fff; text-align: left; padding: 6px 8px; font-size: 9pt; }
+  td { border: 1px solid #e2e8f0; padding: 6px 8px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+
+  .pindah { page-break-before: always; }
+  .daftar-isi { font-size: 11pt; }
+  .daftar-isi td { border: none; border-bottom: 1px dashed #cbd5e1; padding: 7px 4px; background: #fff !important; }
+  .daftar-isi td:first-child { width: 32px; font-weight: 700; color: #1d4ed8; }
+  .daftar-isi td:last-child { text-align: right; color: #64748b; width: 70px; }
+
+  .alur { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 14px; }
+  .alur .titik {
+    flex: 1 1 30%; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 7px;
+    padding: 7px 9px; font-size: 8.8pt; page-break-inside: avoid;
+  }
+  .alur .titik b { display: block; color: #1e3a8a; font-size: 9.2pt; }
+
+  .kaki { margin-top: 16px; padding-top: 8px; border-top: 1px solid #e2e8f0; font-size: 8.5pt; color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<!-- ================= SAMPUL ================= -->
+<div class="sampul">
+  <div class="logo">TT</div>
+  <div class="kecil">Sistem Informasi Kepegawaian</div>
+  <h1>Panduan Pendaftaran<br>dan Pengisian</h1>
+  <p class="sub">Aplikasi <b>Tool Tukin</b> — rekap kehadiran, tunjangan kinerja (Tukin),
+    dan uang makan pegawai.</p>
+  <div class="garis"></div>
+  <div class="alamat">
+    <b>Alamat aplikasi:</b><br>
+    https://tool-tukin.vercel.app
+  </div>
+  <div class="meta">
+    Untuk pegawai dan admin &middot; Versi November 2026<br>
+    Tangkapan layar diambil langsung dari aplikasi produksi.
+  </div>
+</div>
+
+<!-- ================= DAFTAR ISI ================= -->
+<div class="bagian">
+  <div class="judul-bagian">
+    <div class="nomor">&#9776;</div>
+    <h2>Isi Panduan</h2>
+  </div>
+
+  <table class="daftar-isi">
+    <tr><td>A</td><td>Pendaftaran akun pegawai (satu per satu)</td><td>Hal. 3</td></tr>
+    <tr><td>B</td><td>Pendaftaran banyak pegawai sekaligus (Excel)</td><td>Hal. 4</td></tr>
+    <tr><td>C</td><td>Cek status pendaftaran</td><td>Hal. 5</td></tr>
+    <tr><td>D</td><td>Masuk ke aplikasi dan ganti password</td><td>Hal. 5</td></tr>
+    <tr><td>E</td><td>Pengisian: unggah presensi dan hitung Tukin</td><td>Hal. 6</td></tr>
+    <tr><td>F</td><td>Dasbor pegawai dan unduh rekap PDF</td><td>Hal. 8</td></tr>
+    <tr><td>G</td><td>Untuk admin: verifikasi dan ekspor rekap</td><td>Hal. 8</td></tr>
+    <tr><td>H</td><td>Kendala umum dan solusinya</td><td>Hal. 10</td></tr>
+  </table>
+
+  <h3>Alur singkat</h3>
+  <div class="alur">
+    <div class="titik"><b>1. Daftar</b>Isi data diri di halaman Daftar.</div>
+    <div class="titik"><b>2. Verifikasi admin</b>Admin memeriksa dan menyetujui akun.</div>
+    <div class="titik"><b>3. Terima akun</b>NIP &amp; password dari admin via WhatsApp.</div>
+    <div class="titik"><b>4. Masuk</b>Login di halaman Masuk, ganti password.</div>
+    <div class="titik"><b>5. Unggah presensi</b>Unduh file dari absensi.kemenag.go.id.</div>
+    <div class="titik"><b>6. Proses &amp; cek</b>Periksa Tukin &amp; uang makan, centang sudah benar, lalu kirim ke admin.</div>
+  </div>
+
+  <div class="kotak">
+    <p><b>Yang perlu disiapkan sebelum mulai:</b></p>
+    <ul>
+      <li>NIP <b>18 angka</b> dan data sesuai SK (nama, pangkat/golongan, jabatan, bidang).</li>
+      <li>Alamat <b>email</b> aktif dan nomor <b>WhatsApp</b> yang bisa dihubungi.</li>
+      <li>File presensi <b>.xlsx</b> hasil unduhan dari <b>absensi.kemenag.go.id</b> untuk bulan yang akan dihitung.</li>
+      <li>Peramban (Chrome/Edge) di komputer atau HP yang tersambung internet.</li>
+    </ul>
+  </div>
+
+  <div class="kotak hijau">
+    <p><b>Bisa dipasang seperti aplikasi di HP Android:</b> buka alamat aplikasi di Chrome,
+      tekan menu <b>&#8942;</b> &rarr; <b>Instal aplikasi / Tambahkan ke layar utama</b>.
+      Ikon <b>TT</b> muncul di layar utama dan aplikasi terbuka tanpa address bar.</p>
+  </div>
+</div>
+
+<!-- ================= A. PENDAFTARAN ================= -->
+<div class="bagian pindah">
+  <div class="judul-bagian">
+    <div class="nomor">A</div>
+    <h2>Pendaftaran Akun Pegawai</h2>
+  </div>
+  <p>Pendaftaran dilakukan sendiri oleh pegawai. Akun <b>tidak langsung aktif</b>:
+    admin memeriksa data lebih dulu, lalu memberikan NIP dan password.</p>
+
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Buka <b>https://tool-tukin.vercel.app</b>, lalu tekan tombol <b>Daftar</b>
+      di bawah tombol Masuk (alamat langsung: <b>/daftar.html</b>).</div>
+  </div>
+
+  <div class="gambar">
+    <img src="gambar/daftar.png" alt="Halaman Daftar Akun Pegawai">
+    <div class="ket">Halaman Daftar Akun Pegawai: formulir pendaftaran dan kotak Cek Status Pendaftaran.</div>
+  </div>
+
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Isi seluruh kolom sesuai SK:
+      <table>
+        <tr><th style="width:34%">Kolom</th><th>Keterangan</th></tr>
+        <tr><td><b>Nama lengkap</b></td><td>Nama sesuai SK, tanpa gelar jika tidak dipakai di SK.</td></tr>
+        <tr><td><b>NIP</b></td><td>Tepat <b>18 angka</b>, tanpa spasi/titik. NIP ini menjadi username login.</td></tr>
+        <tr><td><b>Pangkat / Golongan</b></td><td>Contoh: <b>IV/b</b>.</td></tr>
+        <tr><td><b>Jabatan</b></td><td>Jabatan sesuai SK.</td></tr>
+        <tr><td><b>Bidang</b></td><td>Pilih satu dari 11 bidang (Tata Usaha, Kanwil, PAI, Bimas Buddha, Bimas Hindu, Bimas Kristen, Bimas Katolik, PenaisZawa, Penmad, Pontren, Urais).</td></tr>
+        <tr><td><b>Email</b></td><td>Email aktif, wajib diisi. Dipakai admin untuk mencocokkan data.</td></tr>
+        <tr><td><b>No. WhatsApp</b></td><td>Nomor aktif (minimal 10 angka). Kredensial akun dikirim admin lewat WhatsApp.</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="langkah">
+    <div class="bulat">3</div>
+    <div class="teks">Tekan <b>Kirim Pendaftaran</b>. Bila ada kolom yang salah, muncul pesan merah,
+      misalnya &ldquo;NIP harus 18 angka&rdquo; atau &ldquo;Nomor WhatsApp wajib diisi&rdquo;. Perbaiki lalu kirim lagi.</div>
+  </div>
+
+  <div class="langkah">
+    <div class="bulat">4</div>
+    <div class="teks">Tekan <b>Unduh bukti pendaftaran terakhir (.txt)</b> dan simpan berkasnya sebagai bukti
+      pengiriman.</div>
+  </div>
+
+  <div class="kotak kuning">
+    <p><b>Penting:</b> email dan password <b>tidak dikirim otomatis</b> oleh sistem. Setelah disetujui,
+      admin menyampaikan kredensial secara manual (WhatsApp/telepon/tatap muka). Pastikan nomor
+      WhatsApp Anda aktif.</p>
+  </div>
+
+  <h3>Apa yang terjadi setelah pendaftaran dikirim?</h3>
+  <div class="alur">
+    <div class="titik"><b>Menunggu</b>Pendaftaran masuk ke daftar admin.</div>
+    <div class="titik"><b>Diperiksa</b>Admin mencocokkan data dengan SK.</div>
+    <div class="titik"><b>Disetujui</b>Akun aktif; NIP &amp; password dikirim via WhatsApp.</div>
+    <div class="titik"><b>Masuk &amp; ganti password</b>Login dengan NIP, lalu buat password sendiri.</div>
+    <div class="titik"><b>Unggah presensi</b>Mulai mengisi data bulanan Anda.</div>
+  </div>
+</div>
+
+<!-- ================= B & C ================= -->
+<div class="bagian">
+  <div class="judul-bagian">
+    <div class="nomor">B</div>
+    <h2>Pendaftaran Banyak Pegawai (Excel)</h2>
+  </div>
+  <p>Cara ini dipakai bila mendaftarkan beberapa pegawai sekaligus, misalnya satu bidang.</p>
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Di halaman <b>Daftar</b>, tekan <b>Unduh format Excel pendaftaran (banyak pegawai)</b>.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Buka file <b>.xlsx</b>, isi <b>satu baris per pegawai</b>. Jangan mengubah nama kolom.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">3</div>
+    <div class="teks">Simpan file, lalu kirim ke admin lewat <b>WhatsApp atau email</b>.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">4</div>
+    <div class="teks">Admin mengunggah file tersebut di panel admin. Akun semua pegawai pada file
+      dibuat otomatis (username NIP, password awal <b>12345678</b>) dan wajib diganti saat login pertama.</div>
+  </div>
+
+  <div class="judul-bagian" style="margin-top:26px">
+    <div class="nomor">C</div>
+    <h2>Cek Status Pendaftaran</h2>
+  </div>
+  <p>Status bisa dicek <b>tanpa login</b>, memakai NIP dan email yang sama seperti saat mendaftar.</p>
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Di bagian bawah halaman <b>Daftar</b>, isi <b>NIP</b> dan <b>Email</b> pada kotak
+      <b>Cek Status Pendaftaran</b>.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Tekan <b>Cek Status</b>. Status yang mungkin muncul:
+      <ul>
+        <li><b>Menunggu</b> — pendaftaran sudah masuk, belum diperiksa admin.</li>
+        <li><b>Disetujui</b> — akun aktif. Hubungi admin untuk menerima NIP &amp; password login.</li>
+        <li><b>Ditolak</b> — pendaftaran tidak disetujui; hubungi admin untuk keterangannya.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="kotak">
+    <p><b>Belum punya akun tapi sudah terdaftar sebagai pegawai?</b> Hubungi admin. Admin dapat
+      membuatkan akun langsung dari tab <b>Data Pegawai</b> tanpa menunggu pendaftaran.</p>
+  </div>
+</div>
+
+<!-- ================= D. MASUK ================= -->
+<div class="bagian">
+  <div class="judul-bagian">
+    <div class="nomor">D</div>
+    <h2>Masuk ke Aplikasi dan Ganti Password</h2>
+  </div>
+
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Buka <b>https://tool-tukin.vercel.app</b> lalu tekan tombol <b>Masuk</b>
+      (alamat langsung: <b>/masuk.html</b>).</div>
+  </div>
+
+  <div class="gambar sempit">
+    <img src="gambar/masuk-kartu.png" alt="Halaman masuk Tool Tukin">
+    <div class="ket">Halaman Masuk: pegawai memakai NIP; admin memakai username atau email.</div>
+  </div>
+
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks"><b>Pegawai:</b> isi <b>NIP 18 angka</b> pada kolom pertama dan password dari admin.
+      <b>Admin:</b> isi username admin atau email.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">3</div>
+    <div class="teks">Tekan <b>Masuk</b>. Anda akan diarahkan ke dasbor: pegawai ke
+      <b>/dasbor.html</b>, admin ke panel <b>/admin.html</b>.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">4</div>
+    <div class="teks">Saat login pertama (atau setelah admin mereset sandi), muncul kartu
+      <b>Ganti password</b>. Masukkan password baru <b>minimal 8 karakter</b> dua kali, lalu simpan.</div>
+  </div>
+
+  <div class="kotak kuning">
+    <p><b>Keamanan:</b> password awal <b>12345678</b> hanya untuk sekali pakai &mdash; segera ganti.
+      Jangan bagikan password kepada siapa pun, termasuk yang mengaku petugas. Sesi login berakhir
+      saat tab ditutup, jadi Anda perlu masuk lagi pada kunjungan berikutnya.</p>
+  </div>
+
+  <div class="kotak">
+    <p><b>Lupa password?</b> Hubungi admin. Admin dapat mereset sandi dari tab <b>Data Pegawai</b>
+      ke <b>12345678</b>; setelah itu Anda diminta menggantinya lagi.</p>
+  </div>
+</div>
+
+<!-- ================= E. PENGISIAN ================= -->
+<div class="bagian">
+  <div class="judul-bagian">
+    <div class="nomor">E</div>
+    <h2>Pengisian: Unggah Presensi dan Hitung Tukin</h2>
+  </div>
+  <p>Bagian ini adalah inti pemakaian aplikasi: mengunggah file presensi bulanan, lalu aplikasi
+    menghitung kehadiran, Tukin, dan uang makan secara otomatis.</p>
+
+  <h3>1. Unduh file presensi dari absensi.kemenag.go.id</h3>
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Buka <b>https://absensi.kemenag.go.id</b> (di aplikasi juga tersedia tombolnya),
+      lalu masuk dengan akun presensi Anda.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Pilih periode <b>satu bulan penuh</b> yang akan dihitung, lalu unduh
+      <b>rekap presensi dalam format Excel (.xlsx)</b>.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">3</div>
+    <div class="teks">Simpan file di komputer/HP. Nama file sebaiknya tetap memuat nama Anda dan bulan,
+      misalnya <b>Hendro_Presensi 10-2026.xlsx</b>.</div>
+  </div>
+
+  <div class="kotak kuning">
+    <p><b>Satu bulan satu file.</b> Jangan menggabungkan beberapa bulan dalam satu file, dan jangan
+      mengubah susunan kolom file presensi. Bulan pada file harus sama dengan bulan yang dipilih
+      di aplikasi.</p>
+  </div>
+
+  <h3>2. Unggah dan proses di Tool Tukin</h3>
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Masuk dengan akun Anda, lalu buka menu <b>Unggah Presensi</b> di dasbor
+      (alamat langsung: <b>/unggah.html</b>).</div>
+  </div>
+
+  <div class="gambar">
+    <img src="gambar/beranda.png" alt="Halaman Unggah Presensi">
+    <div class="ket">Halaman Unggah Presensi (/unggah.html): isian NIP, file Excel, bulan, dan tahun.</div>
+  </div>
+
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Isi <b>NIP</b> 18 angka. Bila NIP dikenali, nama, NIP, jabatan, golongan, dan bidang
+      muncul otomatis. Bila tidak muncul, periksa kembali angka NIP atau hubungi admin.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">3</div>
+    <div class="teks">Pada <b>File presensi (.xlsx)</b>, tekan <b>Choose File</b> / <b>Pilih file</b>,
+      lalu pilih file yang sudah diunduh tadi.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">4</div>
+    <div class="teks">Pilih <b>Bulan</b> dan isi <b>Tahun</b> sesuai isi file (contoh: Oktober 2026).</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">5</div>
+    <div class="teks">Tekan <b>Proses</b>, lalu tunggu sampai muncul kotak <b>Rekap Kehadiran</b>.</div>
+  </div>
+
+  <div class="langkah">
+    <div class="bulat">6</div>
+    <div class="teks">Periksa hasilnya:
+      <ul>
+        <li><b>Rekap Kehadiran</b> — hari kerja, hadir, terlambat, pulang awal, tanpa keterangan,
+          tanpa presensi masuk/pulang, cuti, sakit, dinas luar, izin.</li>
+        <li><b>Tukin</b> — bruto, potongan, pajak, dan Tukin bersih.</li>
+        <li><b>Uang Makan</b> — hari hadir, tarif, bruto, PPh, dan jumlah bersih.</li>
+      </ul>
+      Di atas kotak Tukin dan Uang Makan ada tulisan <b>&ldquo;Tolong cek kebenaran jumlah uang
+      tukin dan uang makan di absensi.kemenag.go.id&rdquo;</b>. Tekan tulisan itu untuk membuka
+      situs absensi di tab baru, lalu bandingkan jumlahnya.
+    </div>
+  </div>
+</div>
+
+<div class="bagian">
+  <div class="langkah">
+    <div class="bulat">7</div>
+    <div class="teks">Bila jumlah <b>Tukin</b> dan <b>Uang Makan</b> sudah sesuai, centang pernyataan
+      <b>&ldquo;Sudah benar&rdquo;</b> di bawah <u>masing-masing</u> kotak (Tukin dan Uang Makan).
+      Tombol <b>Proses Kirim ke Admin</b> baru aktif setelah keduanya dicentang.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">8</div>
+    <div class="teks">Tekan <b>Proses Kirim ke Admin</b>. Dengan menekan tombol ini pengirim
+      menyatakan sudah memastikan kebenaran Tukin dan Uang Makan untuk diproses admin login.
+      Bila muncul pesan <b>&ldquo;Selamat Data Anda Sudah Terupload&rdquo;</b>, data tersimpan
+      sebagai pengajuan berstatus <b>menunggu verifikasi</b>. Tekan
+      <b>Unduh bukti pengajuan (.txt)</b> dan simpan.</div>
+  </div>
+
+  <div class="kotak hijau">
+    <p><b>Penting:</b> sebelum tombol kirim ditekan, hasil hanya ditampilkan dan <b>belum masuk</b>
+      ke admin. Bila halaman ditutup lebih dulu, ulangi proses dari awal. Setelah terkirim, tidak
+      ada lagi yang perlu diisi pegawai. Potongan <b>HUKDIS/TB</b> diisi admin saat verifikasi.
+      Hasil final dapat dilihat di dasbor setelah admin menyetujui.</p>
+  </div>
+
+  <div class="kotak">
+    <p><b>Jika ingin memperbaiki data:</b> proses ulang dengan file yang benar. Sistem menyimpan
+      pengajuan terbaru untuk pegawai dan periode yang sama, sehingga tidak terjadi data ganda.
+      Bila pengajuan sudah disetujui dan perlu diubah, hubungi admin.</p>
+  </div>
+</div>
+
+<!-- ================= F. DASBOR ================= -->
+<div class="bagian">
+  <div class="judul-bagian">
+    <div class="nomor">F</div>
+    <h2>Dasbor Pegawai dan Unduh Rekap PDF</h2>
+  </div>
+  <p>Dasbor adalah halaman ringkasan milik Anda sendiri. Isinya hanya data Anda; pegawai lain
+    tidak dapat melihatnya.</p>
+
+  <h3>Yang tampil di dasbor</h3>
+  <ul>
+    <li><b>Profil</b> — nama, NIP, jabatan, golongan, bidang, dan nomor HP (tombol <b>Edit data</b>
+      untuk mengubah nomor HP sendiri).</li>
+    <li><b>Periode aktif</b> dan <b>status pengajuan terakhir</b> (menunggu verifikasi / disetujui / ditolak).</li>
+    <li><b>Rekap presensi</b> — ringkasan kehadiran, dengan <b>rincian per hari</b>: tanggal, jam
+      masuk/pulang, menit terlambat, pulang awal, tanpa absen, tanpa keterangan, cuti/sakit/dinas.</li>
+    <li><b>Tukin</b> dan <b>Uang Makan</b> milik Anda beserta rincian potongannya.</li>
+    <li><b>Riwayat</b> pengajuan bulan-bulan sebelumnya.</li>
+  </ul>
+
+  <h3>Mengunduh rekap bulanan (PDF)</h3>
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Di sidebar dasbor, pilih menu <b>Unduh Rekap</b>.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Centang <b>bulan</b> yang ingin diunduh (boleh lebih dari satu, misalnya
+      seluruh bulan dalam satu tahun).</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">3</div>
+    <div class="teks">Pilih bagian yang diinginkan: <b>Kehadiran</b>, <b>Tukin</b>, <b>Uang Makan</b>,
+      atau <b>All</b> (ketiganya).</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">4</div>
+    <div class="teks">Tekan tombol unduh. Berkas PDF ukuran A4 dibuat langsung di peramban.
+      Satu blok pendek per bulan berisi jumlah hadir, daftar tanggal telat/pulang awal/tanpa absen,
+      cuti/sakit/dinas, lalu bruto, potongan, dan Tukin bersih; uang makan berisi hari &times; tarif,
+      PPh, dan bersih. Rekap 12 bulan kira-kira 3 halaman.</div>
+  </div>
+
+  <div class="kotak">
+    <p><b>Ganti password</b> juga bisa dilakukan kapan saja dari tautan di sidebar dasbor
+      (halaman <b>/ganti-password.html</b>) tanpa perlu memasukkan password lama.</p>
+  </div>
+</div>
+
+<!-- ================= G. ADMIN ================= -->
+<div class="bagian">
+  <div class="judul-bagian">
+    <div class="nomor">G</div>
+    <h2>Untuk Admin: Verifikasi dan Ekspor Rekap</h2>
+  </div>
+  <p>Bagian ini ringkas untuk admin. Panel admin hanya dapat dibuka akun berperan <b>admin</b>;
+    akun pegawai yang membuka <b>/admin.html</b> akan dialihkan ke dasbor.</p>
+
+  <h3>Menyetujui pendaftar</h3>
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Masuk, lalu buka tab <b>Pendaftar</b>. Periksa kecocokan data dengan SK.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Tekan <b>Setujui</b>. Dialog menampilkan <b>username (NIP)</b> dan password
+      sementara dengan tombol <b>Salin</b> / <b>Salin Semua</b> — kirim ke pegawai lewat WhatsApp.
+      Bila ditolak, tekan <b>Tolak</b> dan isi catatan.</div>
+  </div>
+
+  <h3>Memverifikasi pengajuan presensi</h3>
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Buka tab <b>Perlu Tindakan</b>. Pada tabel <b>Pengajuan presensi</b> ada kolom
+      <b>Pemeriksaan pengirim</b>: tanda <b>Sudah diperiksa pengirim</b> berarti pegawai sudah
+      mencocokkan Tukin dan Uang Makan dengan absensi.kemenag.go.id lalu mencentang
+      &ldquo;Sudah benar&rdquo; sebelum mengirim. Pengajuan lama dapat bertanda
+      <b>Belum dikonfirmasi pengirim</b>. Tekan <b>Detail</b> untuk melihat penanda itu beserta
+      rincian sebab potongan per hari (telat, pulang awal, tidak presensi, tanpa keterangan,
+      cuti/sakit/dinas) sebelum memutuskan.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Isi <b>HUKDIS/TB</b> bila ada, lalu tekan <b>Setujui</b> atau <b>Tolak</b>.
+      Tombol <b>Reset</b> menghapus pengajuan beserta presensi dan rekapnya.</div>
+  </div>
+
+  <h3>Ekspor rekap bulanan (Excel)</h3>
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Buka tab <b>Ekspor Rekap</b>, pilih <b>bulan</b> dan <b>tahun</b>, lalu
+      <b>Muat data</b>.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Tentukan <b>bidang</b> dan <b>pegawai</b> lewat kotak centang, lalu unduh
+      <b>Rekap Kehadiran</b>, <b>Rekap Tukin</b>, <b>Rekap Uang Makan</b>, atau ketiganya.
+      Tombol <b>&#11015; 3 berkas</b> mengunduh ketiga jenis untuk satu bidang sekaligus.</div>
+  </div>
+
+  <h3>Ambil presensi dari folder Google Drive</h3>
+  <div class="langkah">
+    <div class="bulat">1</div>
+    <div class="teks">Buka tab <b>Ambil dari Drive</b>, tempel <b>link folder Drive publik</b>,
+      pilih bulan/tahun, lalu <b>Baca Folder</b>.</div>
+  </div>
+  <div class="langkah">
+    <div class="bulat">2</div>
+    <div class="teks">Tekan <b>Proses Semua File</b> dan tunggu bar progres selesai. Bila nama file
+      cocok dengan lebih dari satu pegawai, muncul baris <b>Perlu dipilih</b> &mdash; pilih orangnya
+      lalu tekan <b>Proses</b>.</div>
+  </div>
+
+  <div class="kotak kuning">
+    <p><b>Data Pegawai:</b> tab ini dipakai menambah/mengubah pegawai, menonaktifkan pegawai,
+      mereset sandi, mengunggah Excel pendaftaran, dan memantau <b>Status sandi</b>
+      (Password awal / Sudah diganti / Belum ada akun).</p>
+  </div>
+</div>
+
+<!-- ================= H. KENDALA ================= -->
+<div class="bagian">
+  <div class="judul-bagian">
+    <div class="nomor">H</div>
+    <h2>Kendala Umum dan Solusinya</h2>
+  </div>
+
+  <table>
+    <tr><th style="width:42%">Pesan / kendala</th><th>Yang perlu dilakukan</th></tr>
+    <tr><td>&ldquo;NIP harus 18 angka&rdquo;</td><td>Ketik ulang NIP tanpa spasi, titik, atau tanda baca. Pastikan tepat 18 digit.</td></tr>
+    <tr><td>&ldquo;Email wajib diisi&rdquo; / &ldquo;Nomor WhatsApp wajib diisi&rdquo;</td><td>Lengkapi kolom tersebut; nomor WA minimal 10 angka.</td></tr>
+    <tr><td>Nama tidak muncul setelah NIP diisi</td><td>NIP belum terdaftar atau salah ketik. Hubungi admin untuk memastikan data pegawai.</td></tr>
+    <tr><td>Login gagal / password salah</td><td>Gunakan NIP 18 angka, bukan nama. Bila lupa password, minta admin mereset ke <b>12345678</b>.</td></tr>
+    <tr><td>Hasil hitung tidak sesuai</td><td>Pastikan file presensi berisi satu bulan penuh dan bulan/tahun yang dipilih sama dengan isi file. Bila tetap berbeda, hubungi admin.</td></tr>
+    <tr><td>File presensi tidak mau diproses</td><td>Gunakan file <b>.xlsx</b> asli dari absensi.kemenag.go.id; jangan ubah kolom, jangan simpan sebagai PDF/gambar.</td></tr>
+    <tr><td>Data sudah diunggah tetapi belum muncul di dasbor</td><td>Pengajuan masih <b>menunggu verifikasi</b>. Hasil final muncul setelah admin menyetujui.</td></tr>
+    <tr><td>Halaman tidak bisa dibuka</td><td>Periksa koneksi internet, lalu muat ulang. Coba peramban Chrome/Edge versi terbaru.</td></tr>
+  </table>
+
+  <div class="kotak">
+    <p><b>Bantuan lebih lanjut:</b> hubungi admin/pengelola Tool Tukin di kantor. Sertakan
+      <b>NIP</b>, <b>bulan/tahun</b>, dan <b>tangkapan layar pesan galat</b> agar cepat ditangani.</p>
+  </div>
+
+  <div class="kaki">
+    Panduan Pendaftaran dan Pengisian &mdash; Tool Tukin, https://tool-tukin.vercel.app &middot;
+    disusun November 2026. Tangkapan layar berasal dari aplikasi produksi dan dapat berbeda
+    sedikit bila tampilan diperbarui.
+  </div>
+</div>
+
+</body>
+</html>

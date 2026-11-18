@@ -1218,7 +1218,7 @@
     var tabel = document.getElementById('tabelVerifikasiPengajuan');
     if (!tabel) return;
     tabel.innerHTML = '<p class="catatan">Memuat pengajuan…</p>';
-    api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,' +
+    api('pengajuan_tukin?select=id,tahun,bulan,status,dikirim_pada,aturan_snapshot,' +
       'pegawai(nama,nip,jabatan,bidang:bidang_id(nama)),rekap_tukin(tukin_bersih,total_persen)' +
       '&status=eq.menunggu_verifikasi&order=dikirim_pada.asc&limit=100')
       .then(function (r) { return r.json(); })
@@ -1231,6 +1231,7 @@
           return;
         }
         tabel.innerHTML = '<table><thead><tr><th>Pegawai</th><th>Periode</th><th>Dikirim</th>' +
+          '<th>Pemeriksaan pengirim</th>' +
           '<th class="num">Tukin bersih</th><th class="num">Potongan</th><th></th></tr></thead><tbody>' +
           daftar.map(function (x) {
             var p = x.pegawai || {};
@@ -1241,6 +1242,7 @@
                 esc(p.nip || '') + (bd ? ' • ' + esc(bd) : '') + '</span></td>' +
               '<td data-label="Periode">' + labelBulan(x.bulan) + ' ' + x.tahun + '</td>' +
               '<td data-label="Dikirim">' + formatTanggal(x.dikirim_pada) + '</td>' +
+              '<td data-label="Pemeriksaan pengirim">' + lencanaPemeriksaanPengirim(x) + '</td>' +
               '<td class="num" data-label="Tukin bersih">' + rupiah(rk.tukin_bersih) + '</td>' +
               '<td class="num" data-label="Potongan">' + (Number(rk.total_persen) || 0) + '%</td>' +
               '<td class="aksi"><button class="kecil" type="button" data-detailpengajuan="' + esc(x.id) + '">Detail</button> ' +
@@ -2588,6 +2590,15 @@
     return map[s] || String(s || '—').replace(/_/g, ' ');
   }
 
+  // Penanda dari halaman unggah: pegawai sudah mencentang Tukin & Uang Makan
+  // "sudah benar" sebelum pengajuan dikirim ke admin.
+  function lencanaPemeriksaanPengirim(x) {
+    var diperiksa = !!(x && x.aturan_snapshot && x.aturan_snapshot.diperiksa_pengirim);
+    return diperiksa
+      ? '<span class="status disetujui">Sudah diperiksa pengirim</span>'
+      : '<span class="status draft">Belum dikonfirmasi pengirim</span>';
+  }
+
   function fmtRupiahGrafik(v, sumbu, legenda) {
     if (sumbu || legenda) return 'Rp' + Grafik.ringkas(v);
     return 'Rp' + Grafik.angka(v);
@@ -3031,7 +3042,7 @@
     document.body.appendChild(latar);
 
     api('pengajuan_tukin?id=eq.' + encodeURIComponent(id) +
-      '&select=id,tahun,bulan,status,dikirim_pada,catatan_admin,' +
+      '&select=id,tahun,bulan,status,dikirim_pada,catatan_admin,aturan_snapshot,' +
       'pegawai(nama,nip,jabatan,bidang:bidang_id(nama)),' +
       'rekap_kehadiran(*),rekap_tukin(*),rekap_uang_makan(*),presensi(*)')
       .then(function (r) { return r.json(); })
@@ -3056,6 +3067,8 @@
               '<div><b>' + formatTanggal(x.dikirim_pada) + '</b><span>dikirim</span></div>' +
             '</div>' +
           '</div>' +
+          '<p class="catatan" style="margin:0 0 12px">Pemeriksaan pengirim: ' +
+            lencanaPemeriksaanPengirim(x) + '</p>' +
           '<div class="kotak-dua">' +
             '<div><h3>Rekap kehadiran</h3><dl>' +
               '<dt>Hari kerja</dt><dd>' + (rk.hari_kerja != null ? rk.hari_kerja : '—') + '</dd>' +

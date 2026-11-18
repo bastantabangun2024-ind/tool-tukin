@@ -2,11 +2,58 @@
 
 Status: **berjalan di produksi** — https://tool-tukin.vercel.app (Vercel + Supabase).
 Dokumen audit/rancangan di `docs/` tetap dipakai sebagai acuan; ringkasan perubahan terbaru
-ada di bagian **Perubahan 17 November 2026** di bawah.
+ada di bagian **Perubahan 18 November 2026** di bawah.
 
 Keputusan 10 November 2026: **berkas disimpan di Google Drive** (Supabase hanya Auth + database),
 dan **potongan HUKDIS/TB diaktifkan sejak awal** (diisi admin saat verifikasi).
 File kredensial yang perlu diisi: `.env.local` (template: `.env.example`).
+
+## Perubahan 18 November 2026 — halaman awal baru & konfirmasi kirim ke admin
+
+### Halaman awal (`public/index.html`)
+
+- Halaman awal tidak lagi memuat form unggah presensi dan menu **Unggah Presensi**.
+- Tampilannya kini mengikuti kartu halaman masuk: merek Tool Tukin, judul sistem, tombol
+  **Masuk**, dan tombol **Daftar** tepat di bawahnya, plus tautan unduh panduan PDF.
+- Form unggah dipindah ke halaman tersendiri **`public/unggah.html`**. Menu **Unggah Presensi**
+  di sidebar dasbor, tombol **Buat pengajuan baru**, dan tautan di halaman **Daftar** diarahkan
+  ke `/unggah.html`.
+
+### Konfirmasi sebelum pengajuan dikirim (`public/unggah.html`)
+
+- **Proses** sekarang hanya menghitung: `POST /api/proses` dikirim dengan `simpan: false`,
+  sehingga rekap kehadiran, Tukin, dan Uang Makan tampil tanpa menulis apa pun ke database.
+- Di atas kotak Tukin/Uang Makan ada tautan **“Tolong cek kebenaran jumlah uang tukin dan uang
+  makan di absensi.kemenag.go.id”** (membuka situs absensi di tab baru).
+- Di bawah masing-masing kotak ada centang **“Sudah benar”**. Tombol **Proses Kirim ke Admin**
+  baru aktif bila keduanya dicentang, lalu mengirim ulang data presensi dengan `simpan: true`.
+  Pengajuan baru disimpan berstatus `menunggu_verifikasi` pada langkah ini, beserta penanda
+  `aturan_snapshot.diperiksa_pengirim = true`.
+- Setelah terkirim baru muncul pesan “Selamat Data Anda Sudah Terupload” dan bukti `.txt`
+  dapat diunduh. Bila halaman ditutup sebelum tombol kirim ditekan, tidak ada data tersimpan.
+
+### Panel admin (`public/admin.html`)
+
+- Tabel **Pengajuan presensi** di tab **Perlu Tindakan** memuat kolom **Pemeriksaan pengirim**:
+  lencana **Sudah diperiksa pengirim** (hijau) atau **Belum dikonfirmasi pengirim** (abu-abu
+  untuk pengajuan lama).
+- Dialog **Detail pengajuan** juga menampilkan penanda yang sama di bawah kartu status.
+- Data diambil dari `pengajuan_tukin.aturan_snapshot.diperiksa_pengirim` (kolom
+  `aturan_snapshot` ditambahkan ke query antrian dan detail). Tidak ada perubahan skema database.
+
+### Endpoint
+
+| Endpoint | Perilaku baru |
+|---|---|
+| `POST /api/proses` | Menerima `simpan: false` untuk menghitung saja (tanpa menulis database). Tanpa `simpan` atau `simpan: true`, perilakunya sama seperti sebelumnya: simpan pengajuan + presensi + 3 rekap. |
+
+### Panduan
+
+- `panduan/panduan.html` dan PDF `public/panduan/Panduan-Pendaftaran-dan-Pengisian.pdf`
+  diperbarui: halaman awal Masuk/Daftar, lokasi `/unggah.html`, langkah cek di
+  absensi.kemenag.go.id, centang “Sudah benar”, tombol kirim ke admin, serta penanda
+  “Sudah diperiksa pengirim” di panel verifikasi. Tangkapan layar halaman unggah
+  diperbarui dari tampilan baru.
 
 ## Perubahan 17 November 2026 — pilihan pegawai di tab Ekspor Rekap
 
@@ -54,8 +101,9 @@ penanda baru.
 
 ### Panduan pendaftaran & pengisian (PDF)
 
-Panduan 9 halaman disimpan sebagai aset statis di
-`public/panduan/Panduan-Pendaftaran-dan-Pengisian.pdf` (±339 KB), bukan di database. Tombol
+Panduan disimpan sebagai aset statis di
+`public/panduan/Panduan-Pendaftaran-dan-Pengisian.pdf` (±360 KB, 10 halaman setelah pembaruan
+18 November 2026), bukan di database. Tombol
 unduh dipasang di tiga tempat: kartu panduan dasbor pegawai, sidebar panel admin, dan halaman
 masuk. Commit `798071b` sudah di-push; di produksi PDF merespons `HTTP 200` dengan
 `Content-Type: application/pdf`, dan kedua halaman memuat tautannya.
@@ -365,13 +413,18 @@ Server ini untuk lokal; versi Vercel memakai handler yang sama (lihat bagian *De
 
 Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.html (login admin).
 
-**Halaman depan (`public/index.html`)**
-- Isi NIP → nama, NIP, jabatan, golongan, bidang tampil otomatis (dari `cari_pegawai`/`/api/pegawai`).
+**Halaman awal (`public/index.html`) dan unggah (`public/unggah.html`)**
+- Halaman awal: kartu masuk dengan tombol **Masuk** dan **Daftar** di bawahnya (tanpa form unggah).
+- Halaman unggah: isi NIP → nama, NIP, jabatan, golongan, bidang tampil otomatis
+  (dari `cari_pegawai`/`/api/pegawai`).
 - Unggah file Excel presensi, pilih bulan + tahun, tekan **Proses**.
 - Muncul ringkasan kehadiran (hari kerja, hadir, telat, pulang awal, tanpa keterangan,
-  tanpa presensi masuk/pulang, cuti/sakit/dinas), kotak **Tukin** dan **Uang Makan**,
-  lalu pesan "Selamat Data Anda Sudah Terupload".
-- Menu **Daftar**: nama, NIP, pangkat/golongan, jabatan, bidang (11 pilihan), email.
+  tanpa presensi masuk/pulang, cuti/sakit/dinas) serta kotak **Tukin** dan **Uang Makan**.
+  Hasil ini belum disimpan.
+- Centang **“Sudah benar”** pada Tukin dan Uang Makan, lalu tekan **Proses Kirim ke Admin**.
+  Baru setelah itu pengajuan tersimpan (`menunggu_verifikasi`) dan pesan
+  "Selamat Data Anda Sudah Terupload" muncul.
+- Pendaftaran ada di halaman terpisah **`/daftar.html`**.
 
 **Halaman admin (`public/admin.html`, login wajib, hanya peran admin)**
 1. Sudah Unggah — daftar pengajuan + tukin bersih/potongan, tombol Setujui/Tolak.
@@ -405,7 +458,9 @@ Alamat: http://localhost:3000 (halaman depan) dan http://localhost:3000/masuk.ht
 **Endpoint baru (`server.mjs`)**
 - `GET /api/pegawai?nip=` — identitas pegawai, tanpa tukin.
 - `POST /api/proses` — memakai `aplikasi-offline/APLIKASI/app.js` apa adanya (bukan salinan),
-  menyimpan `pengajuan_tukin` + `presensi` + 3 tabel rekap.
+  menyimpan `pengajuan_tukin` + `presensi` + 3 tabel rekap. Dengan `simpan: false` hanya
+  menghitung dan mengembalikan ringkasan tanpa menyimpan (dipakai halaman unggah sebelum
+  pegawai mencentang “Sudah benar”).
 - `POST /api/daftar` — menyimpan pendaftaran status `menunggu`.
 - `POST /api/drive/daftar` — baca folder Drive (`{ link, bulan, tahun }`) → daftar file presensi,
   yang dilewati, dan pesan (folder arsip disaring bulan/tahun).

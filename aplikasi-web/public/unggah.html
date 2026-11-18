@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Unggah Presensi — Tool Tukin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231d4ed8'/%3E%3Ctext x='32' y='43' font-family='Arial,Helvetica,sans-serif' font-size='27' font-weight='700' fill='white' text-anchor='middle'%3ETT%3C/text%3E%3C/svg%3E">
+
+<link rel="stylesheet" href="/gaya.css">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#1d4ed8">
+<link rel="apple-touch-icon" href="/ikon/tt-180.png">
+</head>
+<body>
+<header>
+  <strong>Tool Tukin</strong>
+  <nav>
+    <a href="/dasbor.html">Dasbor</a>
+    <a href="/daftar.html">Daftar</a>
+    <a href="/masuk.html">Masuk</a>
+  </nav>
+</header>
+
+<main>
+  <!-- 1. Form pegawai -->
+  <section class="kartu" id="kartuPresensi">
+    <h1>Unggah Presensi</h1>
+    <p class="sub">Isi NIP, unggah file Excel hasil unduhan dari
+      <a class="tombol-situs" href="https://absensi.kemenag.go.id" target="_blank" rel="noopener">absensi.kemenag.go.id
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4 11 13"/><path d="M18 14v5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 19V8a1.5 1.5 0 0 1 1.5-1.5H10"/></svg>
+      </a>, lalu pilih bulan yang akan dihitung.</p>
+
+    <label for="nip">NIP</label>
+    <input id="nip" inputmode="numeric" maxlength="18" placeholder="18 angka" autocomplete="off">
+    <p class="catatan" id="infoNip">Nama, jabatan, dan bidang akan muncul setelah NIP dikenali.</p>
+    <p class="catatan">Privasi: hanya data dasar (nama, jabatan, bidang, status) yang ditampilkan dari NIP; tukin/gaji tidak ditampilkan.</p>
+
+    <dl class="identitas tersembunyi" id="identitas">
+      <dt>Nama</dt><dd id="iNama">—</dd>
+      <dt>NIP</dt><dd id="iNip">—</dd>
+      <dt>Jabatan</dt><dd id="iJabatan">—</dd>
+      <dt>Golongan</dt><dd id="iGolongan">—</dd>
+      <dt>Bidang</dt><dd id="iBidang">—</dd>
+    </dl>
+
+    <label for="berkas">File presensi (.xlsx)</label>
+    <input id="berkas" type="file" accept=".xlsx,.xls">
+
+    <div class="baris">
+      <div>
+        <label for="bulan">Bulan</label>
+        <select id="bulan"></select>
+      </div>
+      <div>
+        <label for="tahun">Tahun</label>
+        <input id="tahun" type="number" min="2020" max="2100" value="2026">
+      </div>
+    </div>
+
+    <button class="utama" id="proses" type="button">Proses</button>
+    <div class="pesan" id="pesan"></div>
+  </section>
+
+  <!-- 2. Hasil -->
+  <section class="kartu tersembunyi" id="kartuHasil">
+    <h2>Rekap Kehadiran</h2>
+    <div class="statistik" id="statistik"></div>
+
+    <p class="catatan" style="margin-top:18px;font-size:13px">
+      <b>Tolong cek kebenaran jumlah uang tukin dan uang makan di</b>
+      <a class="tombol-situs" href="https://absensi.kemenag.go.id" target="_blank" rel="noopener">absensi.kemenag.go.id
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4 11 13"/><path d="M18 14v5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 4 19V8a1.5 1.5 0 0 1 1.5-1.5H10"/></svg>
+      </a>
+    </p>
+
+    <div class="kotak-dua" style="margin-top:16px">
+      <div>
+        <h3>Tukin</h3>
+        <dl id="kotakTukin"></dl>
+        <div class="cek-daftar" style="margin-top:14px">
+          <label>
+            <input type="checkbox" id="cekBenarTukin">
+            <span>Sudah benar — jumlah Tukin sesuai dengan absensi.kemenag.go.id</span>
+          </label>
+        </div>
+      </div>
+      <div>
+        <h3>Uang Makan</h3>
+        <dl id="kotakUangMakan"></dl>
+        <div class="cek-daftar" style="margin-top:14px">
+          <label>
+            <input type="checkbox" id="cekBenarUangMakan">
+            <span>Sudah benar — jumlah Uang Makan sesuai dengan absensi.kemenag.go.id</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:18px;border-top:1px solid var(--garis);padding-top:16px">
+      <button class="utama" id="kirimAdmin" type="button" style="margin-top:0" disabled>Proses Kirim ke Admin</button>
+      <p class="catatan" id="ketKirimAdmin">Centang kedua pernyataan "sudah benar" di atas untuk mengaktifkan tombol kirim.</p>
+      <p class="catatan" style="margin:8px 0 0">
+        <b>Pengirim sudah memastikan kebenaran Tukin dan Uang Makan untuk diproses admin login.</b>
+      </p>
+    </div>
+
+    <div class="sukses" id="sukses">Selamat Data Anda Sudah Terupload</div>
+    <button class="kecil" id="unduhBukti" type="button" style="margin-top:8px" disabled>Unduh bukti pengajuan (.txt)</button>
+    <p class="catatan">Data tersimpan sebagai pengajuan berstatus <b>menunggu verifikasi</b>.
+      Potongan HUKDIS/TB diisi admin saat verifikasi.</p>
+  </section>
+</main>
+
+<script src="/lib/xlsx.full.min.js"></script>
+<script src="/lib/app.js"></script>
+<script>
+(function () {
+  var BULAN = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli',
+    'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+  var el = function (id) { return document.getElementById(id); };
+  var pegawai = null;
+  var kiriman = null; // data siap kirim: { nip, tahun, bulan, namaFile, hari }
+
+  BULAN.forEach(function (nama, i) {
+    if (!i) return;
+    var o = document.createElement('option');
+    o.value = i; o.textContent = nama;
+    if (i === 10) o.selected = true;
+    el('bulan').appendChild(o);
+  });
+
+  function pesan(teks, jenis) {
+    var p = el('pesan');
+    if (!teks) { p.className = 'pesan'; p.textContent = ''; return; }
+    p.textContent = teks;
+    p.className = 'pesan tampil ' + (jenis || 'galat');
+  }
+
+  function rupiah(n) {
+    return 'Rp' + Math.round(Number(n) || 0).toLocaleString('id-ID');
+  }
+
+  // --- cari pegawai dari NIP ------------------------------------------------
+  var timer = null;
+  el('nip').addEventListener('input', function () {
+    var nip = this.value.replace(/\D/g, '').slice(0, 18);
+    this.value = nip;
+    clearTimeout(timer);
+    pegawai = null;
+    el('identitas').classList.add('tersembunyi');
+    el('infoNip').textContent = 'Nama, jabatan, dan bidang akan muncul setelah NIP dikenali.';
+    if (nip.length !== 18) return;
+    el('infoNip').textContent = 'Mencari NIP…';
+    timer = setTimeout(function () {
+      fetch('/api/pegawai?nip=' + nip).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      }).then(function (h) {
+        if (!h.ok) {
+          el('infoNip').textContent = h.j.pesan || 'NIP tidak ditemukan.';
+          return;
+        }
+        pegawai = h.j;
+        el('iNama').textContent = pegawai.nama;
+        el('iNip').textContent = pegawai.nip;
+        el('iJabatan').textContent = pegawai.jabatan || '—';
+        el('iGolongan').textContent = (pegawai.golongan || '—') + (pegawai.ruang ? '/' + pegawai.ruang : '');
+        el('iBidang').textContent = pegawai.bidang || '—';
+        el('identitas').classList.remove('tersembunyi');
+        el('infoNip').textContent = 'NIP dikenali.';
+      }).catch(function () { el('infoNip').textContent = 'Server tidak dapat dihubungi.'; });
+    }, 350);
+  });
+
+  // --- proses: hitung dulu, belum dikirim ke admin --------------------------
+  el('proses').addEventListener('click', function () {
+    var tombol = this;
+    pesan('');
+    if (!pegawai) { pesan('Isi NIP yang terdaftar dulu.'); return; }
+    var file = el('berkas').files[0];
+    if (!file) { pesan('Pilih file presensi (.xlsx) hasil unduhan absensi.kemenag.go.id.'); return; }
+    var bulan = Number(el('bulan').value);
+    var tahun = Number(el('tahun').value);
+    if (!bulan || !tahun) { pesan('Pilih bulan dan tahun.'); return; }
+
+    tombol.disabled = true;
+    tombol.textContent = 'Memproses…';
+
+    var pembaca = new FileReader();
+    pembaca.onload = function () {
+      var hari;
+      try {
+        var bytes = new Uint8Array(pembaca.result);
+        hari = TukinTool.bacaSheetPresensi(Array.prototype.slice.call(bytes));
+      } catch (e) {
+        pesan('File tidak terbaca: ' + e.message);
+        tombol.disabled = false; tombol.textContent = 'Proses';
+        return;
+      }
+      var bulanFile = hari[0] && hari[0].tanggal && hari[0].tanggal.mo;
+      if (bulanFile && Number(bulanFile) !== bulan) {
+        pesan('File berisi data bulan ' + BULAN[bulanFile] + ', sedangkan yang dipilih ' + BULAN[bulan] + '.');
+        tombol.disabled = false; tombol.textContent = 'Proses';
+        return;
+      }
+
+      fetch('/api/proses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nip: pegawai.nip, tahun: tahun, bulan: bulan, namaFile: file.name, hari: hari, simpan: false })
+      }).then(function (r) {
+        return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+      }).then(function (h) {
+        if (!h.ok) { pesan(h.j.pesan || 'Gagal memproses.'); return; }
+        kiriman = { nip: pegawai.nip, tahun: tahun, bulan: bulan, namaFile: file.name, hari: hari, pegawai: pegawai };
+        tampilkan(h.j);
+      }).catch(function () {
+        pesan('Server tidak dapat dihubungi. Pastikan server berjalan.');
+      }).then(function () {
+        tombol.disabled = false; tombol.textContent = 'Proses';
+      });
+    };
+    pembaca.readAsArrayBuffer(file);
+  });
+
+  function tampilkan(h) {
+    var k = h.kehadiran;
+    el('statistik').innerHTML = [
+      ['Hari kerja', k.hariKerja], ['Hadir', k.hadir], ['Telat', k.telat],
+      ['Pulang sebelum waktunya', k.pulangAwal], ['Tanpa keterangan', k.tanpaKeterangan],
+      ['Tanpa presensi masuk', k.tanpaPresensiMasuk], ['Tanpa presensi pulang', k.tanpaPresensiPulang],
+      ['Cuti / sakit / dinas', k.cutiSakitDinas]
+    ].map(function (p) {
+      return '<div><b>' + p[1] + '</b><span>' + p[0] + '</span></div>';
+    }).join('');
+
+    var t = h.tukin;
+    el('kotakTukin').innerHTML =
+      '<dt>Tukin bruto</dt><dd>' + rupiah(t.bruto) + '</dd>' +
+      '<dt>Total potongan</dt><dd>' + (t.persenTotal ? t.persenTotal + '%' : '0%') + '</dd>' +
+      '<dt>Nilai potongan</dt><dd>' + rupiah(t.potongan) + '</dd>' +
+      '<dt class="total">Tukin bersih</dt><dd class="total">' + rupiah(t.bersih) + '</dd>';
+
+    var u = h.uangMakan;
+    el('kotakUangMakan').innerHTML =
+      '<dt>Hari dihitung</dt><dd>' + u.hariHadir + ' hari</dd>' +
+      '<dt>Tarif per hari</dt><dd>' + rupiah(u.tarif) + '</dd>' +
+      '<dt>Bruto</dt><dd>' + rupiah(u.bruto) + '</dd>' +
+      '<dt>PPh ' + u.pphPct + '%</dt><dd>' + rupiah(u.pph) + '</dd>' +
+      '<dt class="total">Uang makan bersih</dt><dd class="total">' + rupiah(u.bersih) + '</dd>';
+
+    // Hasil baru: kosongkan centang & status kirim sebelumnya.
+    el('cekBenarTukin').checked = false;
+    el('cekBenarUangMakan').checked = false;
+    el('cekBenarTukin').disabled = false;
+    el('cekBenarUangMakan').disabled = false;
+    el('sukses').className = 'sukses';
+    el('unduhBukti').disabled = true;
+    el('kirimAdmin').disabled = true;
+    el('kirimAdmin').textContent = 'Proses Kirim ke Admin';
+    window.__lastHasil = null;
+    periksaCentang();
+
+    el('kartuHasil').classList.remove('tersembunyi');
+    el('kartuHasil').scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // --- centang "sudah benar" membuka tombol kirim ---------------------------
+  function periksaCentang() {
+    var siap = el('cekBenarTukin').checked && el('cekBenarUangMakan').checked;
+    if (el('kirimAdmin').textContent !== 'Mengirim…') el('kirimAdmin').disabled = !siap;
+    el('ketKirimAdmin').textContent = siap
+      ? 'Kedua jumlah sudah dipastikan benar. Tekan tombol untuk mengirim ke admin.'
+      : 'Centang kedua pernyataan "sudah benar" di atas untuk mengaktifkan tombol kirim.';
+  }
+  el('cekBenarTukin').addEventListener('change', periksaCentang);
+  el('cekBenarUangMakan').addEventListener('change', periksaCentang);
+
+  // --- kirim ke admin -------------------------------------------------------
+  el('kirimAdmin').addEventListener('click', function () {
+    var tombol = this;
+    if (!kiriman) { pesan('Proses ulang file presensi terlebih dahulu.'); return; }
+    if (!el('cekBenarTukin').checked || !el('cekBenarUangMakan').checked) {
+      pesan('Centang dulu pernyataan sudah benar pada Tukin dan Uang Makan.');
+      return;
+    }
+
+    tombol.disabled = true;
+    tombol.textContent = 'Mengirim…';
+    pesan('');
+
+    fetch('/api/proses', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nip: kiriman.nip, tahun: kiriman.tahun, bulan: kiriman.bulan,
+        namaFile: kiriman.namaFile, hari: kiriman.hari, simpan: true
+      })
+    }).then(function (r) {
+      return r.json().then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (h) {
+      if (!h.ok) {
+        pesan(h.j.pesan || 'Gagal mengirim ke admin.');
+        tombol.textContent = 'Proses Kirim ke Admin';
+        tombol.disabled = false;
+        return;
+      }
+      tombol.textContent = 'Terkirim ke Admin';
+      el('cekBenarTukin').disabled = true;
+      el('cekBenarUangMakan').disabled = true;
+      el('sukses').className = 'sukses tampil';
+      el('unduhBukti').disabled = false;
+      window.__lastHasil = { h: h.j, pegawai: kiriman.pegawai, bulan: kiriman.bulan, tahun: kiriman.tahun };
+      el('sukses').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }).catch(function () {
+      pesan('Server tidak dapat dihubungi. Coba kirim lagi.');
+      tombol.textContent = 'Proses Kirim ke Admin';
+      tombol.disabled = false;
+    });
+  });
+
+  var btnBukti = el('unduhBukti');
+  if (btnBukti) btnBukti.addEventListener('click', function () {
+    var d = window.__lastHasil;
+    if (!d) { alert('Belum ada data untuk diunduh.'); return; }
+    var h = d.h, p = d.pegawai;
+    var teks = 'BUKTI PENGajuan PRESENSI\n' +
+      'Nama: ' + (p && p.nama) + '\n' +
+      'NIP: ' + (p && p.nip) + '\n' +
+      'Periode: ' + BULAN[d.bulan] + ' ' + d.tahun + '\n' +
+      'Hari kerja: ' + h.kehadiran.hariKerja + '\n' +
+      'Hadir: ' + h.kehadiran.hadir + '\n' +
+      'Tukin bersih: ' + rupiah(h.tukin.bersih) + '\n' +
+      'Uang makan bersih: ' + rupiah(h.uangMakan.bersih) + '\n' +
+      'Waktu: ' + new Date().toLocaleString('id-ID') + '\n';
+    var blob = new Blob([teks], { type: 'text/plain' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'bukti-pengajuan-' + (p && p.nip) + '.txt';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+})();
+</script>
+<script src="/lib/pwa.js"></script>
+</body>
+</html>
